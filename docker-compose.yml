@@ -6,14 +6,12 @@ services:
       - "8030:8000"
     volumes:
       - ./backend:/code
-      - ./backend/raw_data:/code/raw_data
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/tariffhero
+      # - DATABASE_URL=postgresql://postgres:postgres@db:5432/tariffhero
       - REDIS_URL=redis://redis:6379
     env_file:
       - ./backend/.env
     depends_on:
-      - db
       - redis
 
   # frontend:
