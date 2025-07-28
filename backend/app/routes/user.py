@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 
-from app.dependencies import (get_current_user, get_admin_current_user)
+from app.dependencies import (get_current_user, get_current_admin)
 
 router = APIRouter()
 
@@ -17,7 +17,7 @@ def get_me(user=Depends(get_current_user)):
     }
 
 @router.get("/admin-area")
-def admin_only(admin_user=Depends(get_admin_current_user)):
+def admin_only(admin_user=Depends(get_current_admin)):
     """
     Admin-only route to access admin area.
     Returns a welcome message for admins.

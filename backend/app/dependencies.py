@@ -26,7 +26,7 @@ def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(securit
         print("JWTError occurred:", str(e), type(e).__name__)
         raise HTTPException(status_code=403, detail="Invalid or expired token")
 
-def get_admin_current_user(user = Depends(get_current_user)):
+def get_current_admin(user = Depends(get_current_user)):
     """
     for admin based role access
     to add admin role in supabase:
