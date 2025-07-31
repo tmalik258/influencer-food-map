@@ -6,6 +6,7 @@ services:
       - "8030:8000"
     volumes:
       - ./backend:/code
+      - ./backend/audios:/code/audios
     environment:
       - REDIS_URL=redis://redis:6379
     env_file:

@@ -44,8 +44,3 @@ def get_video(video_id: str, db: Session = Depends(get_db)):
     if not video:
         raise HTTPException(status_code=404, detail="Video not found")
     return video
-
-@router.post("/scrape-youtube")
-async def trigger_scrape(background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
-    background_tasks.add_task(scrape_youtube, db)
-    return {"message": "YouTube scraping started in the background"}

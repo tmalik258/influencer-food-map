@@ -7,10 +7,11 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exception_handlers import request_validation_exception_handler
 
+from app.utils.logging import setup_logger
 from app.routes.user import router as user_router
 from app.routes.tags import router as tags_router
 from app.routes.videos import router as videos_router
-from app.utils.logging import setup_logger
+from app.routes.process import router as process_router
 from app.routes.listings import router as listings_router
 from app.routes.influencers import router as influencers_router
 from app.routes.restaurants import router as restaurants_router
@@ -35,6 +36,7 @@ app.add_middleware(
 
 # Register routes
 app.include_router(user_router, prefix="/user", tags=["user"])
+app.include_router(process_router, prefix="/process", tags=["process"])
 app.include_router(influencers_router, prefix="/influencers", tags=["influencers"])
 app.include_router(videos_router, prefix="/videos", tags=["videos"])
 app.include_router(restaurants_router, prefix="/restaurants", tags=["restaurants"])
