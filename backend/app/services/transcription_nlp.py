@@ -1,5 +1,6 @@
 import os
 import json
+from pathlib import Path
 import uuid
 import redis
 import yt_dlp
@@ -7,6 +8,7 @@ import asyncio
 import whisper
 import tempfile
 import subprocess
+from asyncio import Semaphore
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -15,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from googlemaps import Client as GoogleMapsClient
 from googlemaps.exceptions import ApiError
 
-from app.models import Video, Restaurant, Listing, Influencer, Tag, RestaurantTag
+from app.models import Video, Restaurant, Listing, Influencer, Tag, RestaurantTag, BusinessStatus
 from app.config import (
     GOOGLE_MAPS_API_KEY,
     REDIS_URL,
@@ -24,6 +26,7 @@ from app.config import (
 )
 from app.database import AsyncSessionLocal
 from app.utils.logging import setup_logger
+from app.utils.audio_analyzer import cleanup_temp_files
 from app.scripts.gpt_entities_extractor import GPTEntityExtractor
 
 # Setup logging
@@ -193,6 +196,9 @@ async def download_audio(video_url: str, video: Video) -> str:
 async def transcribe_video(audio_path: str) -> str:
     """Transcribe audio using Whisper."""
     loop = asyncio.get_event_loop()
+    audio_file_path = Path(audio_path)
+    temp_dir = audio_file_path.parent
+
     try:
         logger.info(f"Transcribing audio {audio_path}")
         model = whisper.load_model("base")
@@ -211,20 +217,19 @@ async def transcribe_video(audio_path: str) -> str:
         logger.error(f"Error transcribing audio {audio_path}: {e}")
         raise
     finally:
-        if os.path.exists(audio_path):
-            await loop.run_in_executor(None, lambda: os.remove(audio_path))
+        # Clean up both file and directory
+        await loop.run_in_executor(None, cleanup_temp_files, audio_file_path, temp_dir)
 
 
 async def validate_restaurant(entities: dict) -> dict:
     """Validate restaurant details using Google Maps Places API with referer header."""
-    logger.info(f"Validating restaurant: {entities}")
+    logger.info(f"Validating restaurant using Google Maps: {entities}")
     if not entities.get("restaurant_name") or not entities.get("location"):
         logger.warning("No restaurant name or location found")
         return {"valid": False}
 
     loop = asyncio.get_event_loop()
     try:
-        logger.info(f"Validating restaurant with Google Maps: {entities}")
         query = f"{entities['restaurant_name']} {entities['location'].get('city', '')} {entities['location'].get('country', '')}".strip()
         result = await loop.run_in_executor(None, lambda: gmaps.places(query=query))
         if result["status"] == "OK" and result["results"]:
@@ -242,6 +247,7 @@ async def validate_restaurant(entities: dict) -> dict:
                 "country": entities["location"].get("country"),
                 "google_place_id": place["place_id"],
                 "google_rating": place.get("rating"),
+                "business_status": place.get("business_status", BusinessStatus.BUSINESS_STATUS_UNSPECIFIED.value),
                 "confidence_score": entities.get("confidence_score", 0.8),
                 "tags": entities.get("tags", []),
             }
@@ -256,6 +262,7 @@ async def store_restaurant_and_listing(
 ):
     """Store restaurant, listing, and tags in the database."""
     try:
+        logger.info(f"Storing restaurant and listing for video {video.youtube_video_id}")
         if validated["valid"]:
             # Check for existing restaurant
             result = await db.execute(
@@ -266,7 +273,6 @@ async def store_restaurant_and_listing(
             restaurant = result.scalars().first()
             if not restaurant:
                 restaurant = Restaurant(
-                    id=uuid.uuid4(),
                     name=validated["name"],
                     address=validated["address"],
                     latitude=validated["latitude"],
@@ -275,11 +281,15 @@ async def store_restaurant_and_listing(
                     country=validated["country"],
                     google_place_id=validated["google_place_id"],
                     google_rating=validated["google_rating"],
+                    business_status=validated["business_status"],
                     is_active=True,
                 )
                 db.add(restaurant)
-                await db.commit()
+                await db.flush()
                 await db.refresh(restaurant)
+            else:
+                restaurant.business_status = validated["business_status"]
+                await db.flush()
 
             # Store tags
             for tag_name in validated.get("tags", []):
@@ -289,7 +299,7 @@ async def store_restaurant_and_listing(
                 if not tag:
                     tag = Tag(id=uuid.uuid4(), name=tag_name)
                     db.add(tag)
-                    await db.commit()
+                    await db.flush()
                     await db.refresh(tag)
 
                 # Check for existing restaurant_tag
@@ -304,28 +314,32 @@ async def store_restaurant_and_listing(
                         restaurant_id=restaurant.id, tag_id=tag.id
                     )
                     db.add(restaurant_tag)
-                    await db.commit()
+                    await db.flush()
 
             # Store listing
             listing = Listing(
-                id=uuid.uuid4(),
                 restaurant_id=restaurant.id,
                 video_id=video.id,
                 influencer_id=video.influencer_id,
+                visit_date=video.published_at.date() if video.published_at else None,
                 quotes=entities.get("context", []),
                 confidence_score=validated["confidence_score"],
                 approved=False,  # Requires admin approval
             )
             db.add(listing)
-            await db.commit()
+            await db.flush()
             logger.info(
                 f"Stored restaurant {restaurant.name}, tags, and listing for video {video.youtube_video_id}"
+            )
+        else:
+            logger.warning(
+                f"Skipped storing restaurant and listing for video {video.youtube_video_id} (invalid)"
             )
     except Exception as e:
         logger.error(
             f"Error storing restaurant/listing/tags for video {video.youtube_video_id}: {e}"
         )
-        await db.rollback()
+        raise # Let the outer transaction handle the rollback
 
 
 async def process_video(video: Video):
@@ -334,6 +348,9 @@ async def process_video(video: Video):
         async with db.begin():  # Start a transaction for the entire process
             try:
                 logger.info(f"Processing video {video.youtube_video_id}")
+
+                # Merge the video object into the new session
+                video = await db.merge(video)
 
                 transcription = video.transcription or ""
 
@@ -356,17 +373,17 @@ async def process_video(video: Video):
 
                 # Extract entities
                 extracter = GPTEntityExtractor()
-                entities = await extracter.extract_entities(transcription)
-                if not entities:
+                entities_list = await extracter.extract_entities(transcription)
+                if not entities_list:
                     logger.info(
                         f"No restaurant entities found for video {video.youtube_video_id}"
                     )
                     return
                 logger.info(
-                    f"Entities extracted for video {video.youtube_video_id}: {entities}"
+                    f"Entities extracted for video {video.youtube_video_id}: {entities_list}"
                 )
 
-                for entity in entities:
+                for entity in entities_list:
                     # Validate with Google Maps
                     validated = await validate_restaurant(entity)
                     if not validated["valid"]:
@@ -392,20 +409,31 @@ async def process_video(video: Video):
 async def transcription_nlp_pipeline(db: AsyncSession):
     """Main pipeline to process 10+ sample videos."""
     try:
-        # Select one video per influencer (up to 5 influencers)
+        # Limit to 4-5 concurrent downloads to avoid rate limits
+        semaphore = asyncio.Semaphore(5)  # Only 5 concurrent downloads
+
+        # Select one video per influencer
         result = await db.execute(
             select(Video)
             .join(Influencer)
+            .outerjoin(Listing)  # Left join with Listing
+            .where(Listing.id.is_(None))  # Only videos without listings
             .distinct(Influencer.id)
             .order_by(Influencer.id, Video.published_at.desc())
-            .limit(3)
+            .limit(10)
             .options(selectinload(Video.influencer))
         )
         videos = result.scalars().all()
+
         logger.info(f"Selected {len(videos)} videos for processing")
 
+        async def process_with_semaphore(video):
+            async with semaphore:
+                await asyncio.sleep(1)  # Add 1-second delay between downloads
+                return await process_video(video)
+
         # Process videos concurrently
-        tasks = [asyncio.create_task(process_video(video)) for video in videos]
+        tasks = [process_with_semaphore(video) for video in videos]
         await asyncio.gather(*tasks, return_exceptions=True)
 
         logger.info("Transcription and NLP pipeline completed")

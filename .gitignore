@@ -205,3 +205,6 @@ __marimo__/
 # Local development files
 #  These files are used for local development and should not be included in version control.
 /docs
+
+
+audios/

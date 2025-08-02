@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import List, Optional
 from uuid import UUID
 
@@ -10,7 +10,7 @@ class ListingResponse(BaseModel):
     restaurant_id: Optional[UUID] = None
     video_id: Optional[UUID] = None
     influencer_id: Optional[UUID] = None
-    visit_date: Optional[str] = None
+    visit_date: Optional[date] = None
     quotes: Optional[List[str]] = None
     confidence_score: Optional[float] = None
     approved: Optional[bool] = None

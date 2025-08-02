@@ -41,7 +41,6 @@ class GPTEntityExtractor:
             - Extract and organize the following fields:
                 - **restaurant_name**: The (corrected) name of the place (string, or null if unclear, generic, or not provided).
                 - **location**: An object containing:
-                    - **address**: Street address (if mentioned) or null.
                     - **city**: City name (if determinable) or null.
                     - **county**: County/region/province (if provided) or null.
                     - **country**: Country (if determinable) or null.
@@ -61,7 +60,6 @@ class GPTEntityExtractor:
         {
         "restaurant_name": "string or null",
         "location": {
-            "address": "string or null",
             "city": "string or null",
             "county": "string or null",
             "country": "string or null"
@@ -87,12 +85,11 @@ class GPTEntityExtractor:
         {
             "restaurant_name": "Al Habib BBQ",
             "location": {
-                "address": null,
                 "city": "Lahore",
                 "county": null,
                 "country": "Pakistan"
             },
-            "context": [
+            "quotes": [
                 "So today we're at Al Habib BBQ in Lahore.",
                 "Honestly, this might be the juiciest chicken tikka I've had on this trip."
             ],
@@ -117,7 +114,6 @@ class GPTEntityExtractor:
         {
             "restaurant_name": "The Oyster Shed",
             "location": {
-                "address": null,
                 "city": "Portree",
                 "county": "Isle of Skye",
                 "country": "United Kingdom"
@@ -131,7 +127,6 @@ class GPTEntityExtractor:
         {
             "restaurant_name": "Bread Me Up",
             "location": {
-                "address": null,
                 "city": "Portree",
                 "county": "Isle of Skye",
                 "country": "United Kingdom"
@@ -153,14 +148,13 @@ class GPTEntityExtractor:
         {
             "restaurant_name": "JungSik",
             "location": {
-            "address": null,
-            "city": null,
-            "county": null,
-            "country": "South Korea"
+                "city": null,
+                "county": null,
+                "country": "South Korea"
             },
             "context": [
-            "Finally for dinner, we went to Zhong Sik—I'm not sure if that's spelled right.",
-            "The chef is famous for modern Korean tasting menus."
+                "Finally for dinner, we went to Zhong Sik—I'm not sure if that's spelled right.",
+                "The chef is famous for modern Korean tasting menus."
             ],
             "tags": ["modern Korean", "tasting menu"],
             "confidence_score": 0.85

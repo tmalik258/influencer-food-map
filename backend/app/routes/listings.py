@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -11,6 +12,11 @@ from app.api_schema.listings import ListingResponse
 
 router = APIRouter()
 
+class ApprovedStatus(str, Enum):
+    APPROVED = "Approved"
+    NOT_APPROVED = "Not Approved"
+    ALL = "All"
+
 @router.get("/", response_model=List[ListingResponse])
 def get_listings(
     db: Session = Depends(get_db),
@@ -19,11 +25,19 @@ def get_listings(
     video_id: str | None = None,
     influencer_id: str | None = None,
     influencer_name: str | None = None,
+    approved_status: ApprovedStatus = ApprovedStatus.ALL,
     skip: int = 0,
     limit: int = 100
 ):
     """Get approved listings with filters for ID, restaurant ID, video ID, influencer ID, or influencer name."""
-    query = db.query(Listing).filter(Listing.approved == True)
+    query = db.query(Listing)
+
+    if approved_status == ApprovedStatus.APPROVED:
+        query = query.filter(Listing.approved == True)
+    elif approved_status == ApprovedStatus.NOT_APPROVED:
+        query = query.filter(Listing.approved == False)
+    # If approved_status is ApprovedStatus.ALL, no filter is applied
+
     if id:
         query = query.filter(Listing.id == id)
     if restaurant_id:

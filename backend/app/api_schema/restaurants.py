@@ -15,7 +15,7 @@ class RestaurantResponse(BaseModel):
     country: Optional[str] = None
     google_place_id: Optional[str] = None
     google_rating: Optional[float] = None
-    live_status: Optional[bool] = None
+    business_status: str
     is_active: Optional[bool] = None
     created_at: datetime
     updated_at: datetime

@@ -18,7 +18,6 @@ class Video(Base):
     video_url = Column(String(255), nullable=False)
     published_at = Column(DateTime(timezone=True))
     transcription = Column(Text) # From Whisper
-    summary = Column(Text) # Summarized using GPT
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
