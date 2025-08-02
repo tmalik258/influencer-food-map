@@ -12,9 +12,6 @@ if not DATABASE_URL:
     logger.error("DATABASE_URL environment variable is not set")
     raise ValueError("DATABASE_URL environment variable is required but not set")
 
-# # Async engine URL for Supabase (asyncpg)
-# ASYNC_DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://")
-
 # Synchronous engine for Supabase
 try:
     sync_engine = create_engine(DATABASE_URL)

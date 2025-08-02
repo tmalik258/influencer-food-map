@@ -22,6 +22,7 @@ from app.config import (
     TRANSCRIPTION_NLP_LOCK,
     AUDIO_BASE_DIR,
 )
+from app.database import AsyncSessionLocal
 from app.utils.logging import setup_logger
 from app.scripts.gpt_entities_extractor import GPTEntityExtractor
 
@@ -311,7 +312,7 @@ async def store_restaurant_and_listing(
                 restaurant_id=restaurant.id,
                 video_id=video.id,
                 influencer_id=video.influencer_id,
-                quotes=entities.get("context", {}).get("quotes", []),
+                quotes=entities.get("context", []),
                 confidence_score=validated["confidence_score"],
                 approved=False,  # Requires admin approval
             )
@@ -327,62 +328,65 @@ async def store_restaurant_and_listing(
         await db.rollback()
 
 
-async def process_video(db: AsyncSession, video: Video):
+async def process_video(video: Video):
     """Process a single video: transcribe, extract entities, validate, and store."""
-    try:
-        logger.info(f"Processing video {video.youtube_video_id}")
+    async with AsyncSessionLocal() as db:  # Create a new session for each video
+        async with db.begin():  # Start a transaction for the entire process
+            try:
+                logger.info(f"Processing video {video.youtube_video_id}")
 
-        transcription = video.transcription or ""
+                transcription = video.transcription or ""
 
-        # If no transcription, download and transcribe
-        if not video.transcription:
-            logger.info(
-                f"No transcription found for video {video.youtube_video_id}, downloading and transcribing..."
-            )
-            # Download and transcribe
-            audio_path = await download_audio(video.video_url, video)
-            transcription = await transcribe_video(audio_path)
+                # If no transcription, download and transcribe
+                if not video.transcription:
+                    logger.info(
+                        f"No transcription found for video {video.youtube_video_id}, downloading and transcribing..."
+                    )
+                    audio_path = await download_audio(video.video_url, video)
+                    transcription = await transcribe_video(audio_path)
 
-            logger.info(
-                f"Transcription completed for video {video.youtube_video_id}: {transcription[:255]}..."
-            )
+                    logger.info(
+                        f"Transcription completed for video {video.youtube_video_id}: {transcription[:255]}..."
+                    )
 
-            # Update video with transcription
-            video.transcription = transcription
-            await db.commit()
+                    # Update video with transcription
+                    video.transcription = transcription
+                    db.add(video)
+                    await db.flush()
 
-        # Extract entities
-        extracter = GPTEntityExtractor()
-        entities = await extracter.extract_entities(transcription)
-        if not entities:
-            logger.info(
-                f"No restaurant entities found for video {video.youtube_video_id}"
-            )
-            return
-        logger.info(
-            f"Entities extracted for video {video.youtube_video_id}: {entities}"
-        )
-
-        for entity in entities:
-            # Validate with Google Maps
-            validated = await validate_restaurant(entity)
-            if not validated["valid"]:
+                # Extract entities
+                extracter = GPTEntityExtractor()
+                entities = await extracter.extract_entities(transcription)
+                if not entities:
+                    logger.info(
+                        f"No restaurant entities found for video {video.youtube_video_id}"
+                    )
+                    return
                 logger.info(
-                    f"No valid restaurant found for video {video.youtube_video_id}"
+                    f"Entities extracted for video {video.youtube_video_id}: {entities}"
                 )
-                return
-            logger.info(
-                f"Validated restaurant for video {video.youtube_video_id}: {validated}"
-            )
 
-            # Store restaurant, tags, and listing
-            await store_restaurant_and_listing(db, video, entity, validated)
+                for entity in entities:
+                    # Validate with Google Maps
+                    validated = await validate_restaurant(entity)
+                    if not validated["valid"]:
+                        logger.info(
+                            f"No valid restaurant found for video {video.youtube_video_id}"
+                        )
+                        continue
+                    logger.info(
+                        f"Validated restaurant for video {video.youtube_video_id}: {validated}"
+                    )
 
-        logger.info(
-            f"Stored restaurant, tags, and listing for video {video.youtube_video_id}"
-        )
-    except Exception as e:
-        logger.error(f"Error processing video {video.youtube_video_id}: {e}")
+                    # Store restaurant, tags, and listing
+                    await store_restaurant_and_listing(db, video, entity, validated)
+
+                logger.info(
+                    f"Stored restaurant, tags, and listing for video {video.youtube_video_id}"
+                )
+            except Exception as e:
+                logger.error(f"Error processing video {video.youtube_video_id}: {e}")
+                raise  # Let the transaction rollback automatically
 
 
 async def transcription_nlp_pipeline(db: AsyncSession):
@@ -401,7 +405,7 @@ async def transcription_nlp_pipeline(db: AsyncSession):
         logger.info(f"Selected {len(videos)} videos for processing")
 
         # Process videos concurrently
-        tasks = [asyncio.create_task(process_video(db, video)) for video in videos]
+        tasks = [asyncio.create_task(process_video(video)) for video in videos]
         await asyncio.gather(*tasks, return_exceptions=True)
 
         logger.info("Transcription and NLP pipeline completed")
