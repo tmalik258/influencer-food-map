@@ -1,14 +1,12 @@
 import os
 import json
 import uuid
-import asyncio
+import redis
 import yt_dlp
+import asyncio
 import whisper
-import requests
-import textwrap
 import tempfile
 import subprocess
-from openai import OpenAI
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -18,25 +16,22 @@ from googlemaps import Client as GoogleMapsClient
 from googlemaps.exceptions import ApiError
 
 from app.models import Video, Restaurant, Listing, Influencer, Tag, RestaurantTag
-from app.config import GOOGLE_MAPS_API_KEY, OPENAI_API_KEY
+from app.config import (
+    GOOGLE_MAPS_API_KEY,
+    REDIS_URL,
+    TRANSCRIPTION_NLP_LOCK,
+    AUDIO_BASE_DIR,
+)
 from app.utils.logging import setup_logger
+from app.scripts.gpt_entities_extractor import GPTEntityExtractor
 
 # Setup logging
 logger = setup_logger(__name__)
 
-# Initialize clients with custom HTTP settings
-openai_client = OpenAI(api_key=OPENAI_API_KEY)
+# Initialize Redis client
+redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
-# Custom requests session for Google Maps with referer header
-session = requests.Session()
-session.headers.update({"referer": "http://localhost:8030"})  # Adjust for your domain
-gmaps = GoogleMapsClient(key=GOOGLE_MAPS_API_KEY, requests_session=session)
-
-# Base directory for audio downloads
-AUDIO_BASE_DIR = "audios"
-
-# Chunk size for transcription
-CHUNK_SIZE = 3500
+gmaps = GoogleMapsClient(key=GOOGLE_MAPS_API_KEY)
 
 
 async def download_audio(video_url: str, video: Video) -> str:
@@ -219,221 +214,6 @@ async def transcribe_video(audio_path: str) -> str:
             await loop.run_in_executor(None, lambda: os.remove(audio_path))
 
 
-async def extract_entities(transcription: str) -> dict:
-    """Split long transcription, send each part to GPT-4, and combine results."""
-    loop = asyncio.get_event_loop()
-
-    # Split into manageable chunks
-    chunks = textwrap.wrap(
-        transcription, CHUNK_SIZE, break_long_words=False, break_on_hyphens=False
-    )
-    results = []
-
-    system_prompt ="""
-    You are a food data extraction assistant. Your role is to analyze a transcript chunk from a food-focused YouTube video and extract precise, structured information about any food-related places mentioned. This includes any restaurant, food stall, farm, food producer, or culinary establishment clearly referenced in the transcript.
-
-    Your objectives:
-    - Accurately identify all food-related places in the transcript where sufficient detail is available.
-    - For each place, extract well-defined structured data as per the schema provided.
-    - If the restaurant or food place name appears to be phonetically transcribed, misspelled, or plausibly a variant of a known establishment, research or cross-reference and correct to the most likely accurate (official) name, provided you can do so with high confidence. Only perform this correction if you are reasonably certain of the true name; otherwise, extract the name as-is and reflect any uncertainty with an appropriate confidence score.
-
-    # Steps
-
-    1. Read the transcript chunk thoroughly.
-    2. Identify all food-related places (such as restaurants, stalls, farms, or producers) that are mentioned with enough context to extract structured data.
-    3. For each qualifying place:
-        - Evaluate if the name appears misspelled, inaccurately transcribed, or phonetically approximated. Where possible, confidently determine and use the accurate, official name; otherwise, retain the transcript name.
-        - Extract and organize the following fields:
-            - **restaurant_name**: The (corrected) name of the place (string, or null if unclear, generic, or not provided).
-            - **location**: An object containing:
-                - **address**: Street address (if mentioned) or null.
-                - **city**: City name (if determinable) or null.
-                - **county**: County/region/province (if provided) or null.
-                - **country**: Country (if determinable) or null.
-            - **context**: Up to 4 notable or sentiment-rich direct quotes/lines from the transcript mentioning this place; preserve quotation marks for direct quotes. Use null if no such context exists.
-            - **tags**: An array of descriptive tags about food, experience, or cuisine (examples: "BBQ", "vegan", "Michelin-starred"). Use an empty array if no tags apply.
-            - **confidence_score**: A float from 0.0 to 1.0 reflecting your confidence in the correctness and completeness of extracted information, including name correction where applicable.
-    4. If no valid food-related place can be extracted confidently based on the transcript, return a single empty JSON object: {}.
-    5. If there are multiple qualifying places, return a JSON array where each entry matches the schema.
-    6. Do not provide explanations, notes, or reasoning in your answer. All output must be strictly valid JSON, matching the schema exactly and containing nothing but the data.
-
-    # Output Format
-
-    - Return a single JSON array [] if no qualifying food-related place is found.
-    - For one or more valid places, return a JSON array, each element formatted as:
-
-    {
-    "restaurant_name": "string or null",
-    "location": {
-        "address": "string or null",
-        "city": "string or null",
-        "county": "string or null",
-        "country": "string or null"
-    },
-    "context": ["string", "..."] or null,
-    "tags": ["tag1", "tag2", "..."],
-    "confidence_score": float (0.0–1.0)
-    }
-
-    - Use null for missing fields, and [] for tags if none apply.
-    - Always preserve quotation marks in context if the original line is a direct quote.
-    - Do not include any non-JSON content, explanations, or commentary.
-    - Strictly adhere to JSON syntax and schema.
-
-    # Examples
-
-    **Example 1**  
-    Transcript:  
-    "So today we're at Al Habib BBQ in Lahore, and the aroma here is just amazing. Honestly, this might be the juiciest chicken tikka I've had on this trip."
-
-    Output:
-    [
-    {
-        "restaurant_name": "Al Habib BBQ",
-        "location": {
-        "address": null,
-        "city": "Lahore",
-        "county": null,
-        "country": "Pakistan"
-        },
-        "context": [
-        "So today we're at Al Habib BBQ in Lahore.",
-        "Honestly, this might be the juiciest chicken tikka I've had on this trip."
-        ],
-        "tags": ["BBQ", "chicken tikka", "Pakistani"],
-        "confidence_score": 0.95
-    }
-    ]
-
-    **Example 2**  
-    Transcript:  
-    "We've been walking along Nimmanhaemin Road, trying the best street food Chiang Mai has to offer."
-
-    Output:
-    []
-
-    **Example 3**  
-    Transcript:  
-    "We started off at The Oyster Shed, then grabbed a sandwich at Bread Me Up, both located near the harbor in Portree on the Isle of Skye."
-
-    Output:
-    [
-    {
-        "restaurant_name": "The Oyster Shed",
-        "location": {
-        "address": null,
-        "city": "Portree",
-        "county": "Isle of Skye",
-        "country": "United Kingdom"
-        },
-        "context": [
-        "We started off at The Oyster Shed"
-        ],
-        "tags": ["seafood", "harbor"],
-        "confidence_score": 0.85
-    },
-    {
-        "restaurant_name": "Bread Me Up",
-        "location": {
-        "address": null,
-        "city": "Portree",
-        "county": "Isle of Skye",
-        "country": "United Kingdom"
-        },
-        "context": [
-        "Grabbed a sandwich at Bread Me Up"
-        ],
-        "tags": ["sandwich", "bakery"],
-        "confidence_score": 0.8
-    }
-    ]
-
-    **Example 4**  
-    Transcript:  
-    "And finally for dinner, we went to Zhong Sik—I'm not sure if that's spelled right—but the chef is famous for modern Korean tasting menus."
-
-    Output:
-    [
-    {
-        "restaurant_name": "JungSik",
-        "location": {
-        "address": null,
-        "city": null,
-        "county": null,
-        "country": "South Korea"
-        },
-        "context": [
-        "Finally for dinner, we went to Zhong Sik—I'm not sure if that's spelled right.",
-        "The chef is famous for modern Korean tasting menus."
-        ],
-        "tags": ["modern Korean", "tasting menu"],
-        "confidence_score": 0.85
-    }
-    ]
-
-    # Notes
-    - If you identify a probable misspelling or pronunciation variant, correct the name to its standard form only when confident, based on context and known restaurant/cuisine information.
-    - Do not infer or hallucinate information. Output only what is supported by the transcript and, in the case of name corrections, is supported by clear evidence or external verification.
-    - Return null for missing values and [] for tags if not applicable.
-    - If multiple food places are present, return each as a separate object in the JSON array.
-    - Responses must be strictly valid JSON, with no commentary or formatting outside the data schema.
-
-    REMINDER: Your most important tasks are to: extract only what is clearly stated, correct obvious misspelled or phonetically transcribed names with high confidence, organize output in a strictly valid JSON schema as shown above, and include no commentary—return only the data.
-    """
-
-    async def process_chunk(chunk: str, index: int):
-        user_prompt = f"""
-        Chunk {index+1}/{len(chunks)}:
-        {chunk}
-        """
-        try:
-            response = await loop.run_in_executor(
-                None,
-                lambda: openai_client.chat.completions.create(
-                    model="gpt-4",
-                    messages=[{ "role": "system", "content": system_prompt }, { "role": "user", "content": user_prompt}],
-                ),
-            )
-            content = response.choices[0].message.content.strip()
-            result = json.loads(content)
-            return result if isinstance(result, list) else []
-        except Exception as e:
-            logger.error(f"Chunk {index+1} processing failed: {e}")
-            return []
-
-    tasks = [process_chunk(chunk, idx) for idx, chunk in enumerate(chunks)]
-    results = await asyncio.gather(*tasks)
-
-    # Merge results (custom logic as needed)
-    final_result = {
-        "restaurants": [],
-        "tags": set(),
-        "contexts": [],
-        "locations": [],
-        "average_confidence": 0.0,
-    }
-
-    confidences = []
-
-    for chunk_result in results:
-        if not chunk_result:
-            continue
-        for entry in chunk_result:
-            final_result["restaurants"].append(entry)
-            confidences.append(entry.get("confidence_score", 0.0))
-            final_result["tags"].update(entry.get("tags", []))
-            if entry.get("context"):
-                final_result["contexts"].extend(entry["context"])
-            final_result["locations"].append(entry.get("location"))
-
-    final_result["tags"] = list(final_result["tags"])
-    if confidences:
-        final_result["average_confidence"] = round(sum(confidences) / len(confidences), 4)
-
-    # Return only if restaurants were found
-    return final_result if final_result["restaurants"] else {}
-
-
 async def validate_restaurant(entities: dict) -> dict:
     """Validate restaurant details using Google Maps Places API with referer header."""
     logger.info(f"Validating restaurant: {entities}")
@@ -572,7 +352,8 @@ async def process_video(db: AsyncSession, video: Video):
             await db.commit()
 
         # Extract entities
-        entities = await extract_entities(transcription)
+        extracter = GPTEntityExtractor()
+        entities = await extracter.extract_entities(transcription)
         if not entities:
             logger.info(
                 f"No restaurant entities found for video {video.youtube_video_id}"
@@ -582,17 +363,20 @@ async def process_video(db: AsyncSession, video: Video):
             f"Entities extracted for video {video.youtube_video_id}: {entities}"
         )
 
-        # Validate with Google Maps
-        validated = await validate_restaurant(entities)
-        if not validated["valid"]:
-            logger.info(f"No valid restaurant found for video {video.youtube_video_id}")
-            return
-        logger.info(
-            f"Validated restaurant for video {video.youtube_video_id}: {validated}"
-        )
+        for entity in entities:
+            # Validate with Google Maps
+            validated = await validate_restaurant(entity)
+            if not validated["valid"]:
+                logger.info(
+                    f"No valid restaurant found for video {video.youtube_video_id}"
+                )
+                return
+            logger.info(
+                f"Validated restaurant for video {video.youtube_video_id}: {validated}"
+            )
 
-        # Store restaurant, tags, and listing
-        await store_restaurant_and_listing(db, video, entities, validated)
+            # Store restaurant, tags, and listing
+            await store_restaurant_and_listing(db, video, entity, validated)
 
         logger.info(
             f"Stored restaurant, tags, and listing for video {video.youtube_video_id}"
@@ -620,12 +404,9 @@ async def transcription_nlp_pipeline(db: AsyncSession):
         tasks = [asyncio.create_task(process_video(db, video)) for video in videos]
         await asyncio.gather(*tasks, return_exceptions=True)
 
-        # for i, video in enumerate(videos):
-        #     await process_video(db, video)
-        #     await asyncio.sleep(2)
-
         logger.info("Transcription and NLP pipeline completed")
     except Exception as e:
         logger.error(f"Error in pipeline: {e}")
     finally:
         await db.close()
+        redis_client.delete(TRANSCRIPTION_NLP_LOCK)  # Ensure lock is released

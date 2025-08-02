@@ -8,6 +8,10 @@ REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
 DATABASE_URL = os.getenv("DATABASE_URL", None)
 ASYNC_DATABASE_URL = os.getenv("ASYNC_DATABASE_URL", None)
 
+# Redis lock keys
+SCRAPE_YOUTUBE_LOCK = "lock:scrape_youtube"
+TRANSCRIPTION_NLP_LOCK = "lock:transcription_nlp"
+
 # supabase
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_ANON_KEY = os.getenv("SUPABASE_ANON_KEY")
@@ -39,3 +43,9 @@ INFLUENCER_CHANNELS = [
     {"url": "https://www.youtube.com/@S3Lifestyle", "name": "S3 Lifestyle", "region": None},
     {"url": "https://www.youtube.com/@Journeys007", "name": "Journeys007", "region": None},
 ]
+
+# Entities Extractor
+CHUNK_SIZE = 3500 # Chunk size for transcription
+
+# Base directory for audio downloads
+AUDIO_BASE_DIR = "audios"

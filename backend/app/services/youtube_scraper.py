@@ -1,5 +1,6 @@
 import json
 import uuid
+import redis
 from datetime import datetime
 import requests
 
@@ -10,11 +11,14 @@ from googleapiclient.http import HttpRequest
 from sqlalchemy.orm import Session
 
 from app.models import Influencer, Video
-from app.config import YOUTUBE_API_KEY, INFLUENCER_CHANNELS
+from app.config import REDIS_URL, YOUTUBE_API_KEY, INFLUENCER_CHANNELS, SCRAPE_YOUTUBE_LOCK
 from app.utils.logging import setup_logger
 
 # Setup logging
 logger = setup_logger(__name__)
+
+# Initialize Redis client
+redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
 # Custom HTTP client to add referer header
 class CustomHttpRequest(HttpRequest):
@@ -224,3 +228,4 @@ def scrape_youtube(db: Session):
         logger.error(f"Error in scraper: {e}")
     finally:
         db.close()
+        redis_client.delete(SCRAPE_YOUTUBE_LOCK)
