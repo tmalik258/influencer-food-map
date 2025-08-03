@@ -1,15 +1,19 @@
-from datetime import date, datetime
-from typing import List, Optional
 from uuid import UUID
+from typing import List, Optional
+from datetime import date, datetime
 
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 
+from app.api_schema.videos import VideoResponse
+from app.api_schema.restaurants import RestaurantResponse
+from app.api_schema.influencers import InfluencerResponse
+
 class ListingResponse(BaseModel):
     id: UUID
-    restaurant_id: Optional[UUID] = None
-    video_id: Optional[UUID] = None
-    influencer_id: Optional[UUID] = None
+    restaurant: RestaurantResponse
+    video: VideoResponse
+    influencer: InfluencerResponse
     visit_date: Optional[date] = None
     quotes: Optional[List[str]] = None
     confidence_score: Optional[float] = None

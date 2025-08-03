@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import (Column, UUID, ForeignKey, Text, Date, Boolean, Float, DateTime)
+from sqlalchemy import (Column, UUID, ForeignKey, Text, Date, Boolean, Float, DateTime, UniqueConstraint)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -17,10 +17,14 @@ class Listing(Base):
     visit_date = Column(Date, nullable=True)  # Date of the influencer's visit, derived from video's published_at
     quotes = Column(ARRAY(Text)) # Quotes from the video
     confidence_score = Column(Float)
-    approved = Column(Boolean, default=False) # Whether the listing is approved by the admin
+    approved = Column(Boolean, default=False, server_default="false") # Whether the listing is approved by the admin
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     video = relationship("Video", back_populates="listings")
     restaurant = relationship("Restaurant", back_populates="listings")
     influencer = relationship("Influencer", back_populates="listings")
+
+    __table_args__ = (
+        UniqueConstraint('video_id', 'restaurant_id', 'influencer_id', name='uix_video_restaurant_influencer'),
+    )

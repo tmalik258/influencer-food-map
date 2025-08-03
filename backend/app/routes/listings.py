@@ -1,11 +1,11 @@
 from enum import Enum
 from typing import List
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import (APIRouter, Depends, HTTPException)
 
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import (Session, joinedload)
 
-from app.models import Listing, Influencer
+from app.models import (Listing, Influencer)
 from app.database import get_db
 from app.dependencies import get_current_admin
 from app.api_schema.listings import ListingResponse
@@ -30,7 +30,11 @@ def get_listings(
     limit: int = 100
 ):
     """Get approved listings with filters for ID, restaurant ID, video ID, influencer ID, or influencer name."""
-    query = db.query(Listing)
+    query = db.query(Listing).options(
+        joinedload(Listing.restaurant),
+        joinedload(Listing.video),
+        joinedload(Listing.influencer)
+    )
 
     if approved_status == ApprovedStatus.APPROVED:
         query = query.filter(Listing.approved == True)
@@ -48,6 +52,7 @@ def get_listings(
         query = query.filter(Listing.influencer_id == influencer_id)
     if influencer_name:
         query = query.join(Influencer).filter(Influencer.name.ilike(f"%{influencer_name}%"))
+
     listings = query.offset(skip).limit(limit).all()
     return listings
 
@@ -64,7 +69,12 @@ def get_all_listings(
     limit: int = 100
 ):
     """Get all listings (including unapproved) for admins with filters."""
-    query = db.query(Listing)
+    query = db.query(Listing).options(
+        joinedload(Listing.restaurant),
+        joinedload(Listing.video),
+        joinedload(Listing.influencer)
+    )
+
     if id:
         query = query.filter(Listing.id == id)
     if restaurant_id:
@@ -75,13 +85,19 @@ def get_all_listings(
         query = query.filter(Listing.influencer_id == influencer_id)
     if influencer_name:
         query = query.join(Influencer).filter(Influencer.name.ilike(f"%{influencer_name}%"))
+
     listings = query.offset(skip).limit(limit).all()
     return listings
 
 @router.get("/{listing_id}", response_model=ListingResponse)
 def get_listing(listing_id: str, db: Session = Depends(get_db)):
     """Get a single approved listing by ID."""
-    listing = db.query(Listing).filter(Listing.id == listing_id, Listing.approved == True).first()
+    listing = db.query(Listing).options(
+        joinedload(Listing.restaurant),
+        joinedload(Listing.video),
+        joinedload(Listing.influencer)
+    ).filter(Listing.id == listing_id, Listing.approved == True).first()
+
     if not listing:
         raise HTTPException(status_code=404, detail="Listing not found")
     return listing
