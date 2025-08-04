@@ -30,13 +30,20 @@ def get_influencers(
         query = query.filter(Influencer.youtube_channel_id == youtube_channel_id)
     if youtube_channel_url:
         query = query.filter(Influencer.youtube_channel_url == youtube_channel_url)
+
     influencers = query.offset(skip).limit(limit).all()
+
+    if not influencers:
+        raise HTTPException(status_code=404, detail="No influencers found")
+
     return influencers
 
 @router.get("/{influencer_id}", response_model=InfluencerResponse)
 def get_influencer(influencer_id: str, db: Session = Depends(get_db)):
     """Get a single influencer by ID."""
     influencer = db.query(Influencer).filter(Influencer.id == influencer_id).first()
+
     if not influencer:
         raise HTTPException(status_code=404, detail="Influencer not found")
+
     return influencer

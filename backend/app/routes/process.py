@@ -38,10 +38,15 @@ async def trigger_scrape(background_tasks: BackgroundTasks, db: Session = Depend
         )
 
 @router.post("/scrape-listings")
-async def trigger_transcription_nlp(db: AsyncSession = Depends(get_async_db)):
+async def trigger_transcription_nlp(
+    release_lock: bool = False,
+    db: AsyncSession = Depends(get_async_db)
+):
     """Trigger asynchronous video transcription and NLP processing with Redis lock."""
-    # redis_client.delete(TRANSCRIPTION_NLP_LOCK)  # Ensure lock is released
-    # return
+    if release_lock:
+        redis_client.delete(TRANSCRIPTION_NLP_LOCK)  # Release lock if requested
+        # return {"message": "Redis lock released successfully"}
+
     # Try to acquire the lock (non-blocking)
     if redis_client.get(TRANSCRIPTION_NLP_LOCK):
         raise HTTPException(

@@ -33,13 +33,20 @@ def get_restaurants(
         query = query.filter(Restaurant.country == country)
     if google_place_id:
         query = query.filter(Restaurant.google_place_id == google_place_id)
+
     restaurants = query.offset(skip).limit(limit).all()
+
+    if not restaurants:
+        raise HTTPException(status_code=404, detail="No restaurants found")
+
     return restaurants
 
 @router.get("/{restaurant_id}", response_model=RestaurantResponse)
 def get_restaurant(restaurant_id: str, db: Session = Depends(get_db)):
     """Get a single restaurant by ID."""
     restaurant = db.query(Restaurant).filter(Restaurant.id == restaurant_id, Restaurant.is_active == True).first()
+
     if not restaurant:
         raise HTTPException(status_code=404, detail="Restaurant not found")
+
     return restaurant

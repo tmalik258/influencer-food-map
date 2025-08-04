@@ -1,6 +1,4 @@
 import os
-import json
-from pathlib import Path
 import uuid
 import redis
 import yt_dlp
@@ -8,7 +6,10 @@ import asyncio
 import whisper
 import tempfile
 import subprocess
-from asyncio import Semaphore
+from pathlib import Path
+from faster_whisper import WhisperModel
+
+from fastapi import HTTPException
 
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -37,6 +38,13 @@ redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
 gmaps = GoogleMapsClient(key=GOOGLE_MAPS_API_KEY)
 
+# Initialize model once globally (optional optimization)
+model = WhisperModel(
+    "medium",              # You can use "small", "medium", or "large-v2"
+    device="cpu",         # Use your GPU
+    # compute_type="float16" # Use FP16 for better speed and memory efficiency
+)
+
 
 async def download_audio(video_url: str, video: Video) -> str:
     """Download audio from a YouTube video and explicitly convert with FFmpeg."""
@@ -53,15 +61,25 @@ async def download_audio(video_url: str, video: Video) -> str:
     os.makedirs(influencer_dir, exist_ok=True)
 
     # Sanitize video title for filename
-    video_title = (
-        video.title.replace(" ", "_").replace("/", "_").replace("\\", "_")[:50]
-        if video.title
-        else str(uuid.uuid4())
-    )
+    # video_title = (
+    #     video.title.replace(" ", "_").replace("/", "_").replace("\\", "_")[:50]
+    #     if video.title
+    #     else str(uuid.uuid4())
+    # )
     base_filename = video.youtube_video_id
 
     # Final output path (what we'll return)
     final_output_path = os.path.join(influencer_dir, f"{base_filename}_converted.mp3")
+
+    ## Verify the file exists and has content
+    if (
+        os.path.exists(final_output_path)
+        and os.path.getsize(final_output_path) > 0
+    ):
+        logger.info(
+            f"Audio file already exists and has content: {final_output_path}"
+        )
+        return final_output_path
 
     loop = asyncio.get_event_loop()
     max_retries = 3
@@ -201,16 +219,18 @@ async def transcribe_video(audio_path: str) -> str:
 
     try:
         logger.info(f"Transcribing audio {audio_path}")
-        model = whisper.load_model("base")
-        result = await loop.run_in_executor(
+        # model = whisper.load_model("large-v2")
+        segments, _ = await loop.run_in_executor(
             None,
             lambda: model.transcribe(
                 audio_path,
-                fp16=False,  # Explicitly disable FP16
-                verbose=False,  # Reduce verbosity
+                word_timestamps=True  # Optional: enable word-level timestamps
             ),
         )
-        transcription = result["text"]
+        
+        # Combine segments into one full transcription
+        transcription = "".join([segment.text for segment in segments])
+
         logger.info(f"Transcription completed for {audio_path}")
         return transcription
     except Exception as e:
@@ -235,7 +255,7 @@ async def validate_restaurant(entities: dict) -> dict:
         if result["status"] == "OK" and result["results"]:
             place = result["results"][0]
             logger.info(
-                f"Validated restaurant with Google Maps: {json.dumps(place, indent=2)}"
+                f"Validated restaurant with Google Maps: {place['name']} ({place['place_id']})"
             )
             return {
                 "valid": True,
@@ -317,12 +337,35 @@ async def store_restaurant_and_listing(
                     await db.flush()
 
             # Store listing
+            if not isinstance(db, AsyncSession):
+                raise ValueError("db is not an AsyncSession instance")
+
+            result = await db.execute(
+                select(Listing)
+                .filter(Listing.restaurant_id == restaurant.id)
+                .filter(Listing.video_id == video.id)
+                .filter(Listing.influencer_id == video.influencer_id)
+            )
+            existing_listing = result.scalar()
+            if existing_listing:
+                logger.warning(
+                    f"Listing already exists for video {video.youtube_video_id}"
+                )
+                if existing_listing.visit_date is None:
+                    existing_listing.visit_date = video.published_at.date()
+                existing_listing.quotes = entities.get("quotes", [])
+                existing_listing.context = entities.get("context", [])
+                existing_listing.confidence_score = validated["confidence_score"]
+                await db.flush()
+                return
+
             listing = Listing(
                 restaurant_id=restaurant.id,
                 video_id=video.id,
                 influencer_id=video.influencer_id,
                 visit_date=video.published_at.date() if video.published_at else None,
-                quotes=entities.get("context", []),
+                quotes=entities.get("quotes", []),
+                context=entities.get("context", []),
                 confidence_score=validated["confidence_score"],
                 approved=False,  # Requires admin approval
             )
@@ -335,6 +378,11 @@ async def store_restaurant_and_listing(
             logger.warning(
                 f"Skipped storing restaurant and listing for video {video.youtube_video_id} (invalid)"
             )
+    except HTTPException as e:
+        logger.error(
+            f"Error storing restaurant/listing/tags for video {video.youtube_video_id}: {e}"
+        )
+        raise
     except Exception as e:
         logger.error(
             f"Error storing restaurant/listing/tags for video {video.youtube_video_id}: {e}"
@@ -352,10 +400,11 @@ async def process_video(video: Video):
                 # Merge the video object into the new session
                 video = await db.merge(video)
 
-                transcription = video.transcription or ""
+                # transcription = video.transcription or ""
+                transcription = ""
 
                 # If no transcription, download and transcribe
-                if not video.transcription:
+                if not transcription:
                     logger.info(
                         f"No transcription found for video {video.youtube_video_id}, downloading and transcribing..."
                     )
@@ -373,7 +422,7 @@ async def process_video(video: Video):
 
                 # Extract entities
                 extracter = GPTEntityExtractor()
-                entities_list = await extracter.extract_entities(transcription)
+                entities_list = await extracter.extract_entities(video.description, transcription)
                 if not entities_list:
                     logger.info(
                         f"No restaurant entities found for video {video.youtube_video_id}"
@@ -416,8 +465,8 @@ async def transcription_nlp_pipeline(db: AsyncSession):
         result = await db.execute(
             select(Video)
             .join(Influencer)
-            .outerjoin(Listing)  # Left join with Listing
-            .where(Listing.id.is_(None))  # Only videos without listings
+            # .outerjoin(Listing)  # Left join with Listing
+            # .where(Listing.id.is_(None))  # Only videos without listings
             .distinct(Influencer.id)
             .order_by(Influencer.id, Video.published_at.desc())
             .limit(10)

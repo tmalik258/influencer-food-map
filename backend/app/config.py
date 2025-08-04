@@ -45,7 +45,8 @@ INFLUENCER_CHANNELS = [
 ]
 
 # Entities Extractor
-CHUNK_SIZE = 3500 # Chunk size for transcription
+CHUNK_SIZE = 4000 # Chunk size for transcription
+TOKEN_SIZE = 4500
 
 # Base directory for audio downloads
 AUDIO_BASE_DIR = "audios"
