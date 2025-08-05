@@ -3,15 +3,13 @@ import uuid
 import redis
 import yt_dlp
 import asyncio
-import whisper
 import tempfile
 import subprocess
-from pathlib import Path
-from faster_whisper import WhisperModel
 
 from fastapi import HTTPException
 
 from sqlalchemy import select
+from sqlalchemy.sql import func, case
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -27,8 +25,7 @@ from app.config import (
 )
 from app.database import AsyncSessionLocal
 from app.utils.logging import setup_logger
-from app.utils.audio_analyzer import cleanup_temp_files
-from app.scripts.gpt_entities_extractor import GPTEntityExtractor
+from app.scripts.gpt_food_place_processor import GPTFoodPlaceProcessor
 
 # Setup logging
 logger = setup_logger(__name__)
@@ -37,14 +34,6 @@ logger = setup_logger(__name__)
 redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
 gmaps = GoogleMapsClient(key=GOOGLE_MAPS_API_KEY)
-
-# Initialize model once globally (optional optimization)
-model = WhisperModel(
-    "medium",              # You can use "small", "medium", or "large-v2"
-    device="cpu",         # Use your GPU
-    # compute_type="float16" # Use FP16 for better speed and memory efficiency
-)
-
 
 async def download_audio(video_url: str, video: Video) -> str:
     """Download audio from a YouTube video and explicitly convert with FFmpeg."""
@@ -99,11 +88,13 @@ async def download_audio(video_url: str, video: Video) -> str:
                 temp_output_template = temp_file.name
 
             ydl_opts = {
-                "format": "bestaudio/best",
+                "format": "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio",
                 "outtmpl": temp_output_template,
                 "quiet": True,
                 "retries": 3,
-                "fragment_retries": 3,
+                "fragment_retries": 10,
+                "extractor_retries": 10,
+                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
                 "postprocessors": [
                     {
                         "key": "FFmpegExtractAudio",
@@ -211,34 +202,34 @@ async def download_audio(video_url: str, video: Video) -> str:
     raise Exception("Max retries exceeded for audio download and conversion")
 
 
-async def transcribe_video(audio_path: str) -> str:
-    """Transcribe audio using Whisper."""
-    loop = asyncio.get_event_loop()
-    audio_file_path = Path(audio_path)
-    temp_dir = audio_file_path.parent
+# async def transcribe_video(audio_path: str) -> str:
+#     """Transcribe audio using Whisper."""
+#     loop = asyncio.get_event_loop()
+#     audio_file_path = Path(audio_path)
+#     temp_dir = audio_file_path.parent
 
-    try:
-        logger.info(f"Transcribing audio {audio_path}")
-        # model = whisper.load_model("large-v2")
-        segments, _ = await loop.run_in_executor(
-            None,
-            lambda: model.transcribe(
-                audio_path,
-                word_timestamps=True  # Optional: enable word-level timestamps
-            ),
-        )
+#     try:
+#         logger.info(f"Transcribing audio {audio_path}")
+#         # model = whisper.load_model("large-v2")
+#         segments, _ = await loop.run_in_executor(
+#             None,
+#             lambda: model.transcribe(
+#                 audio_path,
+#                 word_timestamps=True  # Optional: enable word-level timestamps
+#             ),
+#         )
         
-        # Combine segments into one full transcription
-        transcription = "".join([segment.text for segment in segments])
+#         # Combine segments into one full transcription
+#         transcription = "".join([segment.text for segment in segments])
 
-        logger.info(f"Transcription completed for {audio_path}")
-        return transcription
-    except Exception as e:
-        logger.error(f"Error transcribing audio {audio_path}: {e}")
-        raise
-    finally:
-        # Clean up both file and directory
-        await loop.run_in_executor(None, cleanup_temp_files, audio_file_path, temp_dir)
+#         logger.info(f"Transcription completed for {audio_path}")
+#         return transcription
+#     except Exception as e:
+#         logger.error(f"Error transcribing audio {audio_path}: {e}")
+#         raise
+#     finally:
+#         # Clean up both file and directory
+#         await loop.run_in_executor(None, cleanup_temp_files, audio_file_path, temp_dir)
 
 
 async def validate_restaurant(entities: dict) -> dict:
@@ -403,13 +394,15 @@ async def process_video(video: Video):
                 # transcription = video.transcription or ""
                 transcription = ""
 
+                gpt_processor = GPTFoodPlaceProcessor()
+
                 # If no transcription, download and transcribe
                 if not transcription:
                     logger.info(
                         f"No transcription found for video {video.youtube_video_id}, downloading and transcribing..."
                     )
                     audio_path = await download_audio(video.video_url, video)
-                    transcription = await transcribe_video(audio_path)
+                    transcription = await gpt_processor.transcribe_audio(audio_path)
 
                     logger.info(
                         f"Transcription completed for video {video.youtube_video_id}: {transcription[:255]}..."
@@ -421,8 +414,7 @@ async def process_video(video: Video):
                     await db.flush()
 
                 # Extract entities
-                extracter = GPTEntityExtractor()
-                entities_list = await extracter.extract_entities(video.description, transcription)
+                entities_list = await gpt_processor.extract_entities(video.description, transcription)
                 if not entities_list:
                     logger.info(
                         f"No restaurant entities found for video {video.youtube_video_id}"
@@ -465,10 +457,16 @@ async def transcription_nlp_pipeline(db: AsyncSession):
         result = await db.execute(
             select(Video)
             .join(Influencer)
-            # .outerjoin(Listing)  # Left join with Listing
-            # .where(Listing.id.is_(None))  # Only videos without listings
             .distinct(Influencer.id)
-            .order_by(Influencer.id, Video.published_at.desc())
+            .order_by(
+                Influencer.id,
+                case(
+                    (Video.transcription.is_(None), 1),
+                    else_=0
+                ).asc(),  # Videos with transcriptions (non-null) come first
+                func.length(Video.transcription).asc(),  # Sort by transcription length (smallest to largest)
+                Video.published_at.desc()
+            )
             .limit(10)
             .options(selectinload(Video.influencer))
         )

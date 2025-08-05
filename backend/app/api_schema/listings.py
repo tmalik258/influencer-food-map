@@ -16,6 +16,7 @@ class ListingResponse(BaseModel):
     influencer: InfluencerResponse
     visit_date: Optional[date] = None
     quotes: Optional[List[str]] = None
+    context: Optional[List[str]] = None
     confidence_score: Optional[float] = None
     approved: Optional[bool] = None
     created_at: datetime

@@ -7,7 +7,6 @@ from pydantic.config import ConfigDict
 class RestaurantResponse(BaseModel):
     id: UUID
     name: str
-    branch_name: Optional[str] = None
     address: str
     latitude: float
     longitude: float

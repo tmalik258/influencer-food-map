@@ -1,19 +1,23 @@
 import asyncio
 import json
 import textwrap
+import librosa
+import soundfile as sf
 from openai import OpenAI
+from pathlib import Path
 
 from app.config import CHUNK_SIZE, TOKEN_SIZE, OPENAI_API_KEY
 from app.utils.logging import setup_logger
+from app.utils.audio_analyzer import cleanup_temp_files
 
 logger = setup_logger(__name__)
 
-class GPTEntityExtractor:
-    """A class to extract food-related entities from transcriptions using GPT-4.1."""
+class GPTFoodPlaceProcessor:
+    """A class to transcribe audio and extract food-related entities from transcriptions using GPT-4.1."""
     
     def __init__(self, chunk_size=CHUNK_SIZE):
         """
-        Initialize the EntityExtractor.
+        Initialize the GPTFoodPlaceProcessor.
         
         Args:
             openai_client: The OpenAI client instance for API calls
@@ -52,6 +56,9 @@ class GPTEntityExtractor:
         5. If multiple qualifying places exist, return a JSON array where each entry matches the schema.
         6. Do not provide explanations, notes, or reasoning in your answer. All output must be strictly valid JSON, matching the schema exactly and containing nothing but the data.
         7. Do not include any object in your output where restaurant_name is null.
+        8. Only include a restaurant/place object in the output if it has at least two qualifying quotes (i.e., the "quotes" array contains two or more items) and at least two context lines (i.e., the "context" array contains two or more items).
+        9. If a restaurant/place does not meet both of these minimums, do not include it in the output array.
+
         # Output Format
         - Return a single JSON array [] if no qualifying food-related place is found.
         - For one or more valid places, return a JSON array, each element formatted as:
@@ -215,6 +222,7 @@ class GPTEntityExtractor:
         # Notes
         - Do not infer, invent, or hallucinate information. Output only what can be directly supported by the transcript or confidently cross-referenced (such as place name).
         - Return null for missing location values, and [] for tags if not applicable.
+        - Do not duplicate objects with the same restaurant name.
         - Each qualifying food place should appear as a separate object in the JSON array.
         - Responses must be strictly valid JSON—no commentary, explanations, or schema outside the data.
         - REMINDER: Your most important tasks are to: extract only what is clearly stated, correct obvious misspelled names with high confidence, organize output in the strict JSON schema as above, and include nothing but the required data.
@@ -303,3 +311,84 @@ class GPTEntityExtractor:
         logger.info(f"Processed {len(flat_results)} entities: {json.dumps(flat_results, indent=2)}")
 
         return flat_results
+
+    async def transcribe_audio(self, audio_path: str) -> str:
+        """Transcribe audio using OpenAI's Whisper API, splitting if over 25MB.
+
+        Args:
+            audio_path: Path to the audio file to transcribe.
+
+        Returns:
+            The transcribed text as a string.
+
+        Raises:
+            Exception: If transcription fails.
+        """
+        loop = asyncio.get_event_loop()
+        audio_file_path = Path(audio_path)
+        temp_dir = audio_file_path.parent
+
+        try:
+            logger.info(f"Transcribing audio {audio_path}")
+            
+            # Check file size
+            file_size_mb = audio_file_path.stat().st_size / (1024 * 1024)
+            if file_size_mb > 25:
+                logger.info(f"Audio file {audio_path} ({file_size_mb:.2f}MB) exceeds 25MB, splitting...")
+                
+                # Load audio with librosa
+                audio, sr = librosa.load(audio_path, sr=None)
+                duration_s = len(audio) / sr
+                chunk_length_s = 600  # 10-minute chunks
+                samples_per_chunk = int(chunk_length_s * sr)
+                chunks = []
+
+                # Split audio into chunks
+                for i in range(0, len(audio), samples_per_chunk):
+                    chunk = audio[i:i + samples_per_chunk]
+                    chunk_path = temp_dir / f"{audio_file_path.stem}_chunk{i//samples_per_chunk}.mp3"
+                    sf.write(chunk_path, chunk, sr, format='mp3', bitrate='192k')
+                    if chunk_path.stat().st_size / (1024 * 1024) <= 25:
+                        chunks.append(chunk_path)
+                    else:
+                        logger.warning(f"Chunk {chunk_path} still too large, skipping")
+                
+                # Transcribe each chunk
+                transcription = ""
+                for chunk_path in chunks:
+                    with open(chunk_path, "rb") as chunk_file:
+                        chunk_transcription = await loop.run_in_executor(
+                            None,
+                            lambda: self.openai_client.audio.transcriptions.create(
+                                model="whisper-1",
+                                file=chunk_file,
+                                response_format="text"
+                            )
+                        )
+                        transcription += chunk_transcription + " "
+                    
+                    # Clean up chunk file
+                    chunk_path.unlink()
+
+                logger.info(f"Transcription completed for {audio_path}")
+                return transcription.strip()
+
+            # Original transcription for files under 25MB
+            with open(audio_file_path, "rb") as audio_file:
+                transcription = await loop.run_in_executor(
+                    None,
+                    lambda: self.openai_client.audio.transcriptions.create(
+                        model="whisper-1",
+                        file=audio_file,
+                        response_format="text"
+                    )
+                )
+            logger.info(f"Transcription completed for {audio_path}: {transcription}")
+            return transcription
+
+        except Exception as e:
+            logger.error(f"Error transcribing audio {audio_path}: {e}")
+            raise
+        finally:
+            # Clean up both file and directory
+            await loop.run_in_executor(None, cleanup_temp_files, audio_file_path, temp_dir)

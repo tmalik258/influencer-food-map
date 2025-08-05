@@ -18,8 +18,7 @@ class Restaurant(Base):
     __tablename__ = "restaurants"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(255), nullable=False)
-    branch_name = Column(String(255), nullable=True) # Optional branch name
+    name = Column(String(255), nullable=False, unique=True, index=True)
     address = Column(Text, nullable=False) # Raw address from Google Places
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)

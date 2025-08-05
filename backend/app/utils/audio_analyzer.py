@@ -14,7 +14,8 @@ def cleanup_temp_files(audio_file_path: Path, temp_dir: Path):
             logger.info(f"Removed audio file: {audio_file_path}")
         
         # Remove the temporary directory if it exists and is empty or contains only temp files
-        if temp_dir.exists():
+        # Only proceed if 'manual' is NOT in the audio file name
+        if temp_dir.exists() and 'manual' not in audio_file_path.stem:
             # Check if directory is empty or only contains related temp files
             remaining_files = list(temp_dir.glob('*'))
             if not remaining_files:
