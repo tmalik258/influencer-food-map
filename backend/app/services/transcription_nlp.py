@@ -391,8 +391,7 @@ async def process_video(video: Video):
                 # Merge the video object into the new session
                 video = await db.merge(video)
 
-                # transcription = video.transcription or ""
-                transcription = ""
+                transcription = video.transcription or ""
 
                 gpt_processor = GPTFoodPlaceProcessor()
 

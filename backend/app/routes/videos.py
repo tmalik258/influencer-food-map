@@ -15,6 +15,7 @@ def get_videos(
     db: Session = Depends(get_db),
     title: Optional[str] = None,
     youtube_video_id: Optional[str] = None,
+    video_title: Optional[str] = None,
     video_url: Optional[str] = None,
     influencer_id: Optional[str] = None,
     influencer_name: Optional[str] = None,
@@ -22,7 +23,7 @@ def get_videos(
     skip: int = 0,
     limit: int = 100
 ):
-    """Get videos with filters for title, YouTube video ID, video URL, influencer ID, or influencer name."""
+    """Get videos with filters for title, YouTube video ID, video URL, video title, influencer ID, or influencer name."""
     query = db.query(Video)
 
     if has_listings:
@@ -34,6 +35,8 @@ def get_videos(
         query = query.filter(Video.youtube_video_id == youtube_video_id)
     if video_url:
         query = query.filter(Video.video_url == video_url)
+    if video_title:
+        query = query.filter(Video.title.ilike(f"%{video_title}%"))
     if influencer_id:
         query = query.filter(Video.influencer_id == influencer_id)
     if influencer_name:
