@@ -4,6 +4,8 @@ from uuid import UUID
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 
+from app.api_schema.tags import TagResponse
+
 class RestaurantResponse(BaseModel):
     id: UUID
     name: str
@@ -15,8 +17,10 @@ class RestaurantResponse(BaseModel):
     google_place_id: Optional[str] = None
     google_rating: Optional[float] = None
     business_status: str
+    photo_url: Optional[str] = None
     is_active: Optional[bool] = None
     created_at: datetime
     updated_at: datetime
+    tags: Optional[list[TagResponse]] = None
 
     model_config = ConfigDict(from_attributes=True)

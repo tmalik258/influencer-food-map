@@ -14,7 +14,7 @@ if not DATABASE_URL:
 
 # Synchronous engine for Supabase
 try:
-    sync_engine = create_engine(DATABASE_URL)
+    sync_engine = create_engine(DATABASE_URL, connect_args={"sslmode": "require"})
 except Exception as e:
     logger.error(f"Failed to create database engine: {str(e)}")
     raise RuntimeError(f"Database connection failed: {str(e)}")
@@ -38,7 +38,8 @@ try:
         max_overflow=10,       # Extra connections allowed under load
         pool_timeout=30,       # Seconds to wait for a connection
         pool_recycle=1800,     # Recycle connections after 30 minutes
-        echo=False
+        echo=False,
+        connect_args={"sslmode": "require"}
     )
 except Exception as e:
     logger.error(f"Failed to create database engine: {str(e)}")

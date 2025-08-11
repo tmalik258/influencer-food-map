@@ -32,6 +32,7 @@ class Restaurant(Base):
         server_default=BusinessStatus.BUSINESS_STATUS_UNSPECIFIED.value,
         nullable=False
     ) # Whether the restaurant is currently operational
+    photo_url = Column(Text, nullable=True) # From Google Places API
     is_active = Column(Boolean, default=True) # Soft delete
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())

@@ -248,6 +248,15 @@ async def validate_restaurant(entities: dict) -> dict:
             logger.info(
                 f"Validated restaurant with Google Maps: {place['name']} ({place['place_id']})"
             )
+            
+            # Get photo URL using the Google Places API (New)
+            photo_url = None
+            try:
+                from app.routes.restaurants import get_google_place_photo_url
+                photo_url = await get_google_place_photo_url(place["place_id"])
+            except Exception as photo_error:
+                logger.warning(f"Could not fetch photo for {place['name']}: {photo_error}")
+            
             return {
                 "valid": True,
                 "name": place["name"],
@@ -259,6 +268,7 @@ async def validate_restaurant(entities: dict) -> dict:
                 "google_place_id": place["place_id"],
                 "google_rating": place.get("rating"),
                 "business_status": place.get("business_status", BusinessStatus.BUSINESS_STATUS_UNSPECIFIED.value),
+                "photo_url": photo_url,
                 "confidence_score": entities.get("confidence_score", 0.8),
                 "tags": entities.get("tags", []),
             }
@@ -293,6 +303,7 @@ async def store_restaurant_and_listing(
                     google_place_id=validated["google_place_id"],
                     google_rating=validated["google_rating"],
                     business_status=validated["business_status"],
+                    photo_url=validated["photo_url"],
                     is_active=True,
                 )
                 db.add(restaurant)

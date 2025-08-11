@@ -16,6 +16,7 @@ from app.routes.process import router as process_router
 from app.routes.listings import router as listings_router
 from app.routes.influencers import router as influencers_router
 from app.routes.restaurants import router as restaurants_router
+from app.routes.admin.listings import router as admin_listings_router
 
 # Configure logging
 logger = setup_logger(__name__)
@@ -36,6 +37,7 @@ app.add_middleware(
 )
 
 # Register routes
+# app.prefix = "/api"
 app.include_router(user_router, prefix="/user", tags=["user"])
 app.include_router(process_router, prefix="/process", tags=["process"])
 app.include_router(influencers_router, prefix="/influencers", tags=["influencers"])
@@ -43,6 +45,7 @@ app.include_router(videos_router, prefix="/videos", tags=["videos"])
 app.include_router(restaurants_router, prefix="/restaurants", tags=["restaurants"])
 app.include_router(listings_router, prefix="/listings", tags=["listings"])
 app.include_router(tags_router, prefix="/tags", tags=["tags"])
+app.include_router(admin_listings_router, prefix="/admin/listings", tags=["admin"])
 
 
 # Custom exception handler for validation errors
