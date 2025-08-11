@@ -39,7 +39,6 @@ try:
         pool_timeout=30,       # Seconds to wait for a connection
         pool_recycle=1800,     # Recycle connections after 30 minutes
         echo=False,
-        connect_args={"sslmode": "require"}
     )
 except Exception as e:
     logger.error(f"Failed to create database engine: {str(e)}")
