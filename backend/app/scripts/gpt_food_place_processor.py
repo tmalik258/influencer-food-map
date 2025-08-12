@@ -347,7 +347,7 @@ class GPTFoodPlaceProcessor:
                 for i in range(0, len(audio), samples_per_chunk):
                     chunk = audio[i:i + samples_per_chunk]
                     chunk_path = temp_dir / f"{audio_file_path.stem}_chunk{i//samples_per_chunk}.mp3"
-                    sf.write(chunk_path, chunk, sr, format='mp3', bitrate='192k')
+                    sf.write(chunk_path, chunk, sr, format='mp3')
                     if chunk_path.stat().st_size / (1024 * 1024) <= 25:
                         chunks.append(chunk_path)
                     else:

@@ -1,8 +1,6 @@
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-import httpx
-import os
 
 from sqlalchemy.orm import Session, joinedload
 
@@ -12,40 +10,6 @@ from typing import List
 from sqlalchemy import func
 from app.api_schema.restaurants import RestaurantResponse
 from app.api_schema.tags import TagResponse
-
-GOOGLE_PLACES_API_KEY = os.getenv("GOOGLE_PLACES_API_KEY")
-GOOGLE_PLACES_API_BASE_URL = "https://places.googleapis.com/v1/"
-
-async def get_google_place_photo_url(place_id: str):
-    if not GOOGLE_PLACES_API_KEY:
-        raise HTTPException(status_code=500, detail="Google Places API key not configured.")
-
-    # Step 1: Get photo reference from Place Details (New) API
-    place_details_url = f"{GOOGLE_PLACES_API_BASE_URL}places/{place_id}"
-    headers = {
-        "Content-Type": "application/json",
-        "X-Goog-Api-Key": GOOGLE_PLACES_API_KEY,
-        "X-Goog-FieldMask": "photos"
-    }
-    async with httpx.AsyncClient() as client:
-        response = await client.get(place_details_url, headers=headers)
-        response.raise_for_status()
-        place_data = response.json()
-
-    photos = place_data.get("photos")
-    if not photos:
-        return None
-
-    # Assuming we want the first photo
-    photo_resource_name = photos[0].get("name")
-    if not photo_resource_name:
-        return None
-
-    # Step 2: Construct the photo URL using the photo resource name
-    # We can specify max height/width here if needed, for now, let's use a reasonable default
-    photo_url = f"{GOOGLE_PLACES_API_BASE_URL}{photo_resource_name}/media?key={GOOGLE_PLACES_API_KEY}&maxHeightPx=400&maxWidthPx=400"
-    return photo_url
-
 
 
 router = APIRouter()

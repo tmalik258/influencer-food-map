@@ -232,6 +232,8 @@ async def download_audio(video_url: str, video: Video) -> str:
 #         await loop.run_in_executor(None, cleanup_temp_files, audio_file_path, temp_dir)
 
 
+
+
 async def validate_restaurant(entities: dict) -> dict:
     """Validate restaurant details using Google Maps Places API with referer header."""
     logger.info(f"Validating restaurant using Google Maps: {entities}")
@@ -249,13 +251,19 @@ async def validate_restaurant(entities: dict) -> dict:
                 f"Validated restaurant with Google Maps: {place['name']} ({place['place_id']})"
             )
             
-            # Get photo URL using the Google Places API (New)
+            # Extract photo URL from Text Search response (no additional API call needed)
             photo_url = None
             try:
-                from app.routes.restaurants import get_google_place_photo_url
-                photo_url = await get_google_place_photo_url(place["place_id"])
+                photos = place.get("photos")
+                if photos and len(photos) > 0:
+                    photo_reference = photos[0]["photo_reference"]
+                    # Construct photo URL using legacy Google Places API format
+                    photo_url = f"https://maps.googleapis.com/maps/api/place/photo?maxwidth=400&photoreference={photo_reference}&key={GOOGLE_MAPS_API_KEY}"
+                    logger.info(f"Found photo for {place['name']}: {photo_url}")
+                else:
+                    logger.info(f"No photos found for {place['name']}")
             except Exception as photo_error:
-                logger.warning(f"Could not fetch photo for {place['name']}: {photo_error}")
+                logger.warning(f"Could not extract photo for {place['name']}: {photo_error}")
             
             return {
                 "valid": True,

@@ -1,17 +1,19 @@
-import httpx
 import asyncio
 from sqlalchemy.orm import Session
+
+from googlemaps import Client as GoogleMapsClient
+from googlemaps.exceptions import ApiError
 
 from app.config import GOOGLE_MAPS_API_KEY
 from app.database import get_db
 from app.models.restaurant import Restaurant
 
-# Google Places API configuration
-GOOGLE_PLACES_API_BASE_URL = "https://places.googleapis.com/v1/places"
+# Initialize Google Maps client
+gmaps = GoogleMapsClient(key=GOOGLE_MAPS_API_KEY)
 
 async def get_google_place_photo_url(google_place_id: str) -> str | None:
     """
-    Fetch Google Place photo URL using the Google Places Details (New) API
+    Fetch Google Place photo URL using the googlemaps library
     """
     if not GOOGLE_MAPS_API_KEY:
         print("Warning: GOOGLE_MAPS_API_KEY not found in environment variables")
@@ -20,33 +22,33 @@ async def get_google_place_photo_url(google_place_id: str) -> str | None:
     if not google_place_id:
         return None
     
+    loop = asyncio.get_event_loop()
     try:
-        async with httpx.AsyncClient() as client:
-            # Get place details with photos
-            url = f"{GOOGLE_PLACES_API_BASE_URL}/{google_place_id}"
-            headers = {
-                "X-Goog-Api-Key": GOOGLE_MAPS_API_KEY,
-                "X-Goog-FieldMask": "photos"
-            }
+        # Get place details with photos using googlemaps library
+        place_details = await loop.run_in_executor(
+            None, 
+            lambda: gmaps.place(place_id=google_place_id, fields=['photos'])
+        )
+        
+        if place_details["status"] != "OK":
+            print(f"Failed to get place details for {google_place_id}: {place_details['status']}")
+            return None
             
-            response = await client.get(url, headers=headers)
-            response.raise_for_status()
-            
-            data = response.json()
-            photos = data.get("photos", [])
-            
-            if not photos:
-                return None
-            
-            # Get the first photo's resource name
-            photo_resource_name = photos[0].get("name")
-            if not photo_resource_name:
-                return None
-            
-            # Construct the photo URL
-            photo_url = f"https://places.googleapis.com/v1/{photo_resource_name}/media?maxHeightPx=400&maxWidthPx=400&key={GOOGLE_MAPS_API_KEY}"
-            return photo_url
-            
+        photos = place_details["result"].get("photos")
+        if not photos:
+            return None
+
+        # Get the first photo reference
+        photo_reference = photos[0].get("photo_reference")
+        if not photo_reference:
+            return None
+
+        # Construct the photo URL using the legacy Places API format
+        photo_url = f"https://maps.googleapis.com/maps/api/place/photo?photoreference={photo_reference}&maxwidth=400&key={GOOGLE_MAPS_API_KEY}"
+        return photo_url
+    except ApiError as e:
+        print(f"API error fetching photo for place {google_place_id}: {str(e)}")
+        return None
     except Exception as e:
         print(f"Error fetching photo for place {google_place_id}: {str(e)}")
         return None
