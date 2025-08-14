@@ -2,9 +2,13 @@
 
 import { useParams } from 'next/navigation';
 import { useInfluencer, useInfluencerListings } from '@/lib/hooks';
-import { MapPin, ExternalLink, Play, Calendar, Quote, Star } from 'lucide-react';
+import { MapPin, ExternalLink, Play, Calendar, Quote, Star, ArrowLeft, Users } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function InfluencerDetailPage() {
   const params = useParams();
@@ -18,10 +22,71 @@ export default function InfluencerDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading influencer profile...</p>
+      <div className="min-h-screen bg-white">
+        <div className="max-w-6xl mx-auto px-4 py-6">
+          {/* Back Button Skeleton */}
+          <div className="mb-6">
+            <Skeleton className="h-9 w-20" />
+          </div>
+
+          {/* Profile Header Skeleton */}
+          <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg px-8 py-12 mb-8">
+            <div className="flex items-center gap-6">
+              <Skeleton className="w-20 h-20 rounded-full bg-white/20" />
+              <div className="flex-1">
+                <Skeleton className="h-8 w-48 mb-2 bg-white/20" />
+                <Skeleton className="h-4 w-32 mb-4 bg-white/20" />
+                <div className="flex items-center gap-6">
+                  <div>
+                    <Skeleton className="h-6 w-12 mb-1 bg-white/20" />
+                    <Skeleton className="h-3 w-20 bg-white/20" />
+                  </div>
+                  <div>
+                    <Skeleton className="h-6 w-12 mb-1 bg-white/20" />
+                    <Skeleton className="h-3 w-16 bg-white/20" />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Content Grid Skeleton */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <Card>
+              <CardContent className="p-6">
+                <Skeleton className="h-6 w-16 mb-3" />
+                <Skeleton className="h-4 w-full mb-2" />
+                <Skeleton className="h-4 w-3/4" />
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-6">
+                <Skeleton className="h-6 w-12 mb-3" />
+                <Skeleton className="h-9 w-full" />
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Reviews Skeleton */}
+          <div className="mb-8">
+            <Skeleton className="h-6 w-40 mb-6" />
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {[1, 2, 3].map((i) => (
+                <Card key={i}>
+                  <CardContent className="p-4">
+                    <Skeleton className="h-6 w-3/4 mb-2" />
+                    <Skeleton className="h-4 w-full mb-2" />
+                    <Skeleton className="h-4 w-2/3 mb-4" />
+                    <Skeleton className="h-16 w-full mb-4" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-9 w-24" />
+                      <Skeleton className="h-9 w-32" />
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -29,13 +94,17 @@ export default function InfluencerDetailPage() {
 
   if (error || !influencer) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="text-center">
-          <p className="text-red-600 mb-4">{error || 'Influencer not found'}</p>
-          <Link href="/influencers" className="text-blue-600 hover:underline">
-            Go back to influencers
-          </Link>
-        </div>
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <Card className="w-full max-w-md">
+          <CardContent className="p-6 text-center">
+            <p className="text-red-600 mb-4">{error || 'Influencer not found'}</p>
+            <Button asChild variant="outline">
+              <Link href="/influencers">
+                Go back to influencers
+              </Link>
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -44,91 +113,109 @@ export default function InfluencerDetailPage() {
   const totalVideos = listings.length;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Influencer Profile Header */}
-        <div className="bg-white rounded-lg shadow-md overflow-hidden mb-8">
-          <div className="bg-gradient-to-r from-blue-500 to-purple-600 px-6 py-8">
-            <div className="flex items-center gap-6">
+    <div className="min-h-screen bg-white">
+      <div className="max-w-6xl mx-auto px-4 py-6">
+        {/* Back Button */}
+         <div className="mb-6">
+           <Button asChild variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
+             <Link href="/">
+               <ArrowLeft className="w-4 h-4 mr-2" />
+               Back
+             </Link>
+           </Button>
+         </div>
+
+        {/* Profile Header */}
+        <div className="bg-gradient-to-r from-orange-500 to-red-500 rounded-lg px-8 py-12 mb-8">
+          <div className="flex items-center gap-6">
+            {/* Avatar */}
+            <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-2xl font-bold border-3 border-white/30">
               {influencer.avatar_url ? (
                 <Image
                   src={influencer.avatar_url}
                   alt={influencer.name}
-                  width={120}
-                  height={120}
-                  className="rounded-full border-4 border-white"
+                  width={80}
+                  height={80}
+                  className="rounded-full object-cover"
                 />
               ) : (
-                <div className="w-30 h-30 rounded-full bg-white/20 border-4 border-white flex items-center justify-center text-white text-4xl font-bold">
-                  {influencer.name.charAt(0)}
+                influencer.name.charAt(0)
+              )}
+            </div>
+            
+            {/* Profile Info */}
+            <div className="flex-1 text-white">
+              <h1 className="text-3xl font-bold mb-2">{influencer.name}</h1>
+              {influencer.region && (
+                <div className="flex items-center gap-1 text-white/90 mb-4">
+                  <MapPin className="w-4 h-4" />
+                  <span>{influencer.region}</span>
                 </div>
               )}
               
-              <div className="text-white">
-                <h1 className="text-4xl font-bold mb-2">{influencer.name}</h1>
-                {influencer.region && (
-                  <div className="flex items-center mb-3">
-                    <MapPin className="w-5 h-5 mr-2" />
-                    <span className="text-lg">{influencer.region}</span>
-                  </div>
-                )}
-                
-                <div className="flex items-center gap-6">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{uniqueRestaurants}</div>
-                    <div className="text-sm opacity-90">Restaurants</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold">{totalVideos}</div>
-                    <div className="text-sm opacity-90">Reviews</div>
-                  </div>
+              {/* Stats */}
+              <div className="flex items-center gap-6">
+                <div>
+                  <div className="text-xl font-bold">{uniqueRestaurants}</div>
+                  <div className="text-sm text-white/80">Restaurants</div>
                 </div>
-              </div>
-            </div>
-          </div>
-          
-          <div className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="text-lg font-semibold mb-3">About</h3>
-                <p className="text-gray-600 mb-4">
-                  {influencer.bio || 'No bio available.'}
-                </p>
-              </div>
-              
-              <div>
-                <h3 className="text-lg font-semibold mb-3">Links</h3>
-                <div className="space-y-2">
-                  {influencer.youtube_channel_url && (
-                    <a
-                      href={influencer.youtube_channel_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors w-fit"
-                    >
-                      <ExternalLink className="w-4 h-4 mr-2" />
-                      YouTube Channel
-                    </a>
-                  )}
-                  {influencer.youtube_channel_id && (
-                    <p className="text-sm text-gray-600">
-                      Channel ID: {influencer.youtube_channel_id}
-                    </p>
-                  )}
+                <div>
+                  <div className="text-xl font-bold">{totalVideos}</div>
+                  <div className="text-sm text-white/80">Reviews</div>
                 </div>
               </div>
             </div>
           </div>
         </div>
+          
+        
+        {/* Content Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* About */}
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">About</h2>
+              <p className="text-gray-600 text-sm leading-relaxed">
+                {influencer.bio || 'No bio available.'}
+              </p>
+            </CardContent>
+          </Card>
+          
+          {/* Links */}
+          <Card>
+            <CardContent className="p-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-3">Links</h2>
+              <div className="space-y-2">
+                {influencer.youtube_channel_id && (
+                  <Button asChild variant="outline" size="sm" className="w-full justify-start">
+                    <a 
+                      href={`https://www.youtube.com/channel/${influencer.youtube_channel_id}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                      YouTube Channel
+                    </a>
+                  </Button>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
 
         {/* Restaurant Reviews */}
         {listings.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-2xl font-bold text-gray-900 mb-6">Restaurant Reviews</h2>
-            <div className="space-y-6">
+            <div className="flex items-center gap-2 mb-6">
+              <Users className="w-5 h-5 text-gray-600" />
+              <h2 className="text-xl font-semibold text-gray-900">Restaurant Reviews</h2>
+              <Badge variant="secondary">{listings.length}</Badge>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {listings.map((listing) => (
-                <div key={listing.id} className="bg-white rounded-lg shadow-md overflow-hidden">
-                  <div className="p-6">
+                <Card key={listing.id} className="hover:shadow-md transition-shadow">
+                  <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
                         <Link
@@ -138,26 +225,24 @@ export default function InfluencerDetailPage() {
                           {listing.restaurant.name}
                         </Link>
                         
-                        <div className="flex items-center gap-4 text-gray-600 mb-3">
-                          <div className="flex items-center">
-                            <MapPin className="w-4 h-4 mr-1" />
-                            <span className="text-sm">{listing.restaurant.city}</span>
-                          </div>
+                        <div className="flex flex-wrap items-center gap-2 mb-3">
+                          <Badge variant="outline" className="text-xs">
+                            <MapPin className="w-3 h-3 mr-1" />
+                            {listing.restaurant.city}
+                          </Badge>
                           
                           {listing.restaurant.google_rating && (
-                            <div className="flex items-center">
-                              <Star className="w-4 h-4 text-yellow-400 fill-current mr-1" />
-                              <span className="text-sm">{listing.restaurant.google_rating}</span>
-                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              <Star className="w-3 h-3 text-yellow-400 fill-current mr-1" />
+                              {listing.restaurant.google_rating}
+                            </Badge>
                           )}
                           
                           {listing.visit_date && (
-                            <div className="flex items-center">
-                              <Calendar className="w-4 h-4 mr-1" />
-                              <span className="text-sm">
-                                {new Date(listing.visit_date).toLocaleDateString()}
-                              </span>
-                            </div>
+                            <Badge variant="outline" className="text-xs">
+                              <Calendar className="w-3 h-3 mr-1" />
+                              {new Date(listing.visit_date).toLocaleDateString()}
+                            </Badge>
                           )}
                         </div>
                         
@@ -169,10 +254,10 @@ export default function InfluencerDetailPage() {
                     
                     {/* Quote */}
                     {listing.quotes && listing.quotes.length > 0 && (
-                      <div className="mb-4 bg-gray-50 p-4 rounded-lg">
+                      <div className="mb-4 bg-orange-50 border-l-4 border-orange-200 p-4 rounded-lg">
                         <div className="flex items-start">
-                          <Quote className="w-5 h-5 text-gray-400 mr-2 mt-1 flex-shrink-0" />
-                          <blockquote className="text-gray-700 italic">
+                          <Quote className="w-4 h-4 text-orange-500 mr-2 mt-1 flex-shrink-0" />
+                          <blockquote className="text-gray-700 italic text-sm">
                             &quot;{listing.quotes[0]}&quot;
                           </blockquote>
                         </div>
@@ -187,61 +272,68 @@ export default function InfluencerDetailPage() {
                     )}
                     
                     {/* Video Information */}
-                    <div className="bg-gray-50 p-4 rounded-lg mb-4">
-                      <h4 className="font-semibold text-gray-900 mb-2">{listing.video.title}</h4>
-                      {listing.video.description && (
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                          {listing.video.description}
-                        </p>
-                      )}
-                      {listing.video.published_at && (
-                        <p className="text-gray-500 text-xs mb-3">
-                          Published: {new Date(listing.video.published_at).toLocaleDateString()}
-                        </p>
-                      )}
-                    </div>
+                    <Card className="mb-4">
+                      <CardContent className="p-3">
+                        <h4 className="font-semibold text-gray-900 mb-2 text-sm">{listing.video.title}</h4>
+                        {listing.video.description && (
+                          <p className="text-gray-600 text-xs mb-2 line-clamp-2">
+                            {listing.video.description}
+                          </p>
+                        )}
+                        {listing.video.published_at && (
+                          <Badge variant="secondary" className="text-xs">
+                            {new Date(listing.video.published_at).toLocaleDateString()}
+                          </Badge>
+                        )}
+                      </CardContent>
+                    </Card>
                     
                     {/* Actions */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <a
-                          href={listing.video.video_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                        >
-                          <Play className="w-4 h-4 mr-2" />
-                          Watch Video
-                        </a>
+                    <div className="flex flex-col gap-3">
+                      <div className="flex items-center gap-2">
+                        <Button asChild size="sm" className="bg-red-600 hover:bg-red-700">
+                          <a
+                            href={listing.video.video_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            <Play className="w-4 h-4 mr-2" />
+                            Watch Video
+                          </a>
+                        </Button>
                         
-                        <Link
-                          href={`/restaurants/${listing.restaurant.id}`}
-                          className="flex items-center px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
-                        >
-                          View Restaurant
-                        </Link>
+                        <Button asChild variant="outline" size="sm">
+                          <Link href={`/restaurants/${listing.restaurant.id}`}>
+                            View Restaurant
+                          </Link>
+                        </Button>
                       </div>
                       
                       {listing.confidence_score && (
-                        <div className="text-sm text-gray-500">
+                        <Badge variant="secondary" className="self-start">
                           Confidence: {Math.round(listing.confidence_score * 100)}%
-                        </div>
+                        </Badge>
                       )}
                     </div>
-                  </div>
-                </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           </div>
         )}
         
         {listings.length === 0 && (
-          <div className="bg-white rounded-lg shadow-md p-8 text-center">
-            <p className="text-gray-600 mb-4">No restaurant reviews available from this influencer yet.</p>
-            <Link href="/restaurants" className="text-blue-600 hover:underline">
-              Browse Restaurants
-            </Link>
-          </div>
+          <Card className="text-center">
+            <CardContent className="p-8">
+              <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 mb-4">No restaurant reviews available from this influencer yet.</p>
+              <Button asChild variant="outline">
+                <Link href="/restaurants">
+                  Browse Restaurants
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

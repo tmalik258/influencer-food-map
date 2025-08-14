@@ -19,18 +19,28 @@ def get_tags(
     limit: int = 100
 ):
     """Get tags with filters for name or ID."""
-    query = db.query(Tag)
-    if name:
-        query = query.filter(Tag.name.ilike(f"%{name}%"))
-    if id:
-        query = query.filter(Tag.id == id)
-    tags = query.offset(skip).limit(limit).all()
-    return tags
+    try:
+        query = db.query(Tag)
+        if name:
+            query = query.filter(Tag.name.ilike(f"%{name}%"))
+        if id:
+            query = query.filter(Tag.id == id)
+        tags = query.offset(skip).limit(limit).all()
+        return tags
+    except Exception as e:
+        print(f"Error fetching tags: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching tags")
 
 @router.get("/{tag_id}", response_model=TagResponse)
 def get_tag(tag_id: str, db: Session = Depends(get_db)):
     """Get a single tag by ID."""
-    tag = db.query(Tag).filter(Tag.id == tag_id).first()
-    if not tag:
-        raise HTTPException(status_code=404, detail="Tag not found")
-    return tag
+    try:
+        tag = db.query(Tag).filter(Tag.id == tag_id).first()
+        if not tag:
+            raise HTTPException(status_code=404, detail="Tag not found")
+        return tag
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching tag {tag_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching tag")

@@ -21,29 +21,41 @@ def get_influencers(
     limit: int = 100
 ):
     """Get influencers with filters for name, ID, YouTube channel ID, or URL."""
-    query = db.query(Influencer)
-    if name:
-        query = query.filter(Influencer.name.ilike(f"%{name}%"))
-    if id:
-        query = query.filter(Influencer.id == id)
-    if youtube_channel_id:
-        query = query.filter(Influencer.youtube_channel_id == youtube_channel_id)
-    if youtube_channel_url:
-        query = query.filter(Influencer.youtube_channel_url == youtube_channel_url)
+    try:
+        query = db.query(Influencer)
+        if name:
+            query = query.filter(Influencer.name.ilike(f"%{name}%"))
+        if id:
+            query = query.filter(Influencer.id == id)
+        if youtube_channel_id:
+            query = query.filter(Influencer.youtube_channel_id == youtube_channel_id)
+        if youtube_channel_url:
+            query = query.filter(Influencer.youtube_channel_url == youtube_channel_url)
 
-    influencers = query.offset(skip).limit(limit).all()
+        influencers = query.offset(skip).limit(limit).all()
 
-    if not influencers:
-        raise HTTPException(status_code=404, detail="No influencers found")
+        if not influencers:
+            raise HTTPException(status_code=404, detail="No influencers found")
 
-    return influencers
+        return influencers
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching influencers: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching influencers")
 
 @router.get("/{influencer_id}", response_model=InfluencerResponse)
 def get_influencer(influencer_id: str, db: Session = Depends(get_db)):
     """Get a single influencer by ID."""
-    influencer = db.query(Influencer).filter(Influencer.id == influencer_id).first()
+    try:
+        influencer = db.query(Influencer).filter(Influencer.id == influencer_id).first()
 
-    if not influencer:
-        raise HTTPException(status_code=404, detail="Influencer not found")
+        if not influencer:
+            raise HTTPException(status_code=404, detail="Influencer not found")
 
-    return influencer
+        return influencer
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching influencer {influencer_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching influencer")

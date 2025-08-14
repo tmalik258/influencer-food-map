@@ -24,37 +24,49 @@ def get_videos(
     limit: int = 100
 ):
     """Get videos with filters for title, YouTube video ID, video URL, video title, influencer ID, or influencer name."""
-    query = db.query(Video)
+    try:
+        query = db.query(Video)
 
-    if has_listings:
-        query = query.join(Listing).filter(Listing.video_id == Video.id)
+        if has_listings:
+            query = query.join(Listing).filter(Listing.video_id == Video.id)
 
-    if title:
-        query = query.filter(Video.title.ilike(f"%{title}%"))
-    if youtube_video_id:
-        query = query.filter(Video.youtube_video_id == youtube_video_id)
-    if video_url:
-        query = query.filter(Video.video_url == video_url)
-    if video_title:
-        query = query.filter(Video.title.ilike(f"%{video_title}%"))
-    if influencer_id:
-        query = query.filter(Video.influencer_id == influencer_id)
-    if influencer_name:
-        query = query.join(Influencer).filter(Influencer.name.ilike(f"%{influencer_name}%"))
+        if title:
+            query = query.filter(Video.title.ilike(f"%{title}%"))
+        if youtube_video_id:
+            query = query.filter(Video.youtube_video_id == youtube_video_id)
+        if video_url:
+            query = query.filter(Video.video_url == video_url)
+        if video_title:
+            query = query.filter(Video.title.ilike(f"%{video_title}%"))
+        if influencer_id:
+            query = query.filter(Video.influencer_id == influencer_id)
+        if influencer_name:
+            query = query.join(Influencer).filter(Influencer.name.ilike(f"%{influencer_name}%"))
 
-    videos = query.offset(skip).limit(limit).all()
+        videos = query.offset(skip).limit(limit).all()
 
-    if not videos:
-        raise HTTPException(status_code=404, detail="No videos found")
+        if not videos:
+            raise HTTPException(status_code=404, detail="No videos found")
 
-    return videos
+        return videos
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching videos: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching videos")
 
 @router.get("/{video_id}", response_model=VideoResponse)
 def get_video(video_id: str, db: Session = Depends(get_db)):
     """Get a single video by ID."""
-    video = db.query(Video).filter(Video.id == video_id).first()
+    try:
+        video = db.query(Video).filter(Video.id == video_id).first()
 
-    if not video:
-        raise HTTPException(status_code=404, detail="Video not found")
+        if not video:
+            raise HTTPException(status_code=404, detail="Video not found")
 
-    return video
+        return video
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Error fetching video {video_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching video")

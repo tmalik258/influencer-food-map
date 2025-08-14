@@ -2,8 +2,28 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   images: {
-    domains: ['localhost', 'yt3.ggpht.com', 'i.ytimg.com'],
-    unoptimized: true
+    remotePatterns: [
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      },
+      {
+        protocol: 'https',
+        hostname: 'yt3.ggpht.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'i.ytimg.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'a.basemaps.cartocdn.com',
+      },
+      {
+        protocol: 'https',
+        hostname: 'maps.googleapis.com',
+      },
+    ],
   },
   async rewrites() {
     return [

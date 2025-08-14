@@ -66,6 +66,7 @@ export interface SearchParams {
   name?: string;
   skip?: number;
   limit?: number;
+  approved_status?: string;
 }
 
 export interface ApiResponse<T> {

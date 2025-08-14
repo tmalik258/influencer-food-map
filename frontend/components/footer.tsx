@@ -2,7 +2,7 @@ import Image from "next/image";
 
 const Footer = () => {
   return (
-    <footer className="bg-gradient-to-r from-purple-800 to-black text-white py-12">
+    <footer className="bg-gradient-to-r from-orange-800 to-black text-white py-12">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex flex-col md:flex-row items-center justify-between mb-8">
           {/* Logo and Name */}

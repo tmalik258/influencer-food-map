@@ -30,49 +30,63 @@ def get_listings(
     limit: int = 100
 ):
     """Get approved listings with filters for ID, restaurant ID, video ID, influencer ID, or influencer name."""
-    query = db.query(Listing).options(
-        joinedload(Listing.restaurant),
-        joinedload(Listing.video),
-        joinedload(Listing.influencer)
-    )
+    try:
+        query = db.query(Listing).options(
+            joinedload(Listing.restaurant),
+            joinedload(Listing.video),
+            joinedload(Listing.influencer)
+        )
 
-    if approved_status == ApprovedStatus.APPROVED:
-        query = query.filter(Listing.approved == True)
-    elif approved_status == ApprovedStatus.NOT_APPROVED:
-        query = query.filter(Listing.approved == False)
-    # If approved_status is ApprovedStatus.ALL, no filter is applied
+        if approved_status == ApprovedStatus.APPROVED:
+            query = query.filter(Listing.approved == True)
+        elif approved_status == ApprovedStatus.NOT_APPROVED:
+            query = query.filter(Listing.approved == False)
+        # If approved_status is ApprovedStatus.ALL, no filter is applied
 
-    if id:
-        query = query.filter(Listing.id == id)
-    if restaurant_id:
-        query = query.filter(Listing.restaurant_id == restaurant_id)
-    if video_id:
-        query = query.filter(Listing.video_id == video_id)
-    if influencer_id:
-        query = query.filter(Listing.influencer_id == influencer_id)
-    if influencer_name:
-        query = query.join(Influencer).filter(Influencer.name.ilike(f"%{influencer_name}%"))
+        if id:
+            query = query.filter(Listing.id == id)
+        if restaurant_id:
+            query = query.filter(Listing.restaurant_id == restaurant_id)
+        if video_id:
+            query = query.filter(Listing.video_id == video_id)
+        if influencer_id:
+            query = query.filter(Listing.influencer_id == influencer_id)
+        if influencer_name:
+            query = query.join(Influencer).filter(Influencer.name.ilike(f"%{influencer_name}%"))
 
-    listings = query.offset(skip).limit(limit).all()
+        listings = query.offset(skip).limit(limit).all()
 
-    if not listings:
-        raise HTTPException(status_code=404, detail="No listings found")
+        if not listings:
+            raise HTTPException(status_code=404, detail="No listings found")
 
-    return listings
+        return listings
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404)
+        raise
+    except Exception as e:
+        print(f"Error fetching listings: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch listings. Please try again later.")
 
 @router.get("/{listing_id}", response_model=ListingResponse)
 def get_listing(listing_id: str, db: Session = Depends(get_db)):
     """Get a single approved listing by ID."""
-    listing = db.query(Listing).options(
-        joinedload(Listing.restaurant),
-        joinedload(Listing.video),
-        joinedload(Listing.influencer)
-    ).filter(Listing.id == listing_id, Listing.approved == True).first()
+    try:
+        listing = db.query(Listing).options(
+            joinedload(Listing.restaurant),
+            joinedload(Listing.video),
+            joinedload(Listing.influencer)
+        ).filter(Listing.id == listing_id, Listing.approved == True).first()
 
-    if not listing:
-        raise HTTPException(status_code=404, detail="Listing not found")
+        if not listing:
+            raise HTTPException(status_code=404, detail="Listing not found")
 
-    return listing
+        return listing
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404)
+        raise
+    except Exception as e:
+        print(f"Error fetching listing {listing_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch listing. Please try again later.")
 
 @router.delete("/{listing_id}")
 def delete_listing(
@@ -81,18 +95,25 @@ def delete_listing(
     db: Session = Depends(get_db),
 ):
     """Delete a single listing by ID, with option to delete associated restaurant."""
-    listing = db.query(Listing).filter(Listing.id == listing_id).first()
-    if not listing:
-        raise HTTPException(status_code=404, detail="Listing not found")
+    try:
+        listing = db.query(Listing).filter(Listing.id == listing_id).first()
+        if not listing:
+            raise HTTPException(status_code=404, detail="Listing not found")
 
-    if delete_restaurant:
-        restaurant = db.query(Restaurant).filter(Restaurant.id == listing.restaurant_id).first()
-        if restaurant:
-            db.delete(restaurant)
+        if delete_restaurant:
+            restaurant = db.query(Restaurant).filter(Restaurant.id == listing.restaurant_id).first()
+            if restaurant:
+                db.delete(restaurant)
 
-    db.delete(listing)
-    db.commit()
-    return {"detail": "Listing deleted successfully"}
+        db.delete(listing)
+        db.commit()
+        return {"detail": "Listing deleted successfully"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting listing {listing_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while deleting listing")
 
 @router.delete("/")
 def delete_all_listings(
@@ -100,10 +121,15 @@ def delete_all_listings(
     db: Session = Depends(get_db),
 ):
     """Delete all listings, with option to delete associated restaurants."""
-    db.query(Listing).delete()
+    try:
+        db.query(Listing).delete()
 
-    if delete_restaurants:
-        db.query(Restaurant).delete()
+        if delete_restaurants:
+            db.query(Restaurant).delete()
 
-    db.commit()
-    return {"detail": "All listings deleted successfully"}
+        db.commit()
+        return {"detail": "All listings deleted successfully"}
+    except Exception as e:
+        db.rollback()
+        print(f"Error deleting all listings: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while deleting listings")
