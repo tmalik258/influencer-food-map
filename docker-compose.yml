@@ -18,15 +18,18 @@ services:
     links:
       - "redis:redis"
 
-  # frontend:
-  #   build: ./frontend
-  #   container_name: food_frontend
-  #   ports:
-  #     - "4001:3000"
-  #   volumes:
-  #     - ./frontend:/app
-  #   stdin_open: true
-  #   tty: true
+  frontend:
+    build: ./frontend
+    container_name: food_frontend
+    ports:
+      - "4001:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    stdin_open: true
+    tty: true
+    networks:
+      - food-network
 
   redis:
     image: redis:alpine
