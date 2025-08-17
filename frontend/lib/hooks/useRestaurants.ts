@@ -6,7 +6,7 @@ import { restaurantActions } from "@/lib/actions";
 
 export const useRestaurants = (params?: SearchParams) => {
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRestaurants = useCallback(

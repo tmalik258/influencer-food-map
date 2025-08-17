@@ -82,76 +82,68 @@ export default function InfluencersPage() {
   const isLoading = influencersLoading || listingsLoading;
   const hasError = influencersError || listingsError;
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-            <p className="text-gray-600">Loading influencers...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (hasError) {
-    return (
-      <div className="min-h-screen bg-gray-50 py-8">
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="text-center py-20">
-            <p className="text-red-600">Error loading influencers: {influencersError || listingsError}</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 mt-20">
       <div className="max-w-6xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Food Influencers
-          </h1>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Discover the food experts who are shaping culinary trends around the world
-          </p>
-          <div className="mt-6 flex justify-center items-center gap-6 text-sm text-gray-500">
-            <div className="flex items-center gap-2">
-              <Users className="w-4 h-4" />
-              <span>{influencersWithStats.length} Influencers</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <MapPin className="w-4 h-4" />
-              <span>{new Set(influencersWithStats.map(i => i.region).filter(Boolean)).size} Regions</span>
-            </div>
-          </div>
+          {isLoading ? (
+            <>
+              <Skeleton className="h-10 w-80 mx-auto mb-4" />
+              <Skeleton className="h-6 w-96 mx-auto mb-6" />
+              <div className="flex justify-center items-center gap-6">
+                <Skeleton className="h-5 w-32" />
+                <Skeleton className="h-5 w-24" />
+              </div>
+            </>
+          ) : (
+            <>
+              <h1 className="text-4xl font-bold text-gray-900 mb-4">
+                Food Influencers
+              </h1>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Discover the food experts who are shaping culinary trends around the world
+              </p>
+              <div className="mt-6 flex justify-center items-center gap-6 text-sm text-gray-500">
+                <div className="flex items-center gap-2">
+                  <Users className="w-4 h-4" />
+                  <span>{influencersWithStats.length} Influencers</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4" />
+                  <span>{new Set(influencersWithStats.map(i => i.region).filter(Boolean)).size} Regions</span>
+                </div>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Search */}
         <div className="max-w-md mx-auto mb-8">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <Input
-              type="text"
-              placeholder="Search influencers by name or region..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 pr-4 py-3 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg"
-            />
-            {searchQuery && (
-              <Button
-                onClick={clearSearch}
-                variant="ghost"
-                size="sm"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
-              >
-                ×
-              </Button>
-            )}
-          </div>
+          {isLoading ? (
+            <Skeleton className="h-12 w-full rounded-lg" />
+          ) : (
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                type="text"
+                placeholder="Search influencers by name or region..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-4 py-3 border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg"
+              />
+              {searchQuery && (
+                <Button
+                  onClick={clearSearch}
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-gray-100"
+                >
+                  ×
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Results */}
@@ -180,6 +172,12 @@ export default function InfluencersPage() {
               </Card>
             ))}
           </div>
+        ) : hasError ? (
+          <Card className="max-w-md mx-auto">
+            <CardContent className="py-12 text-center">
+              <p className="text-red-600">Error loading influencers: {influencersError || listingsError}</p>
+            </CardContent>
+          </Card>
         ) : filteredInfluencers.length === 0 ? (
           <Card className="max-w-md mx-auto">
             <CardContent className="py-12 text-center">

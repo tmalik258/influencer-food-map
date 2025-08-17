@@ -6,7 +6,7 @@ import { listingActions } from '@/lib/actions';
 
 export const useListings = (params?: SearchParams) => {
   const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchListings = useCallback(async (searchParams?: SearchParams) => {

@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Enable webpack polling for Docker file watching
+  webpack: (config, { dev }) => {
+    if (dev) {
+      config.watchOptions = {
+        poll: 1000,
+        aggregateTimeout: 300,
+      }
+    }
+    return config
+  },
   images: {
     remotePatterns: [
       {
@@ -23,6 +33,14 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'maps.googleapis.com',
       },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      },
+      {
+        protocol: 'https',
+        hostname: 'source.unsplash.com',
+      }
     ],
   },
   async rewrites() {
@@ -31,7 +49,7 @@ const nextConfig: NextConfig = {
       return [
         {
           source: '/api/:path*',
-          destination: 'http://localhost:8030/:path*'
+          destination: 'http://backend:8000/:path*/'
         }
       ]
     }

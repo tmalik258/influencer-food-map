@@ -38,35 +38,13 @@ def get_restaurants(
             query = query.filter(Restaurant.google_place_id == google_place_id)
 
         restaurants = query.offset(skip).limit(limit).all()
+        return restaurants
 
-        # Convert to response objects and populate tags
-        restaurant_responses = []
-        for restaurant in restaurants:
-            restaurant_dict = {
-                "id": restaurant.id,
-                "name": restaurant.name,
-                "address": restaurant.address,
-                "latitude": restaurant.latitude,
-                "longitude": restaurant.longitude,
-                "city": restaurant.city,
-                "country": restaurant.country,
-                "google_place_id": restaurant.google_place_id,
-                "google_rating": restaurant.google_rating,
-                "business_status": restaurant.business_status,
-                "photo_url": restaurant.photo_url,
-                "is_active": restaurant.is_active,
-                "created_at": restaurant.created_at,
-                "updated_at": restaurant.updated_at,
-                "tags": [TagResponse.model_validate(rt.tag) for rt in restaurant.restaurant_tags] if restaurant.restaurant_tags else None
-            }
-            restaurant_responses.append(RestaurantResponse(**restaurant_dict))
-        
-        return restaurant_responses
     except Exception as e:
         print(f"Error fetching restaurants: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch restaurants. Please try again later.")
 
-@router.get("/popular_cities", response_model=List[str])
+@router.get("/popular_cities/", response_model=List[str])
 def get_popular_cities(db: Session = Depends(get_db)):
     """Get the top 5 cities with the most restaurant listings."""
     try:
@@ -75,9 +53,9 @@ def get_popular_cities(db: Session = Depends(get_db)):
     except Exception as e:
         # Log the error and return default cities if database query fails
         print(f"Error fetching popular cities: {e}")
-        return ["Sydney", "Melbourne", "London", "New York", "Tokyo"]
+        return []
 
-@router.get("/{restaurant_id}", response_model=RestaurantResponse)
+@router.get("/{restaurant_id}/", response_model=RestaurantResponse)
 def get_restaurant(restaurant_id: str, db: Session = Depends(get_db)):
     """Get a single restaurant by ID."""
     try:
@@ -85,27 +63,8 @@ def get_restaurant(restaurant_id: str, db: Session = Depends(get_db)):
 
         if not restaurant:
             raise HTTPException(status_code=404, detail="Restaurant not found")
-
-        # Convert to response object and populate tags
-        restaurant_dict = {
-            "id": restaurant.id,
-            "name": restaurant.name,
-            "address": restaurant.address,
-            "latitude": restaurant.latitude,
-            "longitude": restaurant.longitude,
-            "city": restaurant.city,
-            "country": restaurant.country,
-            "google_place_id": restaurant.google_place_id,
-            "google_rating": restaurant.google_rating,
-            "business_status": restaurant.business_status,
-            "photo_url": restaurant.photo_url,
-            "is_active": restaurant.is_active,
-            "created_at": restaurant.created_at,
-            "updated_at": restaurant.updated_at,
-            "tags": [TagResponse.model_validate(rt.tag) for rt in restaurant.restaurant_tags] if restaurant.restaurant_tags else None
-        }
         
-        return RestaurantResponse(**restaurant_dict)
+        return restaurant
     except HTTPException:
         # Re-raise HTTP exceptions (like 404)
         raise

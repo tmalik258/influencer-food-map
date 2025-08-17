@@ -26,10 +26,17 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
+    environment:
+      - WATCHPACK_POLLING=true
+      - CHOKIDAR_USEPOLLING=true
+      # Uncomment the line below if Turbopack HMR doesn't work and you need webpack polling
+      - USE_WEBPACK_POLLING=true
     stdin_open: true
     tty: true
     networks:
       - food-network
+    depends_on:
+      - backend
 
   redis:
     image: redis:alpine

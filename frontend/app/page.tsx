@@ -28,7 +28,10 @@ export default function Home() {
 
   useEffect(() => {
     const loadFeaturedData = async () => {
-      if (popularCities.length === 0) return; // Wait for cities to load
+      if (popularCities.length === 0) {
+        if (!citiesLoading) setLoading(false);
+        return;
+      } // Wait for cities to load
 
       setLoading(true);
       try {
@@ -44,7 +47,7 @@ export default function Home() {
     };
 
     loadFeaturedData();
-  }, [fetchRestaurants, fetchListings, popularCities]);
+  }, [fetchRestaurants, fetchListings, popularCities, citiesLoading]);
 
   useEffect(() => {
     if (restaurants.length > 0 && listings.length > 0) {
@@ -76,7 +79,7 @@ export default function Home() {
   return (
     <div className="min-h-screen p-2">
       {/* Hero Section */}
-      <div className="relative min-h-[calc(100vh-1rem)] flex items-center justify-center overflow-hidden -mt-[6.3rem] pt-20 rounded-2xl">
+      <div className="relative min-h-[calc(100vh-1rem)] flex items-center justify-center overflow-hidden pt-20 rounded-2xl">
         {/* Background Image */}
         <div className="absolute inset-0">
           <Image
@@ -132,26 +135,32 @@ export default function Home() {
             <p className="text-white/80 text-center mb-4">
               Popular destinations:
             </p>
-            <div className="flex flex-wrap justify-center gap-3">
-              {citiesLoading
-                ? // Loading skeleton for cities
-                  Array.from({ length: 6 }).map((_, index) => (
-                    <Skeleton
-                      key={index}
-                      className="h-10 w-24 rounded-full bg-white/10"
-                    />
-                  ))
-                : popularCities.map((city) => (
-                    <Button
-                      key={city}
-                      variant="outline"
-                      onClick={() => handleCityClick(city)}
-                      className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white hover:text-white rounded-full hover:bg-white/20 transition-all duration-200 border border-white/20 hover:border-orange-500/50 hover:scale-105 cursor-pointer"
-                    >
-                      {city}
-                    </Button>
-                  ))}
-            </div>
+            {popularCities?.length === 0 && !citiesLoading ? (
+              <p className="text-white/80 text-center">
+                No popular cities found
+              </p>
+            ) : (
+              <div className="flex flex-wrap justify-center gap-3">
+                {citiesLoading
+                  ? // Loading skeleton for cities
+                    Array.from({ length: 6 }).map((_, index) => (
+                      <Skeleton
+                        key={index}
+                        className="h-10 w-24 rounded-full bg-white/10"
+                      />
+                    ))
+                  : popularCities.map((city) => (
+                      <Button
+                        key={city}
+                        variant="outline"
+                        onClick={() => handleCityClick(city)}
+                        className="px-4 py-2 bg-white/10 backdrop-blur-sm text-white hover:text-white rounded-full hover:bg-white/20 transition-all duration-200 border border-white/20 hover:border-orange-500/50 hover:scale-105 cursor-pointer"
+                      >
+                        {city}
+                      </Button>
+                    ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -198,7 +207,7 @@ export default function Home() {
                       key={restaurant.id}
                       href={`/restaurants/${restaurant.id}`}
                     >
-                      <Card className="overflow-hidden border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group p-2">
+                      <Card className="overflow-hidden border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group p-3">
                         <div className="relative h-48 rounded-lg overflow-hidden">
                           {restaurant.photo_url ? (
                             <Image
@@ -217,7 +226,7 @@ export default function Home() {
                           )}
                           {restaurantListing && (
                             <div className="absolute top-4 left-4">
-                              <Badge className="bg-orange-500 hover:bg-orange-600 text-white px-3 py-1">
+                              <Badge className="bg-orange-500 text-white px-3 py-1">
                                 {restaurantListing.influencer.name}
                               </Badge>
                             </div>
@@ -230,15 +239,25 @@ export default function Home() {
                             </div>
                           )}
                         </div>
-                        <CardContent className="p-6">
+                        <CardContent className="p-0">
                           <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">
                             {restaurant.name}
                           </h3>
                           <p className="text-gray-600 mb-1">
-                            {restaurant.city && `${restaurant.city} • `}
+                            {restaurant?.city}
+                          </p>
+                          <p className="text-gray-600 mb-1">
                             {restaurant.tags &&
                               restaurant.tags.length > 0 &&
-                              restaurant.tags[0].name}
+                              restaurant.tags.slice(0, 4).map((tag) => (
+                                <Badge
+                                  key={tag.id}
+                                  className="mr-2 bg-orange-600/25 text-orange-600"
+                                >
+                                  {tag.name.charAt(0).toUpperCase() +
+                                    tag.name.slice(1)}
+                                </Badge>
+                              ))}
                           </p>
                           <p className="text-sm text-gray-500">
                             {restaurant.address}

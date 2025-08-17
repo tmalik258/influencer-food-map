@@ -2,9 +2,7 @@
 
 import React, { useEffect, useState, useRef } from "react";
 import { Restaurant } from "@/types";
-import { MapPin, Star, ExternalLink } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import Link from "next/link";
+import { MapPin, Star } from "lucide-react";
 import Image from "next/image";
 
 interface RestaurantMapProps {
@@ -227,12 +225,12 @@ const RestaurantMapClient: React.FC<RestaurantMapProps> = ({
             >
               <Popup
                 className="custom-popup"
-                maxWidth={300}
+                maxWidth={200}
                 closeButton={false}
               >
-                <div className="p-2">
+                <div className="p-0">
                   <div className="flex items-start gap-3">
-                    <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-full flex-shrink-0 flex items-center justify-center">
+                    <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex-shrink-0 flex items-center justify-center">
                       {restaurant?.photo_url ? (
                         <Image
                           width={100}
@@ -241,10 +239,10 @@ const RestaurantMapClient: React.FC<RestaurantMapProps> = ({
                             restaurant?.photo_url || "/default-restaurant.jpg"
                           }
                           alt="Restaurant icon"
-                          className="w-16 h-16 rounded-full object-cover"
+                          className="w-16 h-16 rounded-lg object-cover"
                         />
                       ) : (
-                        <span className="w-12 h-12 bg-slate-200 rounded-full flex items-center justify-center">
+                        <span className="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center">
                           {restaurant.name.charAt(0)}
                         </span>
                       )}
@@ -268,30 +266,6 @@ const RestaurantMapClient: React.FC<RestaurantMapProps> = ({
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  <div className="flex gap-2 mt-3">
-                    <Button asChild size="sm" className="flex-1 h-8 text-xs" variant={"outline"}>
-                      <Link href={`/restaurants/${restaurant.id}`} className="text-white">
-                        View Details
-                      </Link>
-                    </Button>
-                    {restaurant.google_place_id && (
-                      <Button
-                        asChild
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-2"
-                      >
-                        <Link
-                          href={`https://www.google.com/maps/place/?q=place_id:${restaurant.google_place_id}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                        >
-                          <ExternalLink className="w-3 h-3" />
-                        </Link>
-                      </Button>
-                    )}
                   </div>
                 </div>
               </Popup>

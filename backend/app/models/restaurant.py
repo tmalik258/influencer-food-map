@@ -5,6 +5,7 @@ from sqlalchemy import (Column, String, Text, Float, Boolean, DateTime)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.ext.hybrid import hybrid_property
 
 from app.database import Base
 
@@ -39,3 +40,8 @@ class Restaurant(Base):
 
     listings = relationship("Listing", back_populates="restaurant")
     restaurant_tags = relationship("RestaurantTag", back_populates="restaurant")
+    
+    @hybrid_property
+    def tags(self):
+        """Return the actual Tag objects for serialization"""
+        return [rt.tag for rt in self.restaurant_tags] if self.restaurant_tags else []

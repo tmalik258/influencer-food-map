@@ -2,7 +2,7 @@ alembic==1.16.4
 annotated-types==0.7.0
 anyio==4.9.0
 asyncpg==0.30.0
-audioop-lts==0.2.1
+# audioop-lts==0.2.1  # Requires Python >=3.13, removed for Vercel compatibility
 audioread==3.0.1
 av==15.0.0
 cachetools==5.5.2
@@ -53,23 +53,24 @@ msgpack==1.1.1
 networkx==3.5
 numba==0.61.2
 numpy==2.2.6
-nvidia-cublas-cu12==12.6.4.1
-nvidia-cuda-cupti-cu12==12.6.80
-nvidia-cuda-nvrtc-cu12==12.6.77
-nvidia-cuda-runtime-cu12==12.6.77
-nvidia-cudnn-cu12==9.5.1.17
-nvidia-cufft-cu12==11.3.0.4
-nvidia-cufile-cu12==1.11.1.6
-nvidia-curand-cu12==10.3.7.77
-nvidia-cusolver-cu12==11.7.1.2
-nvidia-cusparse-cu12==12.5.4.2
-nvidia-cusparselt-cu12==0.6.3
-nvidia-nccl-cu12==2.26.2
-nvidia-nvjitlink-cu12==12.6.85
-nvidia-nvtx-cu12==12.6.77
+# NVIDIA CUDA packages removed for Vercel deployment (not needed for web API)
+# nvidia-cublas-cu12==12.6.4.1
+# nvidia-cuda-cupti-cu12==12.6.80
+# nvidia-cuda-nvrtc-cu12==12.6.77
+# nvidia-cuda-runtime-cu12==12.6.77
+# nvidia-cudnn-cu12==9.5.1.17
+# nvidia-cufft-cu12==11.3.0.4
+# nvidia-cufile-cu12==1.11.1.6
+# nvidia-curand-cu12==10.3.7.77
+# nvidia-cusolver-cu12==11.7.1.2
+# nvidia-cusparse-cu12==12.5.4.2
+# nvidia-cusparselt-cu12==0.6.3
+# nvidia-nccl-cu12==2.26.2
+# nvidia-nvjitlink-cu12==12.6.85
+# nvidia-nvtx-cu12==12.6.77
 onnxruntime==1.22.1
 openai==1.98.0
-openai-whisper==20250625
+# openai-whisper==20250625  # Heavy audio processing, removed for Vercel deployment
 packaging==25.0
 platformdirs==4.3.8
 pooch==1.8.2
@@ -113,9 +114,9 @@ sympy==1.14.0
 threadpoolctl==3.6.0
 tiktoken==0.9.0
 tokenizers==0.21.4
-torch==2.7.1
+# torch==2.7.1  # Heavy ML library, removed for Vercel deployment
 tqdm==4.67.1
-triton==3.3.1
+# triton==3.3.1  # Heavy ML library, removed for Vercel deployment
 typing-inspection==0.4.1
 typing_extensions==4.14.1
 uritemplate==4.2.0

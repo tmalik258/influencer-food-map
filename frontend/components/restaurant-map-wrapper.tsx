@@ -12,14 +12,11 @@ interface RestaurantMapProps {
 }
 
 // Dynamic import of the actual map component to avoid SSR issues
-const DynamicMapComponent = dynamic(() => import('./RestaurantMapClient'), {
+const DynamicMapComponent = dynamic(() => import('@/components/restaurant-map-client'), {
   ssr: false,
   loading: () => (
-    <div className="bg-gradient-to-br from-slate-100 to-gray-200 rounded-xl border-2 border-dashed border-slate-300 flex items-center justify-center h-96">
-      <div className="text-center p-8">
-        <div className="w-12 h-12 border-4 border-slate-300 border-t-slate-600 rounded-full animate-spin mx-auto mb-4"></div>
-        <p className="text-slate-600 font-medium">Loading map...</p>
-      </div>
+    <div className="animate-pulse rounded-xl bg-slate-200 h-96 w-full">
+      <div className="h-full w-full bg-gradient-to-br from-slate-100 to-gray-200"></div>
     </div>
   ),
 });

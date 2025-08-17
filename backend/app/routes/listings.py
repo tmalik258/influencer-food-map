@@ -5,7 +5,7 @@ from fastapi import (APIRouter, Depends, HTTPException)
 
 from sqlalchemy.orm import (Session, joinedload)
 
-from app.models import (Listing, Influencer, Restaurant)
+from app.models import (Listing, Influencer, Restaurant, RestaurantTag)
 from app.database import get_db
 from app.dependencies import get_current_admin
 from app.api_schema.listings import ListingResponse
@@ -32,7 +32,7 @@ def get_listings(
     """Get approved listings with filters for ID, restaurant ID, video ID, influencer ID, or influencer name."""
     try:
         query = db.query(Listing).options(
-            joinedload(Listing.restaurant),
+            joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
             joinedload(Listing.video),
             joinedload(Listing.influencer)
         )
@@ -67,12 +67,12 @@ def get_listings(
         print(f"Error fetching listings: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch listings. Please try again later.")
 
-@router.get("/{listing_id}", response_model=ListingResponse)
+@router.get("/{listing_id}/", response_model=ListingResponse)
 def get_listing(listing_id: str, db: Session = Depends(get_db)):
     """Get a single approved listing by ID."""
     try:
         listing = db.query(Listing).options(
-            joinedload(Listing.restaurant),
+            joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
             joinedload(Listing.video),
             joinedload(Listing.influencer)
         ).filter(Listing.id == listing_id, Listing.approved == True).first()
@@ -88,7 +88,7 @@ def get_listing(listing_id: str, db: Session = Depends(get_db)):
         print(f"Error fetching listing {listing_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch listing. Please try again later.")
 
-@router.delete("/{listing_id}")
+@router.delete("/{listing_id}/")
 def delete_listing(
     listing_id: str,
     delete_restaurant: bool = False,
