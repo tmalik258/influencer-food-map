@@ -56,7 +56,7 @@ export const useRestaurants = (params?: SearchParams) => {
 
 export const useRestaurant = (id: string) => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRestaurant = useCallback(async () => {

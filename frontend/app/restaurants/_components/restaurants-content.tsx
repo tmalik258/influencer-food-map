@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   Grid3X3,
   Map,
+  X,
 } from "lucide-react";
 import { Restaurant, Listing } from "@/types";
 import { getSearchPlaceholder } from "@/lib/utils/search-utils";
@@ -57,6 +58,17 @@ export function RestaurantsContent() {
     // Use router.replace with scroll: false to preserve scroll position
     router.replace(newUrl, { scroll: false });
     setViewMode(newViewMode);
+  };
+
+  // Function to clear city selection
+  const clearCitySelection = () => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("city");
+    const newUrl = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+    
+    router.push(newUrl);
   };
 
   const {
@@ -316,9 +328,18 @@ export function RestaurantsContent() {
                 </Link>
               </Button>
               {city && (
-                <div className="flex items-center gap-2 text-gray-600">
+                <div className="flex items-center gap-2 text-gray-600 bg-gray-50 px-3 py-1.5 rounded-lg border">
                   <MapPin className="w-4 h-4" />
                   <span className="font-medium">{city}</span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearCitySelection}
+                    className="h-5 w-5 p-0 ml-1 hover:bg-gray-200 text-gray-500 hover:text-gray-700 cursor-pointer"
+                    title="Clear city selection"
+                  >
+                    <X className="w-3 h-3" />
+                  </Button>
                 </div>
               )}
             </div>

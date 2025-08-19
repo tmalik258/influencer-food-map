@@ -178,18 +178,16 @@ const RestaurantMapClient: React.FC<RestaurantMapProps> = ({
     >
       {/* Map Header */}
       <div className="absolute top-4 left-4 right-4 z-[1000] pointer-events-none">
-        <div className="bg-white/90 backdrop-blur-md rounded-lg px-4 py-2 shadow-lg border border-white/20">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 bg-gradient-to-br from-orange-400 to-red-500 rounded-full"></div>
-              <span className="text-sm font-semibold text-slate-700">
-                {mappableRestaurants.length} Restaurant
-                {mappableRestaurants.length !== 1 ? "s" : ""}
-              </span>
-            </div>
-            <div className="text-xs text-slate-500">
-              Click markers for details
-            </div>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 bg-white/90 backdrop-blur-md rounded-lg px-4 py-2 shadow-lg border border-white/20">
+            <div className="w-3 h-3 bg-gradient-to-br from-orange-400 to-red-500 rounded-full"></div>
+            <span className="text-sm font-semibold text-slate-700">
+              {mappableRestaurants.length} Restaurant
+              {mappableRestaurants.length !== 1 ? "s" : ""}
+            </span>
+          </div>
+          <div className="text-xs text-slate-500 bg-white/90 backdrop-blur-md rounded-lg px-4 py-2 shadow-lg border border-white/20">
+            Click markers for details
           </div>
         </div>
       </div>
@@ -229,7 +227,18 @@ const RestaurantMapClient: React.FC<RestaurantMapProps> = ({
                 closeButton={false}
               >
                 <div className="p-0">
-                  <div className="flex items-start gap-3">
+                  <div
+                    className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 transition-colors duration-200 p-2 rounded-lg"
+                    onClick={() => {
+                      if (restaurant.google_place_id) {
+                        window.open(
+                          `https://www.google.com/maps/place/?q=place_id:${restaurant.google_place_id}`,
+                          "_blank",
+                          "noopener,noreferrer"
+                        );
+                      }
+                    }}
+                  >
                     <div className="w-16 h-16 bg-gradient-to-br from-orange-400 to-red-500 rounded-lg flex-shrink-0 flex items-center justify-center">
                       {restaurant?.photo_url ? (
                         <Image

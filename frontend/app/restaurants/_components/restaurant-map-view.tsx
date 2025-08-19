@@ -114,9 +114,13 @@ export function RestaurantMapView({
                           </span>
                         </div>
                         {listing.quotes && listing.quotes.length > 0 && (
-                          <blockquote className="text-sm text-gray-700 italic border-l-2 border-orange-300 pl-3">
-                            &quot;{listing.quotes[0]}&quot;
-                          </blockquote>
+                          <div className="space-y-2">
+                            {listing.quotes.map((quote, index) => (
+                              <blockquote key={index} className="text-sm text-gray-700 italic border-l-2 border-orange-300 pl-3">
+                                &quot;{quote}&quot;
+                              </blockquote>
+                            ))}
+                          </div>
                         )}
                       </div>
                     );

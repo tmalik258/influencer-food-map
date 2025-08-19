@@ -252,15 +252,19 @@ export default function InfluencerDetailPage() {
                       </div>
                     </div>
                     
-                    {/* Quote */}
+                    {/* Quotes */}
                     {listing.quotes && listing.quotes.length > 0 && (
-                      <div className="mb-4 bg-orange-50 border-l-4 border-orange-200 p-4 rounded-lg">
-                        <div className="flex items-start">
-                          <Quote className="w-4 h-4 text-orange-500 mr-2 mt-1 flex-shrink-0" />
-                          <blockquote className="text-gray-700 italic text-sm">
-                            &quot;{listing.quotes[0]}&quot;
-                          </blockquote>
-                        </div>
+                      <div className="mb-4 space-y-3">
+                        {listing.quotes.map((quote, index) => (
+                          <div key={index} className="bg-orange-50 border-l-4 border-orange-200 p-4 rounded-lg">
+                            <div className="flex items-start">
+                              <Quote className="w-4 h-4 text-orange-500 mr-2 mt-1 flex-shrink-0" />
+                              <blockquote className="text-gray-700 italic text-sm">
+                                &quot;{quote}&quot;
+                              </blockquote>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     )}
                     
