@@ -21,6 +21,7 @@ import { RestaurantSearchFilter } from "./restaurant-search-filter";
 import { RestaurantGridView } from "./restaurant-grid-view";
 import { RestaurantMapView } from "./restaurant-map-view";
 import { RestaurantLatestListings } from "./restaurant-latest-listings";
+import ErrorCard from "@/components/error-card";
 
 export function RestaurantsContent() {
   const searchParams = useSearchParams();
@@ -79,6 +80,15 @@ export function RestaurantsContent() {
     fetchRestaurants,
   } = useRestaurants();
   const { listings, loading: listingsLoading, fetchListings } = useListings();
+
+  const handleRefresh = () => {
+    if (city) {
+      searchByCity(city);
+    } else {
+      fetchRestaurants();
+    }
+    fetchListings({ limit: 200 });
+  };
 
   const loading = restaurantsLoading || listingsLoading;
   const error = restaurantsError;
@@ -289,18 +299,13 @@ export function RestaurantsContent() {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100 flex items-center justify-center">
-        <Card className="w-full max-w-md mx-4">
-          <CardContent className="text-center py-8">
-            <p className="text-red-600 mb-4">{error}</p>
-            <Button asChild variant="outline">
-              <Link href="/">
-                <ArrowLeft className="w-4 h-4 mr-2" />
-                Go back to search
-              </Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-gray-100">
+        <ErrorCard
+          title="Something went wrong"
+          message="We're having trouble loading the restaurants. Please try again later."
+          error={error}
+          onRefresh={handleRefresh}
+        />
       </div>
     );
   }

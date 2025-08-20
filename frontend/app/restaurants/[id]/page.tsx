@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import RestaurantMap from "@/components/dynamic-restaurant-map";
 import GoogleReviews from "@/components/google-reviews";
+import ErrorCard from "@/components/error-card";
 
 export default function RestaurantDetailPage() {
   const params = useParams();
@@ -20,9 +21,15 @@ export default function RestaurantDetailPage() {
     restaurant,
     loading: restaurantLoading,
     error: restaurantError,
+    refetch: refetchRestaurant,
   } = useRestaurant(restaurantId);
-  const { listings, loading: listingsLoading } =
+  const { listings, loading: listingsLoading, refetch: refetchListings } =
     useRestaurantListings(restaurantId);
+
+  const handleRefresh = () => {
+    refetchRestaurant?.();
+    refetchListings?.();
+  };
 
   const loading = restaurantLoading || listingsLoading;
   const error = restaurantError;
@@ -112,17 +119,14 @@ export default function RestaurantDetailPage() {
 
   if (error || !restaurant) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Card className="w-full max-w-md mx-4">
-          <CardContent className="text-center py-8">
-            <p className="text-red-600 mb-4">
-              {error || "Restaurant not found"}
-            </p>
-            <Button asChild variant="outline">
-              <Link href="/restaurants">Back to Restaurants</Link>
-            </Button>
-          </CardContent>
-        </Card>
+      <div className="min-h-screen bg-white">
+        <ErrorCard
+          title={error ? "Something went wrong" : "Restaurant not found"}
+          message={error ? "We're having trouble loading this restaurant. Please try again later." : "The restaurant you're looking for doesn't exist or has been removed."}
+          error={error || undefined}
+          onRefresh={error ? handleRefresh : undefined}
+          showRefreshButton={!!error}
+        />
       </div>
     );
   }

@@ -20,6 +20,7 @@ export interface Restaurant {
   is_active?: boolean;
   created_at: string;
   updated_at: string;
+  videos?: Video[];
 }
 
 export interface Influencer {
@@ -27,11 +28,14 @@ export interface Influencer {
   name: string;
   bio?: string;
   avatar_url?: string;
+  banner_url?: string;
   region?: string;
   youtube_channel_id: string;
   youtube_channel_url?: string;
+  subscriber_count?: number;
   created_at: string;
   updated_at: string;
+  videos?: Video[];
 }
 
 export interface Video {

@@ -103,7 +103,7 @@ export const useRestaurantListings = (restaurantId: string) => {
 
 export const useInfluencerListings = (influencerId: string) => {
   const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchListings = useCallback(async () => {

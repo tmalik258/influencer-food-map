@@ -9,9 +9,14 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { GridSkeleton, SectionLoading } from "@/components/loading-states";
+import RetryWrapper from "@/components/retry-wrapper";
+import { useAutoRefresh } from "@/lib/hooks";
+import { CompactRealTimeIndicator } from "@/components/real-time-indicator";
 import { useRestaurants, useListings, usePopularCities } from "@/lib/hooks";
 import { Restaurant, Listing } from "@/types";
 import Link from "next/link";
+import ErrorCard from "@/components/error-card";
 
 export default function Home() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -20,20 +25,28 @@ export default function Home() {
   );
   const [featuredListings, setFeaturedListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   const router = useRouter();
   const { restaurants, fetchRestaurants } = useRestaurants();
   const { listings, fetchListings } = useListings();
-  const { cities: popularCities, loading: citiesLoading } = usePopularCities();
+  const { cities: popularCities, loading: citiesLoading, error: citiesError } = usePopularCities();
 
   useEffect(() => {
     const loadFeaturedData = async () => {
+      if (citiesError) {
+        setError("Failed to load popular cities");
+        setLoading(false);
+        return;
+      }
+
       if (popularCities.length === 0) {
         if (!citiesLoading) setLoading(false);
         return;
       } // Wait for cities to load
 
       setLoading(true);
+      setError(null);
       try {
         // Fetch restaurants from the first popular city as featured
         const firstCity = popularCities[0];
@@ -41,13 +54,14 @@ export default function Home() {
         await fetchListings({ limit: 20, approved_status: "Approved" });
       } catch (error) {
         console.error("Error loading featured data:", error);
+        setError("Failed to load featured content. Please try again later.");
       } finally {
         setLoading(false);
       }
     };
 
     loadFeaturedData();
-  }, [fetchRestaurants, fetchListings, popularCities, citiesLoading]);
+  }, [fetchRestaurants, fetchListings, popularCities, citiesLoading, citiesError]);
 
   useEffect(() => {
     if (restaurants.length > 0 && listings.length > 0) {
@@ -75,6 +89,33 @@ export default function Home() {
   const handleCityClick = (city: string) => {
     router.push(`/restaurants?city=${encodeURIComponent(city)}`);
   };
+
+  const handleRefresh = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      if (popularCities.length > 0) {
+        const firstCity = popularCities[0];
+        await fetchRestaurants({ city: firstCity, limit: 6 });
+        await fetchListings({ limit: 20, approved_status: "Approved" });
+      }
+    } catch (error) {
+      console.error("Error refreshing data:", error);
+      setError("Failed to refresh content. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Auto-refresh every 2 minutes for real-time updates
+  const autoRefresh = useAutoRefresh({
+    interval: 120000, // 2 minutes
+    enabled: true,
+    onRefresh: handleRefresh,
+    pauseOnHidden: true, // Pause when tab is not visible
+    pauseOnError: true,
+    maxRetries: 3
+  });
 
   return (
     <div className="min-h-screen p-2">
@@ -168,35 +209,39 @@ export default function Home() {
       {/* Featured Restaurants Section */}
       <div className="py-20 px-4 bg-white">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-4xl font-bold text-gray-900 mb-12 text-center">
-            {popularCities.length > 0
-              ? popularCities[0]
-              : "Featured Restaurants"}
-          </h2>
+          {/* Header Section */}
+          <div className="text-center mb-12 relative">
+            {/* Real-time indicator */}
+            <div className="absolute top-0 right-0">
+              <CompactRealTimeIndicator
+                isActive={autoRefresh.isActive}
+                isPaused={autoRefresh.isPaused}
+                errorCount={autoRefresh.errorCount}
+                timeUntilNextRefresh={autoRefresh.timeUntilNextRefresh}
+                onRefreshNow={autoRefresh.refreshNow}
+              />
+            </div>
+            
+            <h2 className="text-4xl font-bold text-gray-900">
+              {popularCities.length > 0
+                ? popularCities[0]
+                : "Featured Restaurants"}
+            </h2>
+          </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            {loading
-              ? // Loading skeletons
-                Array.from({ length: 3 }).map((_, index) => (
-                  <Card
-                    key={index}
-                    className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group p-4"
-                  >
-                    <div className="relative mb-4">
-                      <Skeleton className="h-48 w-full rounded-lg" />
-                    </div>
-                    <div className="space-y-3">
-                      <Skeleton className="h-6 w-3/4" />
-                      <Skeleton className="h-4 w-full" />
-                      <div className="flex items-center gap-2">
-                        <Skeleton className="h-4 w-4" />
-                        <Skeleton className="h-4 w-16" />
-                      </div>
-                      <Skeleton className="h-4 w-2/3" />
-                    </div>
-                  </Card>
-                ))
-              : featuredRestaurants.map((restaurant) => {
+          <RetryWrapper onRetry={handleRefresh} maxRetries={3}>
+            {error ? (
+              <ErrorCard
+                title="Unable to Load Featured Restaurants"
+                message={error}
+                onRefresh={handleRefresh}
+                showRefreshButton={true}
+              />
+            ) : loading ? (
+              <GridSkeleton count={3} columns={3} type="restaurant" />
+            ) : (
+              <div className="grid md:grid-cols-3 gap-8">
+                {featuredRestaurants.map((restaurant) => {
                   // Find the listing for this restaurant to get influencer info
                   const restaurantListing = featuredListings.find(
                     (listing) => listing.restaurant.id === restaurant.id
@@ -267,7 +312,9 @@ export default function Home() {
                     </Link>
                   );
                 })}
-          </div>
+              </div>
+            )}
+          </RetryWrapper>
         </div>
       </div>
     </div>

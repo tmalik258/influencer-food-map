@@ -36,18 +36,23 @@ def get_channel(channel_url: str) -> dict | None:
     """Extract channel ID and metadata from channel URL."""
     try:
         channel_handle = channel_url.split("/")[-1]
-        # Fetch channel metadata including ID, title, description, and thumbnail
+        # Fetch channel metadata including ID, title, description, thumbnail, and statistics
         response = youtube.channels().list(
-            part="id,snippet",
+            part="id,snippet,brandingSettings,statistics",
             forHandle=channel_handle
         ).execute()
         if "items" in response and len(response["items"]) > 0:
             channel = response["items"][0]
+            banner_url = None
+            if "brandingSettings" in channel and "image" in channel["brandingSettings"]:
+                banner_url = channel["brandingSettings"]["image"].get("bannerExternalUrl")
             return {
                 "id": channel["id"],
                 "title": channel["snippet"]["title"],
                 "description": channel["snippet"].get("description", ""),
                 "avatar_url": channel["snippet"]["thumbnails"]["default"]["url"],
+                "banner_url": banner_url,
+                "subscriber_count": int(channel["statistics"].get("subscriberCount", 0)) if "statistics" in channel else None,
                 "data": channel  # Include full channel data for debugging
             }
         
@@ -55,16 +60,21 @@ def get_channel(channel_url: str) -> dict | None:
         logger.info(f"Fallback: Trying username for {channel_url}")
         username = channel_handle.replace("@", "")
         response = youtube.channels().list(
-            part="id,snippet",
+            part="id,snippet,brandingSettings,statistics",
             forUsername=username
         ).execute()
         if "items" in response and len(response["items"]) > 0:
             channel = response["items"][0]
+            banner_url = None
+            if "brandingSettings" in channel and "image" in channel["brandingSettings"]:
+                banner_url = channel["brandingSettings"]["image"].get("bannerExternalUrl")
             return {
                 "id": channel["id"],
                 "title": channel["snippet"]["title"],
                 "description": channel["snippet"].get("description", ""),
                 "avatar_url": channel["snippet"]["thumbnails"]["default"]["url"],
+                "banner_url": banner_url,
+                "subscriber_count": int(channel["statistics"].get("subscriberCount", 0)) if "statistics" in channel else None,
                 "data": channel  # Include full channel data for debugging
             }
         
@@ -144,7 +154,9 @@ def store_influencer(db: Session, static_channel: dict, channel_data: dict) -> I
                 youtube_channel_url=static_channel["url"],
                 region=channel_data.get("data", {}).get("snippet", {}).get("country", None) or static_channel.get("region", None),
                 bio=channel_data["description"],
-                avatar_url=channel_data["avatar_url"]
+                avatar_url=channel_data["avatar_url"],
+                banner_url=channel_data.get("banner_url"),
+                subscriber_count=channel_data.get("subscriber_count")
             )
             db.add(influencer)
             db.commit()
@@ -155,6 +167,8 @@ def store_influencer(db: Session, static_channel: dict, channel_data: dict) -> I
             influencer.name = channel_data["title"] or static_channel["name"]
             influencer.bio = channel_data["description"]
             influencer.avatar_url = channel_data["avatar_url"]
+            influencer.banner_url = channel_data.get("banner_url")
+            influencer.subscriber_count = channel_data.get("subscriber_count")
             influencer.region = channel_data.get("data", {}).get("snippet", {}).get("country", None) or static_channel.get("region", None)
             db.commit()
             db.refresh(influencer)

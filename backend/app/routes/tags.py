@@ -31,7 +31,7 @@ def get_tags(
         print(f"Error fetching tags: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching tags")
 
-@router.get("/{tag_id}", response_model=TagResponse)
+@router.get("/{tag_id}/", response_model=TagResponse)
 def get_tag(tag_id: str, db: Session = Depends(get_db)):
     """Get a single tag by ID."""
     try:

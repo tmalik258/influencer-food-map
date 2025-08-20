@@ -33,7 +33,7 @@ export const useInfluencers = (params?: SearchParams) => {
 
 export const useInfluencer = (id: string) => {
   const [influencer, setInfluencer] = useState<Influencer | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchInfluencer = useCallback(async () => {

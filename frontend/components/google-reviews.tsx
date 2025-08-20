@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Star, AlertCircle } from "lucide-react";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import Image from "next/image";
+import ErrorCard from "@/components/error-card";
 
 interface GoogleReview {
   author_name: string;
@@ -38,48 +39,34 @@ export default function GoogleReviews({ placeId, className = "" }: GoogleReviews
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchReviews = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`/api/google-reviews?placeId=${placeId}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch reviews: ${response.statusText}`);
+      }
+      const data: GoogleReviewsResponse = await response.json();
+      
+      if (data.status === 'OK' && data.result) {
+        setReviews(data.result.reviews || []);
+        setRating(data.result.rating || 0);
+        setTotalRatings(data.result.user_ratings_total || 0);
+      } else {
+        throw new Error('No reviews found');
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load reviews');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    const fetchGoogleReviews = async () => {
-      if (!placeId) {
-        setError("No place ID provided");
-        setLoading(false);
-        return;
-      }
-
-      try {
-        setLoading(true);
-        setError(null);
-
-        // Call our backend API that will fetch from Google Places API
-        const response = await fetch(`/api/google-reviews?place_id=${placeId}`);
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch reviews: ${response.status}`);
-        }
-
-        const data: GoogleReviewsResponse = await response.json();
-        
-        if (data.status !== "OK") {
-          throw new Error(`Google API error: ${data.status}`);
-        }
-
-        // Get the 3 most recent reviews
-        const recentReviews = data.result.reviews
-          .sort((a, b) => b.time - a.time)
-          .slice(0, 3);
-
-        setReviews(recentReviews);
-        setRating(data.result.rating);
-        setTotalRatings(data.result.user_ratings_total);
-      } catch (err) {
-        console.error("Error fetching Google reviews:", err);
-        setError(err instanceof Error ? err.message : "Failed to load reviews");
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchGoogleReviews();
+    if (placeId) {
+      fetchReviews();
+    }
   }, [placeId]);
 
   const renderStars = (rating: number, size: "sm" | "md" = "sm") => {
@@ -103,12 +90,12 @@ export default function GoogleReviews({ placeId, className = "" }: GoogleReviews
   if (error) {
     return (
       <div className={className}>
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Unable to load Google Reviews: {error}
-          </AlertDescription>
-        </Alert>
+        <ErrorCard
+          title="Unable to load reviews"
+          message="We're having trouble loading Google Reviews for this location."
+          error={error}
+          onRefresh={fetchReviews}
+        />
       </div>
     );
   }

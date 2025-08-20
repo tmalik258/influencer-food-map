@@ -55,7 +55,7 @@ def get_videos(
         print(f"Error fetching videos: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching videos")
 
-@router.get("/{video_id}", response_model=VideoResponse)
+@router.get("/{video_id}/", response_model=VideoResponse)
 def get_video(video_id: str, db: Session = Depends(get_db)):
     """Get a single video by ID."""
     try:

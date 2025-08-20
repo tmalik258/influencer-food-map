@@ -44,7 +44,7 @@ def get_influencers(
         print(f"Error fetching influencers: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching influencers")
 
-@router.get("/{influencer_id}", response_model=InfluencerResponse)
+@router.get("/{influencer_id}/", response_model=InfluencerResponse)
 def get_influencer(influencer_id: str, db: Session = Depends(get_db)):
     """Get a single influencer by ID."""
     try:
