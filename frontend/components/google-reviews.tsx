@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Star, AlertCircle } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Star } from "lucide-react";
 import Image from "next/image";
 import ErrorCard from "@/components/error-card";
 
@@ -39,7 +38,7 @@ export default function GoogleReviews({ placeId, className = "" }: GoogleReviews
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchReviews = async () => {
+  const fetchReviews = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -61,13 +60,13 @@ export default function GoogleReviews({ placeId, className = "" }: GoogleReviews
     } finally {
       setLoading(false);
     }
-  };
+  }, [placeId]);
 
   useEffect(() => {
     if (placeId) {
       fetchReviews();
     }
-  }, [placeId]);
+  }, [fetchReviews, placeId]);
 
   const renderStars = (rating: number, size: "sm" | "md" = "sm") => {
     const starSize = size === "sm" ? "w-3 h-3" : "w-4 h-4";

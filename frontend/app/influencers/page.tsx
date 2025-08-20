@@ -220,7 +220,7 @@ export default function InfluencersPage() {
           <ErrorCard
             title="Something went wrong"
             message="We&apos;re having trouble loading the influencers. Please try again later."
-            error={influencersError || listingsError}
+            error={influencersError || listingsError || undefined}
             onRefresh={handleRefresh}
           />
         ) : filteredInfluencers.length === 0 ? (
