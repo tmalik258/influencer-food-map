@@ -3,19 +3,14 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import {
-  MapPin,
-  ArrowLeft,
-  Grid3X3,
-  Map,
-  X,
-} from "lucide-react";
-import { Restaurant, Listing } from "@/types";
+import { MapPin, ArrowLeft, Grid3X3, Map, X } from "lucide-react";
+import { Restaurant, Listing, Tag } from "@/types";
 import { getSearchPlaceholder } from "@/lib/utils/search-utils";
 import { useRestaurants, useListings } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { RestaurantSkeletonLoader } from "@/app/restaurants/_components/restaurant-skeleton-loader";
 import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
 import { RestaurantHeroSection } from "./restaurant-hero-section";
 import { RestaurantSearchFilter } from "./restaurant-search-filter";
 import { RestaurantGridView } from "./restaurant-grid-view";
@@ -35,14 +30,29 @@ export function RestaurantsContent() {
   const [viewMode, setViewMode] = useState<"grid" | "map">(initialViewMode);
   const [selectedRestaurant, setSelectedRestaurant] =
     useState<Restaurant | null>(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchType, setSearchType] = useState("");
-  const [sortBy, setSortBy] = useState("");
+  // Initialize search and sort from URL parameters
+  const searchQueryParam = searchParams.get("search") || "";
+  const searchTypeParam = searchParams.get("searchType") || "";
+  const sortByParam = searchParams.get("sortBy") || "";
+
+  const [searchQuery, setSearchQuery] = useState(searchQueryParam);
+  const [searchType, setSearchType] = useState(searchTypeParam);
+  const [sortBy, setSortBy] = useState(sortByParam);
   const [filteredRestaurants, setFilteredRestaurants] = useState<Restaurant[]>(
     []
   );
   const [restaurantListings, setRestaurantListings] = useState<Listing[]>([]);
-  const [filteredLatestListings, setFilteredLatestListings] = useState<Listing[]>([]);
+  const [filteredLatestListings, setFilteredLatestListings] = useState<
+    Listing[]
+  >([]);
+  // Initialize selected tags from URL parameters
+  const tagsParam = searchParams.get("tags");
+  const initialSelectedTags: Tag[] = tagsParam
+    ? tagsParam
+        .split(",")
+        .map((tagId) => ({ id: tagId, name: "", created_at: "" }))
+    : [];
+  const [selectedTags, setSelectedTags] = useState<Tag[]>(initialSelectedTags);
 
   // Function to update URL with view parameter
   const updateViewMode = (newViewMode: "grid" | "map") => {
@@ -55,7 +65,7 @@ export function RestaurantsContent() {
     const newUrl = params.toString()
       ? `${pathname}?${params.toString()}`
       : pathname;
-    
+
     // Use router.replace with scroll: false to preserve scroll position
     router.replace(newUrl, { scroll: false });
     setViewMode(newViewMode);
@@ -68,8 +78,73 @@ export function RestaurantsContent() {
     const newUrl = params.toString()
       ? `${pathname}?${params.toString()}`
       : pathname;
-    
+
     router.push(newUrl);
+  };
+
+  // Function to update URL with selected tags
+  const updateSelectedTags = (newTags: Tag[]) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (newTags.length === 0) {
+      params.delete("tags");
+    } else {
+      const tagIds = newTags.map((tag) => tag.id.toString()).join(",");
+      params.set("tags", tagIds);
+    }
+    const newUrl = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+
+    router.replace(newUrl, { scroll: false });
+    setSelectedTags(newTags);
+  };
+
+  // Function to update search query with URL parameter
+  const updateSearchQuery = (query: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (query === "") {
+      params.delete("search");
+    } else {
+      params.set("search", query);
+    }
+    const newUrl = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+
+    router.replace(newUrl, { scroll: false });
+    setSearchQuery(query);
+  };
+
+  // Function to update search type with URL parameter
+  const updateSearchType = (type: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (type === "") {
+      params.delete("searchType");
+    } else {
+      params.set("searchType", type);
+    }
+    const newUrl = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+
+    router.replace(newUrl, { scroll: false });
+    setSearchType(type);
+  };
+
+  // Function to update sort by with URL parameter
+  const updateSortBy = (sort: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (sort === "") {
+      params.delete("sortBy");
+    } else {
+      params.set("sortBy", sort);
+    }
+    const newUrl = params.toString()
+      ? `${pathname}?${params.toString()}`
+      : pathname;
+
+    router.replace(newUrl, { scroll: false });
+    setSortBy(sort);
   };
 
   const {
@@ -115,65 +190,48 @@ export function RestaurantsContent() {
     if (restaurants.length > 0) {
       let filtered = [...restaurants];
 
+      // Apply tag filter first
+      if (selectedTags.length > 0) {
+        const selectedTagIds = selectedTags.map((tag) => tag.id);
+        filtered = filtered.filter((restaurant) => {
+          return restaurant.tags?.some((tag) =>
+            selectedTagIds.includes(tag.id)
+          );
+        });
+      }
+
       // Apply search filter
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
 
-        if (searchType === "all") {
-          // Search across all fields
-          filtered = filtered.filter((restaurant) => {
-            // Basic restaurant info
-            const restaurantMatch =
-              restaurant.name.toLowerCase().includes(query) ||
-              restaurant.address?.toLowerCase().includes(query) ||
-              restaurant.city?.toLowerCase().includes(query);
-
-            // Check if restaurant has listings with matching criteria
-            const hasMatchingListing = restaurantListings.some((listing) => {
-              if (listing.restaurant.id !== restaurant.id) return false;
-
-              return (
-                listing.influencer.name.toLowerCase().includes(query) ||
-                listing.video.title.toLowerCase().includes(query) ||
-                listing.video.description?.toLowerCase().includes(query) ||
-                restaurant.tags?.some((tag) =>
-                  tag.name.toLowerCase().includes(query)
-                )
+        // Search by specific type
+        filtered = filtered.filter((restaurant) => {
+          switch (searchType) {
+            case "restaurant":
+              return restaurant.name.toLowerCase().includes(query);
+            case "city":
+              return restaurant.city?.toLowerCase().includes(query);
+            case "tags":
+              return restaurant.tags?.some((tag) =>
+                tag.name.toLowerCase().includes(query)
               );
-            });
-
-            return restaurantMatch || hasMatchingListing;
-          });
-        } else {
-          // Search by specific type
-          filtered = filtered.filter((restaurant) => {
-            switch (searchType) {
-              case "restaurant":
-                return restaurant.name.toLowerCase().includes(query);
-              case "city":
-                return restaurant.city?.toLowerCase().includes(query);
-              case "tags":
-                return restaurant.tags?.some((tag) =>
-                  tag.name.toLowerCase().includes(query)
-                );
-              case "influencer":
-                return restaurantListings.some(
-                  (listing) =>
-                    listing.restaurant.id === restaurant.id &&
-                    listing.influencer.name.toLowerCase().includes(query)
-                );
-              case "video":
-                return restaurantListings.some(
-                  (listing) =>
-                    listing.restaurant.id === restaurant.id &&
-                    (listing.video.title.toLowerCase().includes(query) ||
-                      listing.video.description?.toLowerCase().includes(query))
-                );
-              default:
-                return true;
-            }
-          });
-        }
+            case "influencer":
+              return restaurantListings.some(
+                (listing) =>
+                  listing.restaurant.id === restaurant.id &&
+                  listing.influencer.name.toLowerCase().includes(query)
+              );
+            case "video":
+              return restaurantListings.some(
+                (listing) =>
+                  listing.restaurant.id === restaurant.id &&
+                  (listing.video.title.toLowerCase().includes(query) ||
+                    listing.video.description?.toLowerCase().includes(query))
+              );
+            default:
+              return true;
+          }
+        });
       }
 
       // Apply sorting
@@ -192,7 +250,14 @@ export function RestaurantsContent() {
 
       setFilteredRestaurants(filtered);
     }
-  }, [restaurants, searchQuery, searchType, sortBy, restaurantListings]);
+  }, [
+    restaurants,
+    searchQuery,
+    searchType,
+    sortBy,
+    restaurantListings,
+    selectedTags,
+  ]);
 
   // Set up restaurant listings
   useEffect(() => {
@@ -204,19 +269,26 @@ export function RestaurantsContent() {
   // Set up filtered latest listings based on filtered restaurants
   useEffect(() => {
     if (restaurantListings.length > 0 && filteredRestaurants.length > 0) {
-      const filteredRestaurantIds = new Set(filteredRestaurants.map(r => r.id));
-      
+      const filteredRestaurantIds = new Set(
+        filteredRestaurants.map((r) => r.id)
+      );
+
       const filtered = restaurantListings
-        .filter(listing => filteredRestaurantIds.has(listing.restaurant.id))
+        .filter((listing) => filteredRestaurantIds.has(listing.restaurant.id))
         .sort((a, b) => {
           // Apply the same sorting logic as the main restaurant list
           switch (sortBy) {
             case "name":
               return a.restaurant.name.localeCompare(b.restaurant.name);
             case "rating":
-              return (b.restaurant.google_rating || 0) - (a.restaurant.google_rating || 0);
+              return (
+                (b.restaurant.google_rating || 0) -
+                (a.restaurant.google_rating || 0)
+              );
             case "city":
-              return (a.restaurant.city || "").localeCompare(b.restaurant.city || "");
+              return (a.restaurant.city || "").localeCompare(
+                b.restaurant.city || ""
+              );
             default:
               // Default to created_at in descending order (newest first)
               const dateA = new Date(a.created_at || 0).getTime();
@@ -225,7 +297,7 @@ export function RestaurantsContent() {
           }
         })
         .slice(0, 3); // Get only the 3 latest
-      
+
       setFilteredLatestListings(filtered);
     } else {
       setFilteredLatestListings([]);
@@ -234,66 +306,7 @@ export function RestaurantsContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white">
-        {/* Hero Section Skeleton */}
-        <div className="p-2">
-          <div className="relative min-h-[70vh] rounded-lg pt-10 flex items-center justify-center overflow-hidden mb-8">
-            <Skeleton className="absolute inset-0 z-0" />
-            <div className="absolute inset-0 bg-black/60"></div>
-            <div className="relative z-10 text-center text-white px-4">
-              <Skeleton className="h-6 w-32 mx-auto mb-2 bg-white/20" />
-              <Skeleton className="h-16 w-80 mx-auto mb-4 bg-white/20" />
-              <Skeleton className="h-8 w-96 mx-auto bg-white/20" />
-            </div>
-          </div>
-        </div>
-        
-        <div className="max-w-7xl mx-auto px-4 py-6">
-          {/* Header Skeleton */}
-          <div className="mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <Skeleton className="h-8 w-16" />
-                <Skeleton className="h-4 w-24" />
-              </div>
-              <Skeleton className="h-8 w-24" />
-            </div>
-            <Skeleton className="h-8 w-64 mb-1" />
-            <Skeleton className="h-4 w-32" />
-          </div>
-
-          {/* Search and Filter Skeleton */}
-          <div className="mb-6 flex flex-col sm:flex-row gap-4">
-            <Skeleton className="h-10 flex-1" />
-            <Skeleton className="h-10 w-full sm:w-48" />
-            <Skeleton className="h-10 w-full sm:w-48" />
-          </div>
-
-          {/* Restaurant Cards Skeleton */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <Card
-                key={index}
-                className="overflow-hidden border-0 shadow-lg hover:shadow-xl transition-all duration-300 group p-4"
-              >
-                <div className="relative mb-4">
-                  <Skeleton className="h-48 w-full rounded-lg" />
-                </div>
-                <div className="space-y-3">
-                  <Skeleton className="h-6 w-3/4" />
-                  <Skeleton className="h-4 w-full" />
-                  <div className="flex items-center gap-2">
-                    <Skeleton className="h-4 w-4" />
-                    <Skeleton className="h-4 w-16" />
-                  </div>
-                  <Skeleton className="h-4 w-2/3" />
-                  <Skeleton className="h-9 w-24 rounded-md" />
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </div>
+      <RestaurantSkeletonLoader />
     );
   }
 
@@ -312,9 +325,9 @@ export function RestaurantsContent() {
 
   return (
     <div className="min-h-screen bg-white">
-    <div className="p-2">
-      <RestaurantHeroSection city={city} />
-    </div>
+      <div className="p-2">
+        <RestaurantHeroSection city={city} />
+      </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
         {/* Header */}
@@ -350,15 +363,20 @@ export function RestaurantsContent() {
             </div>
 
             {/* View Toggle */}
-            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+            <div className="relative flex items-center bg-gray-100 rounded-lg p-1">
+              <div
+                className={`absolute top-1/2 -translate-y-1/2 left-1 h-8 w-[47%] bg-white rounded-md shadow-sm transition-all duration-300 ease-in-out
+                  ${viewMode === "map" ? "translate-x-full" : ""}
+                `}
+              ></div>
               <Button
                 variant={viewMode === "grid" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => updateViewMode("grid")}
-                className={`h-8 px-3 ${
+                className={`relative z-10 h-8 px-3 bg-transparent hover:bg-transparent ${
                   viewMode === "grid"
-                    ? "bg-white shadow-sm text-gray-900 hover:text-white"
-                    : "hover:bg-gray-200 text-gray-700"
+                    ? "text-gray-900"
+                    : "text-gray-700 hover:text-gray-800"
                 }`}
               >
                 <Grid3X3 className="w-4 h-4 mr-1" />
@@ -368,10 +386,10 @@ export function RestaurantsContent() {
                 variant={viewMode === "map" ? "default" : "ghost"}
                 size="sm"
                 onClick={() => updateViewMode("map")}
-                className={`h-8 px-3 ${
+                className={`relative z-10 h-8 px-3 bg-transparent hover:bg-transparent ${
                   viewMode === "map"
-                    ? "bg-white shadow-sm text-gray-900 hover:text-white"
-                    : "hover:bg-gray-200 text-gray-700"
+                    ? "text-gray-900"
+                    : "text-gray-700 hover:text-gray-800"
                 }`}
               >
                 <Map className="w-4 h-4 mr-1" />
@@ -391,13 +409,144 @@ export function RestaurantsContent() {
 
         <RestaurantSearchFilter
           searchQuery={searchQuery}
-          setSearchQuery={setSearchQuery}
+          setSearchQuery={updateSearchQuery}
           searchType={searchType}
-          setSearchType={setSearchType}
+          setSearchType={updateSearchType}
           sortBy={sortBy}
-          setSortBy={setSortBy}
+          setSortBy={updateSortBy}
           getSearchPlaceholder={getSearchPlaceholder}
+          selectedTags={selectedTags}
+          onTagsChange={updateSelectedTags}
         />
+
+        {/* Selected Options Display */}
+        {(selectedTags.length > 0 || searchQuery || searchType || sortBy) && (
+          <div className="flex flex-wrap gap-2 mb-4">
+            {/* Search Query Badge */}
+            {searchQuery && (
+              <Badge
+                variant="secondary"
+                className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+              >
+                <span className="text-xs text-muted-foreground">Search:</span>
+                <span>{searchQuery}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                  onClick={() => updateSearchQuery("")}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </Badge>
+            )}
+
+            {/* Search Type Badge */}
+            {searchType && (
+              <Badge
+                variant="secondary"
+                className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+              >
+                <span className="text-xs text-muted-foreground">
+                  Search by:
+                </span>
+                <span>
+                  {searchType === "all"
+                    ? "All Fields"
+                    : searchType === "restaurant"
+                    ? "Restaurant Name"
+                    : searchType === "influencer"
+                    ? "Influencer Name"
+                    : searchType === "video"
+                    ? "Video Name"
+                    : searchType === "tags"
+                    ? "Tags"
+                    : searchType === "city"
+                    ? "City"
+                    : searchType}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                  onClick={() => updateSearchType("")}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </Badge>
+            )}
+
+            {/* Sort By Badge */}
+            {sortBy && (
+              <Badge
+                variant="secondary"
+                className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+              >
+                <span className="text-xs text-muted-foreground">Sort by:</span>
+                <span>
+                  {sortBy === "name"
+                    ? "Name"
+                    : sortBy === "rating"
+                    ? "Rating"
+                    : sortBy === "city"
+                    ? "City"
+                    : sortBy}
+                </span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                  onClick={() => updateSortBy("")}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </Badge>
+            )}
+
+            {/* Selected Tags */}
+            {selectedTags.map((tag) => (
+              <Badge
+                key={tag.id}
+                variant="secondary"
+                className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+              >
+                <span className="text-xs text-muted-foreground">Tag:</span>
+                <span>{tag.name}</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                  onClick={() => {
+                    const newTags = selectedTags.filter((t) => t.id !== tag.id);
+                    updateSelectedTags(newTags);
+                  }}
+                >
+                  <X className="w-3 h-3" />
+                </Button>
+              </Badge>
+            ))}
+
+            {/* Clear All Button */}
+            {(selectedTags.length > 0 ||
+              searchQuery ||
+              searchType ||
+              sortBy) && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  updateSelectedTags([]);
+                  updateSearchQuery("");
+                  updateSearchType("");
+                  updateSortBy("");
+                }}
+                className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                Clear all
+              </Button>
+            )}
+          </div>
+        )}
 
         {filteredRestaurants.length === 0 ? (
           <Card className="text-center py-12">
@@ -424,7 +573,9 @@ export function RestaurantsContent() {
 
             {/* Latest Listings Section (only for map view) */}
             {viewMode === "map" && filteredLatestListings.length > 0 && (
-              <RestaurantLatestListings restaurantListings={filteredLatestListings} />
+              <RestaurantLatestListings
+                restaurantListings={filteredLatestListings}
+              />
             )}
 
             {/* Grid View */}

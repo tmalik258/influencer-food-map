@@ -5,3 +5,4 @@ export { usePopularCities } from './usePopularCities';
 export { useApiWithRetry, usePaginatedApiWithRetry } from './useApiWithRetry';
 export { useAutoRefresh, useMultipleAutoRefresh } from './useAutoRefresh';
 export { useVideos, useInfluencerVideos } from './useVideos';
+export { useTags, useTag } from './useTags';
