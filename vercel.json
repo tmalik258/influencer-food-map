@@ -1,5 +1,21 @@
 {
-  "buildCommand": "cd frontend && npm run build",
-  "outputDirectory": "frontend/.next",
-  "installCommand": "cd frontend && npm install"
+  "version": 2,
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/next"
+    },
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "api/test.py", 
+      "use": "@vercel/python"
+    },
+    {
+      "src": "api/restaurants.py",
+      "use": "@vercel/python"
+    }
+  ]
 }
