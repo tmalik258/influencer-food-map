@@ -1,34 +1,35 @@
 """
-Main API entry point for Vercel serverless deployment.
-This serves the FastAPI application as a Vercel serverless function.
+Main API entry point for Vercel serverless deployment
 """
 
-import sys
-import os
-from pathlib import Path
+from http.server import BaseHTTPRequestHandler
+import json
 
-# Add backend to Python path
-backend_path = Path(__file__).parent.parent / "backend"
-sys.path.insert(0, str(backend_path))
-
-# Ensure backend app path is available
-sys.path.insert(0, str(backend_path / "app"))
-
-try:
-    # Try importing from backend.app structure
-    from backend.app.main import app
-except ImportError:
-    try:
-        # Fallback: try direct app import
-        from app.main import app
-    except ImportError:
-        # Last resort: add current directory and try again
-        sys.path.insert(0, os.path.dirname(__file__))
-        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
-        from backend.app.main import app
-
-# This is what Vercel will use
-handler = app
-
-# For compatibility
-application = app
+class handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        
+        response = {
+            "message": "Influencer Food Map API",
+            "status": "success",
+            "version": "1.0.0",
+            "endpoints": {
+                "restaurants": "/api/restaurants",
+                "influencers": "/api/influencers",
+                "listings": "/api/listings",
+                "test": "/api/test"
+            }
+        }
+        
+        self.wfile.write(json.dumps(response).encode('utf-8'))
+        return
+    
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+        self.end_headers()
