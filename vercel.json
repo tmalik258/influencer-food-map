@@ -6,15 +6,7 @@
       "use": "@vercel/next"
     },
     {
-      "src": "api/index.py",
-      "use": "@vercel/python"
-    },
-    {
-      "src": "api/test.py", 
-      "use": "@vercel/python"
-    },
-    {
-      "src": "api/restaurants.py",
+      "src": "api/*.py",
       "use": "@vercel/python"
     }
   ]
