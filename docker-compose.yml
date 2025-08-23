@@ -24,13 +24,22 @@ services:
     ports:
       - "4001:3000"
     volumes:
-      - ./frontend:/app
+      # Use bind mount with delegated consistency for better performance
+      - type: bind
+        source: ./frontend
+        target: /app
+        consistency: delegated
       - /app/node_modules
+      - /app/.next
     environment:
+      # Turbopack polling - try different values
+      - TURBOPACK_POLL=500
+      # Fallback environment variables
       - WATCHPACK_POLLING=true
       - CHOKIDAR_USEPOLLING=true
-      # Uncomment the line below if Turbopack HMR doesn't work and you need webpack polling
-      - USE_WEBPACK_POLLING=true
+      - NEXT_TELEMETRY_DISABLED=1
+      # Force file watching
+      - FORCE_COLOR=1
     stdin_open: true
     tty: true
     networks:

@@ -1,19 +1,23 @@
 {
-  "version": 2,
-  "builds": [
+  "buildCommand": "cd frontend && npm run build",
+  "outputDirectory": "frontend/.next",
+  "installCommand": "cd frontend && npm install",
+  "framework": "nextjs",
+  "functions": {
+    "api/**/*.py": {
+      "runtime": "python3.9"
+    }
+  },
+  "rewrites": [
     {
-      "src": "frontend/package.json",
-      "use": "@vercel/next"
-    },
-    {
-      "src": "backend/app/main.py",
-      "use": "@vercel/python"
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "/backend/app/main.py"
+      "dest": "/api/$1"
     },
     {
       "src": "/(.*)",
@@ -21,7 +25,11 @@
     }
   ],
   "env": {
-    "PYTHONPATH": "./backend/app"
+    "PYTHONPATH": "/var/task"
   },
-  "outputDirectory": "frontend/.next"
+  "build": {
+    "env": {
+      "NODE_ENV": "production"
+    }
+  }
 }

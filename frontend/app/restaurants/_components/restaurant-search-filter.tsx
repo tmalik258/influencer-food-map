@@ -52,10 +52,11 @@ export function RestaurantSearchFilter({
             <SelectValue placeholder="Search by" />
           </SelectTrigger>
           <SelectContent className="z-[1000]">
+            <SelectItem value="all">All Fields</SelectItem>
             <SelectItem value="restaurant">Restaurant Name</SelectItem>
             <SelectItem value="influencer">Influencer Name</SelectItem>
             <SelectItem value="video">Video Name</SelectItem>
-            <SelectItem value="tags">Cuisine</SelectItem>
+            <SelectItem value="tags">Tags</SelectItem>
             <SelectItem value="city">City</SelectItem>
           </SelectContent>
         </Select>

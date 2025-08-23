@@ -1,16 +1,6 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Enable webpack polling for Docker file watching
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.watchOptions = {
-        poll: 1000,
-        aggregateTimeout: 300,
-      }
-    }
-    return config
-  },
   images: {
     remotePatterns: [
       {
@@ -48,15 +38,18 @@ const nextConfig: NextConfig = {
     ],
   },
   async rewrites() {
-    // Only use local API proxy in development
+    // API routing configuration
     if (process.env.NODE_ENV === 'development') {
+      // In development, proxy to local backend or Docker backend
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
       return [
         {
           source: '/api/:path*',
-          destination: 'http://backend:8000/:path*/'
+          destination: `${backendUrl}/:path*`
         }
       ]
     }
+    // In production (Vercel), API routes are handled by serverless functions
     return []
   }
 };
