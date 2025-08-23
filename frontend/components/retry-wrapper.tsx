@@ -171,13 +171,13 @@ export default function RetryWrapper({
 }
 
 // Hook for using retry logic in components
-export function useRetry(maxRetries = 3, retryDelay = 1000) {
+export function useRetry<T_Result>(maxRetries = 3, retryDelay = 1000) {
   const [retryState, setRetryState] = useState<RetryState>({
     isRetrying: false,
     retryCount: 0
   });
 
-  const executeWithRetry = useCallback(async (fn: () => Promise<void>) => {
+  const executeWithRetry = useCallback(async (fn: () => Promise<T_Result>) => {
     let currentRetry = 0;
     
     while (currentRetry <= maxRetries) {
@@ -187,14 +187,14 @@ export function useRetry(maxRetries = 3, retryDelay = 1000) {
           retryCount: currentRetry
         });
         
-        await fn();
+        const result = await fn();
         
         // Success - reset state
         setRetryState({
           isRetrying: false,
           retryCount: 0
         });
-        return;
+        return result;
       } catch (error) {
         currentRetry++;
         

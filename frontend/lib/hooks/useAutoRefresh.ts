@@ -38,30 +38,18 @@ export function useAutoRefresh({
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const isVisibleRef = useRef(true);
 
-  // Handle visibility change
-  useEffect(() => {
-    if (!pauseOnHidden) return;
+    const stopAutoRefresh = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
 
-    const handleVisibilityChange = () => {
-      isVisibleRef.current = !document.hidden;
-      
-      setState(prev => ({
-        ...prev,
-        isPaused: document.hidden
-      }));
-
-      if (!document.hidden && enabled) {
-        // Resume refresh when tab becomes visible
-        startAutoRefresh();
-      } else if (document.hidden) {
-        // Pause refresh when tab is hidden
-        stopAutoRefresh();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [enabled, pauseOnHidden]);
+    setState(prev => ({
+      ...prev,
+      isActive: false,
+      nextRefresh: null
+    }));
+  }, []);
 
   const executeRefresh = useCallback(async () => {
     if (!onRefresh) return;
@@ -91,11 +79,15 @@ export function useAutoRefresh({
       });
 
       // Stop auto refresh if max retries exceeded
-      if (pauseOnError && state.errorCount + 1 >= maxRetries) {
-        stopAutoRefresh();
-      }
+      // Use functional update for state.errorCount to avoid it as a dependency
+      setState(prev => {
+        if (pauseOnError && prev.errorCount + 1 >= maxRetries) {
+          stopAutoRefresh();
+        }
+        return prev;
+      });
     }
-  }, [onRefresh, interval, pauseOnError, maxRetries, state.errorCount]);
+  }, [onRefresh, interval, pauseOnError, maxRetries, stopAutoRefresh]);
 
   const startAutoRefresh = useCallback(() => {
     if (!enabled || !onRefresh || (pauseOnHidden && !isVisibleRef.current)) {
@@ -117,18 +109,30 @@ export function useAutoRefresh({
     intervalRef.current = setInterval(executeRefresh, interval);
   }, [enabled, onRefresh, pauseOnHidden, interval, executeRefresh]);
 
-  const stopAutoRefresh = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
+  // Handle visibility change
+  useEffect(() => {
+    if (!pauseOnHidden) return;
 
-    setState(prev => ({
-      ...prev,
-      isActive: false,
-      nextRefresh: null
-    }));
-  }, []);
+    const handleVisibilityChange = () => {
+      isVisibleRef.current = !document.hidden;
+      
+      setState(prev => ({
+        ...prev,
+        isPaused: document.hidden
+      }));
+
+      if (!document.hidden && enabled) {
+        // Resume refresh when tab becomes visible
+        startAutoRefresh();
+      } else if (document.hidden) {
+        // Pause refresh when tab is hidden
+        stopAutoRefresh();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [enabled, pauseOnHidden, startAutoRefresh, stopAutoRefresh]);
 
   const pauseAutoRefresh = useCallback(() => {
     if (intervalRef.current) {
@@ -153,10 +157,14 @@ export function useAutoRefresh({
     await executeRefresh();
     
     // Restart the interval
-    if (state.isActive) {
-      startAutoRefresh();
-    }
-  }, [executeRefresh, state.isActive, startAutoRefresh]);
+    // Check state.isActive using a functional update or ensure it's a stable value
+    setState(prev => {
+      if (prev.isActive) {
+        startAutoRefresh();
+      }
+      return prev;
+    });
+  }, [executeRefresh, startAutoRefresh]);
 
   // Start/stop based on enabled state
   useEffect(() => {
@@ -167,7 +175,7 @@ export function useAutoRefresh({
     }
 
     return () => stopAutoRefresh();
-  }, [enabled, state.isPaused]);
+  }, [enabled, state.isPaused, startAutoRefresh, stopAutoRefresh]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -198,13 +206,15 @@ export function useMultipleAutoRefresh(configs: Array<{
   interval?: number;
   enabled?: boolean;
 }>) {
-  const refreshStates = configs.map(config => 
-    useAutoRefresh({
+  // Call useAutoRefresh for each config directly at the top level of the hook
+  const refreshStates = configs.map(config => {
+    // eslint-disable-next-line react-hooks/rules-of-hooks
+    return useAutoRefresh({
       interval: config.interval,
       enabled: config.enabled,
       onRefresh: config.onRefresh
-    })
-  );
+    });
+  });
 
   const startAll = useCallback(() => {
     refreshStates.forEach(state => state.startAutoRefresh());

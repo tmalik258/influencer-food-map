@@ -71,7 +71,7 @@ export default function LoadingSkeleton({
       {/* Overlapping Cards Skeleton */}
       <div className="relative -mt-32 z-10 max-w-7xl mx-auto px-4">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          {Array.from({ length: 3 }).map((_, i) => renderInfluencerSkeleton())}
+          {Array.from({ length: 3 }).map(() => renderInfluencerSkeleton())}
         </div>
       </div>
     </div>
@@ -79,7 +79,7 @@ export default function LoadingSkeleton({
 
   const renderGridSkeleton = () => (
     <div className={`grid gap-6 ${className}`}>
-      {Array.from({ length: count }).map((_, index) => (
+            {Array.from({ length: count }).map((_, index) => (
         <div key={index} className="space-y-4">
           <Skeleton className="h-4 w-full" />
           <Skeleton className="h-4 w-3/4" />

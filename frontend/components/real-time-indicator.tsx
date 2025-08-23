@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { } from 'react';
 import { Clock, Wifi, WifiOff, RefreshCw, Pause, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -31,16 +31,6 @@ export function RealTimeIndicator({
   onRefreshNow,
   className = ""
 }: RealTimeIndicatorProps) {
-  const [currentTime, setCurrentTime] = useState(new Date());
-
-  // Update current time every second for countdown
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(interval);
-  }, []);
 
   const formatTimeUntilNext = (ms: number) => {
     const seconds = Math.floor(ms / 1000);

@@ -9,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { GridSkeleton, SectionLoading } from "@/components/loading-states";
+import { GridSkeleton } from "@/components/loading-states";
 import RetryWrapper from "@/components/retry-wrapper";
 import { useAutoRefresh } from "@/lib/hooks";
 import { CompactRealTimeIndicator } from "@/components/real-time-indicator";

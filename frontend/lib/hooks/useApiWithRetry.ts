@@ -3,6 +3,12 @@
 import { useState, useCallback, useRef } from 'react';
 import { useRetry } from '@/components/retry-wrapper';
 
+interface PaginationResult {
+  total: number;
+  page: number;
+  limit: number;
+}
+
 interface ApiState<T> {
   data: T | null;
   loading: boolean;
@@ -17,7 +23,7 @@ interface UseApiWithRetryOptions {
   onError?: (error: Error) => void;
 }
 
-export function useApiWithRetry<T>(
+export function useApiWithRetry<T extends PaginationResult>( 
   apiFunction: () => Promise<T>,
   options: UseApiWithRetryOptions = {}
 ) {
@@ -54,23 +60,24 @@ export function useApiWithRetry<T>(
     }));
 
     try {
-      await executeWithRetry(async () => {
-        const result = await apiFunction();
+      const apiResult = await executeWithRetry(async () => {
+        const data = await apiFunction();
         
         // Check if request was aborted
         if (abortControllerRef.current?.signal.aborted) {
           throw new Error('Request was cancelled');
         }
-
-        setState({
-          data: result,
-          loading: false,
-          error: null,
-          retryCount: 0
-        });
-
-        onSuccess?.();
+        return data;
       });
+
+      setState({
+        data: apiResult as T,
+        loading: false,
+        error: null,
+        retryCount: 0
+      });
+
+      onSuccess?.();
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'An unexpected error occurred';
       
@@ -82,6 +89,7 @@ export function useApiWithRetry<T>(
       }));
 
       onError?.(error as Error);
+      return null; // Ensure a value is returned even on error
     }
   }, [apiFunction, executeWithRetry, retryState.retryCount, onSuccess, onError]);
 
@@ -145,12 +153,13 @@ export function usePaginatedApiWithRetry<T>(
     const newLimit = limit || pagination.limit;
     setPagination(prev => ({ ...prev, page, limit: newLimit }));
     
-    const result = await apiWithRetry.execute();
-    if (result && 'data' in result) {
+    await apiWithRetry.execute();
+    // Ensure result is not void and has a 'data' property before proceeding
+    if (apiWithRetry.data != null) {
       setPagination(prev => ({
         ...prev,
-        total: result.total,
-        hasMore: (result.page * result.limit) < result.total
+        total: apiWithRetry.data!.total,
+        hasMore: (apiWithRetry.data!.page * apiWithRetry.data!.limit) < apiWithRetry.data!.total
       }));
     }
   }, [apiWithRetry, pagination.limit]);
