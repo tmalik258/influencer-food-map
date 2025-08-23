@@ -1,26 +1,34 @@
 """
 Main API entry point for Vercel serverless deployment.
-This file serves as the entry point for all API routes.
+This serves the FastAPI application as a Vercel serverless function.
 """
 
 import sys
 import os
 from pathlib import Path
 
-# Add the backend directory to the Python path
+# Add backend to Python path
 backend_path = Path(__file__).parent.parent / "backend"
 sys.path.insert(0, str(backend_path))
 
-# Set environment variables for the application
-os.environ.setdefault('PYTHONPATH', '/var/task')
+# Ensure backend app path is available
+sys.path.insert(0, str(backend_path / "app"))
 
 try:
-    # Import the FastAPI app from the backend
+    # Try importing from backend.app structure
     from backend.app.main import app
 except ImportError:
-    # Fallback import in case the path structure is different in Vercel
-    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
-    from app.main import app
+    try:
+        # Fallback: try direct app import
+        from app.main import app
+    except ImportError:
+        # Last resort: add current directory and try again
+        sys.path.insert(0, os.path.dirname(__file__))
+        sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'backend'))
+        from backend.app.main import app
 
-# Export the app for Vercel
-app = app
+# This is what Vercel will use
+handler = app
+
+# For compatibility
+application = app
