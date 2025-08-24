@@ -5,26 +5,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Star } from "lucide-react";
 import Image from "next/image";
 import ErrorCard from "@/components/error-card";
-
-interface GoogleReview {
-  author_name: string;
-  author_url?: string;
-  language: string;
-  profile_photo_url: string;
-  rating: number;
-  relative_time_description: string;
-  text: string;
-  time: number;
-}
-
-interface GoogleReviewsResponse {
-  result: {
-    reviews: GoogleReview[];
-    rating: number;
-    user_ratings_total: number;
-  };
-  status: string;
-}
+import { googleReviewsActions } from "@/lib/actions/google-reviews-actions";
+import { GoogleReview } from "@/types/google-reviews";
 
 interface GoogleReviewsProps {
   placeId: string;
@@ -42,19 +24,10 @@ export default function GoogleReviews({ placeId, className = "" }: GoogleReviews
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(`/api/google-reviews?placeId=${placeId}`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch reviews: ${response.statusText}`);
-      }
-      const data: GoogleReviewsResponse = await response.json();
-      
-      if (data.status === 'OK' && data.result) {
-        setReviews(data.result.reviews || []);
-        setRating(data.result.rating || 0);
-        setTotalRatings(data.result.user_ratings_total || 0);
-      } else {
-        throw new Error('No reviews found');
-      }
+      const data = await googleReviewsActions.getGoogleReviews(placeId);
+      setReviews(data.reviews || []);
+      setRating(data.rating || 0);
+      setTotalRatings(data.user_ratings_total || 0);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load reviews');
     } finally {
@@ -119,7 +92,7 @@ export default function GoogleReviews({ placeId, className = "" }: GoogleReviews
                 <Image
                   width={40}
                   height={40}
-                  src={review.profile_photo_url}
+                  src={review.profile_photo_url || ""}
                   alt={review.author_name}
                   className="w-10 h-10 rounded-full object-cover"
                   onError={(e) => {

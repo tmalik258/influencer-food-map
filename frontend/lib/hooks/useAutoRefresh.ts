@@ -168,14 +168,14 @@ export function useAutoRefresh({
 
   // Start/stop based on enabled state
   useEffect(() => {
-    if (enabled && !state.isPaused) {
+    if (enabled) {
       startAutoRefresh();
     } else {
       stopAutoRefresh();
     }
 
     return () => stopAutoRefresh();
-  }, [enabled, state.isPaused, startAutoRefresh, stopAutoRefresh]);
+  }, [enabled, startAutoRefresh, stopAutoRefresh]);
 
   // Cleanup on unmount
   useEffect(() => {

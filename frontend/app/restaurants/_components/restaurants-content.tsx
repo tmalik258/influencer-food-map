@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { MapPin, ArrowLeft, Grid3X3, Map, X } from "lucide-react";
-import { Restaurant, Listing, Tag } from "@/types";
+import { Restaurant, Tag } from "@/types";
 import { getSearchPlaceholder } from "@/lib/utils/search-utils";
-import { useRestaurants, useListings } from "@/lib/hooks";
+import { useRestaurants } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RestaurantSkeletonLoader } from "@/app/restaurants/_components/restaurant-skeleton-loader";
@@ -41,10 +41,6 @@ export function RestaurantsContent() {
   const [filteredRestaurants, setFilteredRestaurants] = useState<Restaurant[]>(
     []
   );
-  const [restaurantListings, setRestaurantListings] = useState<Listing[]>([]);
-  const [filteredLatestListings, setFilteredLatestListings] = useState<
-    Listing[]
-  >([]);
   // Initialize selected tags from URL parameters
   const tagsParam = searchParams.get("tags");
   const initialSelectedTags: Tag[] = tagsParam
@@ -149,41 +145,34 @@ export function RestaurantsContent() {
 
   const {
     restaurants,
-    loading: restaurantsLoading,
-    error: restaurantsError,
+    loading,
+    error,
     searchByCity,
-    fetchRestaurants,
+    fetchRestaurantsWithListings,
   } = useRestaurants();
-  const { listings, loading: listingsLoading, fetchListings } = useListings();
-
   const handleRefresh = () => {
     if (city) {
-      searchByCity(city);
+      searchByCity(city, true, false); // Include listings, exclude video details for performance
     } else {
-      fetchRestaurants();
+      fetchRestaurantsWithListings(undefined, false); // Fetch with listings, exclude video details
     }
-    fetchListings({ limit: 200 });
   };
-
-  const loading = restaurantsLoading || listingsLoading;
-  const error = restaurantsError;
 
   useEffect(() => {
     const loadData = async () => {
       try {
         if (city) {
-          await searchByCity(city);
+          await searchByCity(city, true, false); // Include listings, exclude video details for performance
         } else {
-          await fetchRestaurants();
+          await fetchRestaurantsWithListings(undefined, false); // Fetch with listings, exclude video details
         }
-        await fetchListings({ limit: 200 });
       } catch (error) {
         console.error("Error loading restaurants data:", error);
       }
     };
 
     loadData();
-  }, [city, searchByCity, fetchRestaurants, fetchListings]);
+  }, [city, searchByCity, fetchRestaurantsWithListings]);
 
   // Set up filtered restaurants and listings
   useEffect(() => {
@@ -216,20 +205,34 @@ export function RestaurantsContent() {
                 tag.name.toLowerCase().includes(query)
               );
             case "influencer":
-              return restaurantListings.some(
+              return restaurant?.listings?.some(
                 (listing) =>
-                  listing.restaurant.id === restaurant.id &&
                   listing.influencer.name.toLowerCase().includes(query)
               );
-            case "video":
-              return restaurantListings.some(
-                (listing) =>
-                  listing.restaurant.id === restaurant.id &&
-                  (listing.video.title.toLowerCase().includes(query) ||
-                    listing.video.description?.toLowerCase().includes(query))
-              );
+            // case "video":
+            //   return restaurant?.listings?.some(
+            //     (listing) =>
+            //       (listing.video.title.toLowerCase().includes(query) ||
+            //         listing.video.description?.toLowerCase().includes(query))
+            //   );
             default:
-              return true;
+              return (
+                restaurant.name.toLowerCase().includes(query) ||
+                restaurant.city?.toLowerCase().includes(query) ||
+                restaurant.tags?.some((tag) =>
+                  tag.name.toLowerCase().includes(query)
+                ) ||
+                restaurant?.listings?.some(
+                  (listing) =>
+                    listing.influencer.name.toLowerCase().includes(query)
+                )
+                //  ||
+                // restaurant?.listings?.some(
+                //   (listing) =>
+                //     listing.video.title.toLowerCase().includes(query) ||
+                //     listing.video.description?.toLowerCase().includes(query)
+                // )
+              );
           }
         });
       }
@@ -250,59 +253,7 @@ export function RestaurantsContent() {
 
       setFilteredRestaurants(filtered);
     }
-  }, [
-    restaurants,
-    searchQuery,
-    searchType,
-    sortBy,
-    restaurantListings,
-    selectedTags,
-  ]);
-
-  // Set up restaurant listings
-  useEffect(() => {
-    if (listings.length > 0) {
-      setRestaurantListings(listings);
-    }
-  }, [listings]);
-
-  // Set up filtered latest listings based on filtered restaurants
-  useEffect(() => {
-    if (restaurantListings.length > 0 && filteredRestaurants.length > 0) {
-      const filteredRestaurantIds = new Set(
-        filteredRestaurants.map((r) => r.id)
-      );
-
-      const filtered = restaurantListings
-        .filter((listing) => filteredRestaurantIds.has(listing.restaurant.id))
-        .sort((a, b) => {
-          // Apply the same sorting logic as the main restaurant list
-          switch (sortBy) {
-            case "name":
-              return a.restaurant.name.localeCompare(b.restaurant.name);
-            case "rating":
-              return (
-                (b.restaurant.google_rating || 0) -
-                (a.restaurant.google_rating || 0)
-              );
-            case "city":
-              return (a.restaurant.city || "").localeCompare(
-                b.restaurant.city || ""
-              );
-            default:
-              // Default to created_at in descending order (newest first)
-              const dateA = new Date(a.created_at || 0).getTime();
-              const dateB = new Date(b.created_at || 0).getTime();
-              return dateB - dateA;
-          }
-        })
-        .slice(0, 3); // Get only the 3 latest
-
-      setFilteredLatestListings(filtered);
-    } else {
-      setFilteredLatestListings([]);
-    }
-  }, [restaurantListings, filteredRestaurants, sortBy]);
+  }, [restaurants, searchQuery, searchType, sortBy, selectedTags]);
 
   if (loading) {
     return (
@@ -408,6 +359,7 @@ export function RestaurantsContent() {
         </div>
 
         <RestaurantSearchFilter
+          city={city}
           searchQuery={searchQuery}
           setSearchQuery={updateSearchQuery}
           searchType={searchType}
@@ -451,14 +403,10 @@ export function RestaurantsContent() {
                   Search by:
                 </span>
                 <span>
-                  {searchType === "all"
-                    ? "All Fields"
-                    : searchType === "restaurant"
+                  {searchType === "restaurant"
                     ? "Restaurant Name"
                     : searchType === "influencer"
                     ? "Influencer Name"
-                    : searchType === "video"
-                    ? "Video Name"
                     : searchType === "tags"
                     ? "Tags"
                     : searchType === "city"
@@ -567,14 +515,13 @@ export function RestaurantsContent() {
                 filteredRestaurants={filteredRestaurants}
                 selectedRestaurant={selectedRestaurant}
                 setSelectedRestaurant={setSelectedRestaurant}
-                restaurantListings={restaurantListings}
               />
             )}
 
             {/* Latest Listings Section (only for map view) */}
-            {viewMode === "map" && filteredLatestListings.length > 0 && (
+            {viewMode === "map" && filteredRestaurants.length > 0 && (
               <RestaurantLatestListings
-                restaurantListings={filteredLatestListings}
+                restaurants={filteredRestaurants.slice(0,3)}
               />
             )}
 
@@ -582,7 +529,6 @@ export function RestaurantsContent() {
             {viewMode === "grid" && (
               <RestaurantGridView
                 filteredRestaurants={filteredRestaurants}
-                restaurantListings={restaurantListings}
               />
             )}
           </>

@@ -5,7 +5,7 @@ from sqlalchemy import update
 
 from app.models import Listing
 from app.database import get_db
-from app.api_schema.listings import ListingResponse
+from app.api_schema.listings import ListingLightResponse
 
 router = APIRouter()
 

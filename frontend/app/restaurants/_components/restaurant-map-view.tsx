@@ -2,31 +2,24 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Quote } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import RestaurantMap from "@/components/dynamic-restaurant-map";
 import RatingStars from "@/components/rating-stars";
-import { Restaurant, Listing } from "@/types/index";
+import { Restaurant } from "@/types/index";
 
 interface RestaurantMapViewProps {
   filteredRestaurants: Restaurant[];
   selectedRestaurant: Restaurant | null;
   setSelectedRestaurant: (restaurant: Restaurant | null) => void;
-  restaurantListings: Listing[];
 }
 
 export function RestaurantMapView({
   filteredRestaurants,
   selectedRestaurant,
   setSelectedRestaurant,
-  restaurantListings,
 }: RestaurantMapViewProps) {
-  // Find listing for selected restaurant to get influencer info
-  const getRestaurantListing = (restaurantId: string) => {
-    return restaurantListings.find(listing => listing.restaurant.id === restaurantId);
-  };
-
   return (
     <div className="mb-8">
       <RestaurantMap
@@ -79,40 +72,7 @@ export function RestaurantMapView({
                     </span>
                   ))}
                 </div>
-                
-                {/* Influencer Information */}
-                {(() => {
-                  const listing = getRestaurantListing(selectedRestaurant.id);
-                  if (listing && listing.influencer) {
-                    const influencers = Array.isArray(listing.influencer) ? listing.influencer : [listing.influencer];
 
-                    return (
-                      <div className="mt-4 p-3 bg-white/50 rounded-lg border border-orange-200">
-                        {influencers.map((influencer, index) => (
-                          <div key={index} className="mb-4 last:mb-0">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="text-sm font-medium text-gray-600">Featured by:</span>
-                              <span className="text-sm font-semibold text-orange-700">
-                                {influencer.name}
-                              </span>
-                            </div>
-                            {listing.quotes && listing.quotes.length > 0 && (
-                              <div className="space-y-2">
-                                {listing.quotes.map((quote, quoteIndex) => (
-                                  <blockquote key={quoteIndex} className="text-sm text-gray-700 italic border-l-2 border-orange-300 pl-3">
-                                    &quot;{quote}&quot;
-                                  </blockquote>
-                                ))}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    );
-                  }
-                  return null;
-                })()}
-                
                 <div className="mt-6 flex flex-wrap gap-3">
                   <Button asChild>
                     <Link href={`/restaurants/${selectedRestaurant.id}`}>
@@ -133,6 +93,59 @@ export function RestaurantMapView({
                   )}
                 </div>
               </div>
+            </div>
+            <div>
+              {/* Influencer Information */}
+              {selectedRestaurant.listings?.map((listing, index) => {
+                const influencer = listing.influencer;
+                return (
+                  <div
+                    key={index}
+                    className="mt-4 p-3 bg-white/50 rounded-lg border border-orange-200"
+                  >
+                    {influencer && (
+                      <div className="mb-4 last:mb-0">
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-medium text-gray-600">
+                            Featured by:
+                          </span>
+                          {influencer.avatar_url && (
+                            <Image
+                              src={influencer.avatar_url}
+                              alt={`${influencer.name} avatar`}
+                              width={20}
+                              height={20}
+                              className="rounded-full mr-1"
+                            />
+                          )}
+                          <span className="text-sm font-semibold text-orange-700">
+                            {influencer.name}
+                          </span>
+                        </div>
+                        {listing.quotes && listing.quotes.length > 0 && (
+                          <div className="space-y-2">
+                            {listing.quotes.map(
+                              (quote: string, quoteIndex: number) => (
+                                <div
+                                  key={quoteIndex}
+                                  className="p-3 bg-gray-50 rounded-lg border-l-4 border-orange-500"
+                                >
+                                  <div className="flex items-start gap-2">
+                                    <Quote className="w-4 h-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                                    <blockquote className="text-gray-700 italic text-sm">
+                                      &quot;{quote}&quot;
+                                    </blockquote>
+                                  </div>
+                                </div>
+                              )
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </CardContent>
         </Card>

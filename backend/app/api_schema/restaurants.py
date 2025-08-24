@@ -1,10 +1,13 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, TYPE_CHECKING
 from uuid import UUID
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 
 from app.api_schema.tags import TagResponse
+
+if TYPE_CHECKING:
+    from app.api_schema.listings import ListingLightResponse
 
 class RestaurantResponse(BaseModel):
     id: UUID
@@ -22,5 +25,27 @@ class RestaurantResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     tags: Optional[list[TagResponse]] = None
+    listings: Optional[List["ListingLightResponse"]] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class CityRestaurantsResponse(BaseModel):
+    """Response model for city with its top restaurants"""
+    city: str
+    restaurants: List[RestaurantResponse]
+    
+    model_config = ConfigDict(from_attributes=True)
+
+class OptimizedFeaturedResponse(BaseModel):
+    """Response model for optimized featured cities and restaurants"""
+    cities: List[CityRestaurantsResponse]
+    
+    model_config = ConfigDict(from_attributes=True)
+
+# Rebuild models to resolve forward references
+def rebuild_models():
+    """Rebuild models to resolve forward references after all imports are complete"""
+    from app.api_schema.listings import ListingLightResponse
+    RestaurantResponse.model_rebuild()
+    CityRestaurantsResponse.model_rebuild()
+    OptimizedFeaturedResponse.model_rebuild()

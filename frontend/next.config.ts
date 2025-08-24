@@ -29,7 +29,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'source.unsplash.com',
+        hostname: 'images.pexels.com',
       },
       {
         protocol: 'https',
@@ -41,11 +41,11 @@ const nextConfig: NextConfig = {
     // API routing configuration
     if (process.env.NODE_ENV === 'development') {
       // In development, proxy to local backend or Docker backend
-      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+      const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8030';
       return [
         {
           source: '/api/:path*',
-          destination: `${backendUrl}/:path*`
+          destination: `${backendUrl}/:path*/`
         }
       ]
     }

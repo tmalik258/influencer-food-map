@@ -1,42 +1,34 @@
 "use client";
-
-
 import Image from "next/image";
-import { useState } from "react";
+
+import { usePexelsImage } from "@/lib/hooks/use-pexels-image";
 
 interface RestaurantHeroSectionProps {
   city: string;
 }
 
 export function RestaurantHeroSection({ city }: RestaurantHeroSectionProps) {
-  const [isLoading, setIsLoading] = useState(true);
+  const { imageUrl: pexelsImageUrl, loading } = usePexelsImage({
+    query: "food" + " " + city,
+  });
 
+  const finalImageUrl = pexelsImageUrl;
   console.log("RestaurantHeroSection rendered. City:", city);
-
-  // Generate image URL based on city prop using Picsum for reliability
-  const imageUrl = city 
-    ? `https://picsum.photos/1920/1080?random=${encodeURIComponent(city)}` 
-    : `https://picsum.photos/1920/1080?random=restaurant`;
-
-  console.log("Image URL:", imageUrl);
 
   return (
     <div className="relative min-h-[70vh] rounded-lg pt-10 flex items-center justify-center overflow-hidden">
-      {isLoading && (
+      {loading || !finalImageUrl ? (
         <div className="absolute inset-0 z-0 bg-gray-200 animate-pulse" />
+      ) : (
+        <Image
+          src={finalImageUrl}
+          alt="Cityscape background"
+          fill
+          className="object-cover"
+          priority
+          decoding="async"
+        />
       )}
-      <Image
-        src={imageUrl}
-        alt="Cityscape background"
-        fill
-        className="object-cover"
-        priority
-        onLoadingComplete={() => setIsLoading(false)}
-        onError={() => {
-          console.log("Image failed to load:", imageUrl);
-          setIsLoading(false);
-        }}
-      />
       <div className="absolute inset-0 bg-black/60"></div>
       <div className="relative z-10 text-center text-white px-4">
         <p className="text-lg font-semibold mb-2">

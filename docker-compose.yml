@@ -18,34 +18,42 @@ services:
     links:
       - "redis:redis"
 
-  frontend:
-    build: ./frontend
-    container_name: food_frontend
-    ports:
-      - "4001:3000"
-    volumes:
-      # Use bind mount with delegated consistency for better performance
-      - type: bind
-        source: ./frontend
-        target: /app
-        consistency: delegated
-      - /app/node_modules
-      - /app/.next
-    environment:
-      # Turbopack polling - try different values
-      - TURBOPACK_POLL=500
-      # Fallback environment variables
-      - WATCHPACK_POLLING=true
-      - CHOKIDAR_USEPOLLING=true
-      - NEXT_TELEMETRY_DISABLED=1
-      # Force file watching
-      - FORCE_COLOR=1
-    stdin_open: true
-    tty: true
-    networks:
-      - food-network
-    depends_on:
-      - backend
+  # frontend:
+  #   build: ./frontend
+  #   container_name: food_frontend
+  #   ports:
+  #     - "4001:3000"
+  #   volumes:
+  #     # Use delegated consistency for better file watching of nested directories
+  #     - type: bind
+  #       source: ./frontend
+  #       target: /app
+  #       consistency: delegated
+  #     - /app/node_modules
+  #     - /app/.next
+  #     - /app/.turbo
+  #   environment:
+  #     # Essential for Turbopack in Docker
+  #     - NODE_ENV=development
+  #     - NEXT_TELEMETRY_DISABLED=1
+  #     - FORCE_COLOR=1
+  #     # File watching configuration for Docker
+  #     - WATCHPACK_POLLING=true
+  #     - CHOKIDAR_USEPOLLING=true
+  #     - CHOKIDAR_INTERVAL=1000
+  #     # Turbopack specific polling
+  #     - TURBO_FORCE=true
+  #     # Increase inotify limits (if supported)
+  #     - FS_INOTIFY_MAX_USER_WATCHES=524288
+  #   stdin_open: true
+  #   tty: true
+  #   networks:
+  #     - food-network
+  #   depends_on:
+  #     - backend
+  #   privileged: false
+  #   security_opt:
+  #     - no-new-privileges:true
 
   redis:
     image: redis:alpine

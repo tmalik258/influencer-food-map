@@ -4,21 +4,19 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Restaurant, Listing } from "@/types";
-import RatingStars from "@/components/rating-stars";
+import { Star } from "lucide-react";
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
-  restaurantListings: Listing[];
+  listings: Listing[];
+  showButton?: boolean; // Optional prop to control button visibility
 }
 
 export function RestaurantCard({
   restaurant,
-  restaurantListings,
+  listings,
+  showButton = true,
 }: RestaurantCardProps) {
-  const currentRestaurantListings = restaurantListings.filter(
-    (listing) => listing.restaurant?.id === restaurant.id
-  );
-
   return (
     <Card
       key={restaurant.id}
@@ -40,23 +38,17 @@ export function RestaurantCard({
             </span>
           </div>
         )}
-        {currentRestaurantListings.length > 0 && (
-          <div className="absolute top-4 left-4">
-            <Badge className="bg-orange-500 text-white px-3 py-1">
-              {currentRestaurantListings[0].influencer?.name}
-            </Badge>
-          </div>
-        )}
         {restaurant.google_rating && (
           <div className="absolute top-4 right-4">
             <Badge className="bg-black/70 text-white px-2 py-1 flex items-center">
-              <RatingStars rating={1} /> {restaurant.google_rating}
+              <Star className="h-5 w-5 fill-current text-orange-400" />{" "}
+              {restaurant.google_rating}
             </Badge>
           </div>
         )}
       </div>
       <CardContent className="p-0 flex flex-col flex-grow gap-3">
-        <div className="flex-grow">
+        <div className="">
           <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">
             {restaurant.name}
           </h3>
@@ -73,14 +65,46 @@ export function RestaurantCard({
                 </Badge>
               ))}
           </p>
-          <p className="text-sm text-gray-500">{restaurant.address}</p>
+          {/* <p className="text-sm text-gray-500">{restaurant.address}</p> */}
         </div>
-        <Button
-          asChild
-          className="w-full mt-auto bg-orange-500 text-white hover:bg-orange-600"
-        >
-          <Link href={`/restaurants/${restaurant.id}`}>View Details</Link>
-        </Button>
+        <div className="flex-grow flex flex-col ">
+          {listings && listings.length > 0 && (
+            <div className="my-auto">
+              {/* <h4 className="text-md font-semibold text-gray-800 mb-2">Influencers:</h4> */}
+              {listings.map((listing) => (
+                <div key={listing.id} className="flex items-center mb-2">
+                  {listing.influencer && listing.influencer.avatar_url && (
+                    <Image
+                      width={32}
+                      height={32}
+                      src={listing.influencer?.avatar_url}
+                      alt={listing.influencer.name}
+                      className="w-8 h-8 rounded-full mr-2 object-cover"
+                    />
+                  )}
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">
+                      {listing.influencer?.name}
+                    </p>
+                    {listing.quotes && listing.quotes.length > 0 && (
+                      <p className="text-xs text-gray-500 italic line-clamp-3">
+                        &quot;{listing.quotes?.[1]}&quot;
+                      </p>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        {showButton !== false && (
+          <Button
+            asChild
+            className="w-full mt-auto bg-orange-500 text-white hover:bg-orange-600"
+          >
+            <Link href={`/restaurants/${restaurant.id}`}>View Details</Link>
+          </Button>
+        )}
       </CardContent>
     </Card>
   );

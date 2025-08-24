@@ -29,15 +29,30 @@ export const useRestaurants = (params?: SearchParams) => {
     [params]
   );
 
-  const searchByCity = useCallback(async (city: string) => {
+  const searchByCity = useCallback(async (city: string, includeListings = false, includeVideoDetails = false) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await restaurantActions.searchRestaurantsByCity(city);
+      const data = await restaurantActions.searchRestaurantsByCity(city, includeListings, includeVideoDetails);
       setRestaurants(data);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to search restaurants"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchRestaurantsWithListings = useCallback(async (searchParams?: SearchParams, includeVideoDetails = false) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await restaurantActions.getRestaurantsWithListings(searchParams, includeVideoDetails);
+      setRestaurants(data);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch restaurants with listings"
       );
     } finally {
       setLoading(false);
@@ -49,12 +64,13 @@ export const useRestaurants = (params?: SearchParams) => {
     loading,
     error,
     fetchRestaurants,
+    fetchRestaurantsWithListings,
     searchByCity,
     refetch: () => fetchRestaurants(params),
   };
 };
 
-export const useRestaurant = (id: string) => {
+export const useRestaurant = (id: string, includeListings = false, includeVideoDetails = true) => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -65,7 +81,7 @@ export const useRestaurant = (id: string) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await restaurantActions.getRestaurant(id);
+      const data = await restaurantActions.getRestaurant(id, includeListings, includeVideoDetails);
       setRestaurant(data);
     } catch (err) {
       setError(
@@ -74,7 +90,7 @@ export const useRestaurant = (id: string) => {
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, includeListings, includeVideoDetails]);
 
   useEffect(() => {
     fetchRestaurant();
@@ -86,4 +102,9 @@ export const useRestaurant = (id: string) => {
     error,
     refetch: fetchRestaurant,
   };
+};
+
+// New hook specifically for fetching restaurant with listings (replaces useRestaurantListings)
+export const useRestaurantWithListings = (id: string, includeVideoDetails = false) => {
+  return useRestaurant(id, true, includeVideoDetails);
 };

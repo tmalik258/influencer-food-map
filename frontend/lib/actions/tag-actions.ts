@@ -8,6 +8,7 @@ export const tagActions = {
   async getTags(params?: {
     name?: string;
     id?: string;
+    city?: string;
     skip?: number;
     limit?: number;
   }): Promise<Tag[]> {
@@ -54,11 +55,12 @@ export const tagActions = {
   /**
    * Get all available cuisine tags
    */
-  async getAllTags(limit = 100): Promise<Tag[]> {
+  async getAllTags(limit = 100, city?: string): Promise<Tag[]> {
     try {
       const response = await api.get('/tags/', {
         params: {
           limit,
+          city,
         },
       });
       return response.data;

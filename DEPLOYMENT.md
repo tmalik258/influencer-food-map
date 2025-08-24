@@ -13,6 +13,7 @@ This guide explains how to deploy the Influencer Food Map application to Vercel 
 ### Step 1: Prepare Your Repository
 
 Ensure your repository has these files (already configured):
+
 - `vercel.json` - Vercel configuration
 - `requirements.txt` - Python dependencies (root level)
 - `api/index.py` - API entry point
@@ -39,13 +40,15 @@ Ensure your repository has these files (already configured):
 Go to your Vercel project dashboard → Settings → Environment Variables and add:
 
 #### Required Database Variables
-```
+
+```env
 DATABASE_URL=postgresql://user:password@host:5432/dbname
 ASYNC_DATABASE_URL=postgresql+asyncpg://user:password@host:5432/dbname
 ```
 
 #### Required Service Variables
-```
+
+```env
 REDIS_URL=redis://user:password@host:6379
 SUPABASE_URL=https://your-project-id.supabase.co
 SUPABASE_ANON_KEY=your_anon_key
@@ -53,14 +56,16 @@ SUPABASE_JWT_SECRET=your_jwt_secret
 ```
 
 #### Required API Keys
-```
+
+```env
 OPENAI_API_KEY=sk-your-openai-key
 YOUTUBE_API_KEY=your-youtube-api-key
 GOOGLE_MAPS_API_KEY=your-google-maps-key
 ```
 
 #### Application Configuration
-```
+
+```env
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your-secure-password
 CHUNK_SIZE=1000
@@ -72,6 +77,7 @@ PYTHONPATH=/var/task
 ### Step 4: Redeploy
 
 After setting environment variables:
+
 1. Go to Deployments tab
 2. Click "Redeploy" on the latest deployment
 
@@ -142,15 +148,18 @@ alembic upgrade head
 ## API Keys Setup
 
 ### OpenAI API
+
 1. Get API key from [platform.openai.com](https://platform.openai.com)
 2. Add billing method for API usage
 
 ### YouTube Data API
+
 1. Go to [Google Cloud Console](https://console.cloud.google.com)
 2. Enable YouTube Data API v3
 3. Create credentials (API Key)
 
 ### Google Maps API
+
 1. Enable Maps JavaScript API and Places API
 2. Create API key with proper restrictions
 
@@ -168,21 +177,25 @@ After deployment, test these endpoints:
 ### Common Issues
 
 #### Build Failures
+
 - Check all environment variables are set
 - Verify Python dependencies in `requirements.txt`
 - Check Node.js version compatibility
 
 #### API Errors (500/404)
+
 - Verify `api/index.py` is properly configured
 - Check Python import paths
 - Ensure all environment variables are available
 
 #### Database Connection Issues
+
 - Test database URL format
 - Check firewall/IP restrictions
 - Verify SSL requirements
 
 #### Function Timeouts
+
 - Optimize database queries
 - Reduce external API calls
 - Consider caching strategies
@@ -194,6 +207,7 @@ After deployment, test these endpoints:
    - Click on individual function invocations
 
 2. **Local Testing**:
+
    ```bash
    # Test backend locally
    cd backend
@@ -205,6 +219,7 @@ After deployment, test these endpoints:
    ```
 
 3. **Environment Variables**:
+
    ```bash
    # Check if variables are loaded
    curl https://your-app.vercel.app/api/
@@ -213,16 +228,19 @@ After deployment, test these endpoints:
 ## Performance Optimization
 
 ### Frontend
+
 - Enable Next.js Image Optimization
 - Implement proper caching headers
 - Use dynamic imports for heavy components
 
 ### Backend
+
 - Optimize database queries
 - Implement response caching
 - Use connection pooling
 
 ### Database
+
 - Create proper indexes
 - Use read replicas if needed
 - Implement query optimization

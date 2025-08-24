@@ -91,7 +91,7 @@ export function useApiWithRetry<T extends PaginationResult>(
       onError?.(error as Error);
       return null; // Ensure a value is returned even on error
     }
-  }, [apiFunction, executeWithRetry, retryState.retryCount, onSuccess, onError]);
+  }, [apiFunction, executeWithRetry, onSuccess, onError]);
 
   const reset = useCallback(() => {
     // Cancel any ongoing request

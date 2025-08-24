@@ -8,12 +8,14 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 
 interface TagFilterDropdownProps {
+  city?: string;
   selectedTags: Tag[];
   onTagsChange: (tags: Tag[]) => void;
   className?: string;
 }
 
 export function TagFilterDropdown({
+  city,
   selectedTags,
   onTagsChange,
   className = "",
@@ -23,8 +25,8 @@ export function TagFilterDropdown({
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    fetchAllTags();
-  }, [fetchAllTags]);
+    fetchAllTags(100, city);
+  }, [fetchAllTags, city]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

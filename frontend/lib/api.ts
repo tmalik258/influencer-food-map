@@ -11,7 +11,7 @@ export { listingActions as listingApi } from './actions/listing-actions';
 // Base API instance - still used by action files
 const api = axios.create({
   baseURL: '/api',
-  timeout: 10000,
+  timeout: 30000,
 });
 
 export default api;

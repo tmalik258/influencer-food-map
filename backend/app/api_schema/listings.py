@@ -1,5 +1,5 @@
+from typing import List, Optional, TYPE_CHECKING
 from uuid import UUID
-from typing import List, Optional
 from datetime import date, datetime
 
 from pydantic import BaseModel
@@ -11,9 +11,24 @@ from app.api_schema.influencers import InfluencerResponse
 
 class ListingResponse(BaseModel):
     id: UUID
-    restaurant: RestaurantResponse
-    video: VideoResponse
-    influencer: InfluencerResponse
+    restaurant: RestaurantResponse | UUID
+    video: Optional[VideoResponse | UUID] = None
+    influencer: Optional[InfluencerResponse | UUID] = None
+    visit_date: Optional[date] = None
+    quotes: Optional[List[str]] = None
+    context: Optional[List[str]] = None
+    confidence_score: Optional[float] = None
+    approved: Optional[bool] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class ListingLightResponse(BaseModel):
+    id: UUID
+    restaurant_id: Optional[UUID] = None
+    video: Optional[VideoResponse | UUID] = None
+    influencer: Optional[InfluencerResponse | UUID] = None
     visit_date: Optional[date] = None
     quotes: Optional[List[str]] = None
     context: Optional[List[str]] = None

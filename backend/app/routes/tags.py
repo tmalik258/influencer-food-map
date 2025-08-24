@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from sqlalchemy.orm import Session
 
-from app.models import Tag
+from app.models import Tag, Restaurant, RestaurantTag
 from app.database import get_db
 from app.api_schema.tags import TagResponse
 
@@ -15,6 +15,7 @@ def get_tags(
     db: Session = Depends(get_db),
     name: str | None = None,
     id: str | None = None,
+    city: str | None = None,
     skip: int = 0,
     limit: int = 100
 ):
@@ -25,6 +26,8 @@ def get_tags(
             query = query.filter(Tag.name.ilike(f"%{name}%"))
         if id:
             query = query.filter(Tag.id == id)
+        if city:
+            query = query.join(Tag.restaurant_tags).join(RestaurantTag.restaurant).filter(Restaurant.city.ilike(f"%{city}%"))
         tags = query.offset(skip).limit(limit).all()
         return tags
     except Exception as e:

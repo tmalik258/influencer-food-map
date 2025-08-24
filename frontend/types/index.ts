@@ -21,6 +21,7 @@ export interface Restaurant {
   created_at: string;
   updated_at: string;
   videos?: Video[];
+  listings?: Listing[];
 }
 
 export interface Influencer {
@@ -71,10 +72,21 @@ export interface SearchParams {
   skip?: number;
   limit?: number;
   approved_status?: string;
+  include_listings?: boolean;
+  include_video_details?: boolean;
 }
 
 export interface ApiResponse<T> {
   data: T;
   message?: string;
   error?: string;
+}
+
+export interface CityRestaurants {
+  city: string;
+  restaurants: Restaurant[];
+}
+
+export interface OptimizedFeaturedResponse {
+  cities: CityRestaurants[];
 }

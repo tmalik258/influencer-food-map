@@ -74,6 +74,8 @@ async def get_google_reviews(
             }
             formatted_reviews.append(formatted_review)
         
+        logger.info(f"Fetched {len(formatted_reviews)} reviews for place ID {place_id}")
+        
         return {
             "status": "OK",
             "result": {

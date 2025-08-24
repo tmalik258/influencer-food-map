@@ -12,6 +12,7 @@ export const useTags = () => {
   const fetchTags = useCallback(async (params?: {
     name?: string;
     id?: string;
+    city?: string;
     skip?: number;
     limit?: number;
   }) => {
@@ -29,11 +30,11 @@ export const useTags = () => {
     }
   }, []);
 
-  const fetchAllTags = useCallback(async (limit = 100) => {
+  const fetchAllTags = useCallback(async (limit = 100, city?: string) => {
     setLoading(true);
     setError(null);
     try {
-      const data = await tagActions.getAllTags(limit);
+      const data = await tagActions.getAllTags(limit, city);
       setTags(data);
     } catch (err) {
       setError(
