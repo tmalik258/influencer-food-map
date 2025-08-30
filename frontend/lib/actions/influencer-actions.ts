@@ -1,14 +1,45 @@
-import { Influencer, SearchParams } from '@/types';
 import api from '../api';
 
-export const influencerActions = {
-  getInfluencers: async (params?: SearchParams): Promise<Influencer[]> => {
-    const response = await api.get('/influencers', { params });
+const influencerActions = {
+  getInfluencers: async (params?: {
+    name?: string;
+    id?: string;
+    youtube_channel_id?: string;
+    youtube_channel_url?: string;
+    skip?: number;
+    limit?: number;
+    include_listings?: boolean;
+    include_video_details?: boolean;
+  }) => {
+    const response = await api.get("/influencers/", { params });
     return response.data;
   },
-  
-  getInfluencer: async (id: string): Promise<Influencer> => {
-    const response = await api.get(`/influencers/${id}`);
+
+  getInfluencer: async (id: string, params?: {
+    include_listings?: boolean;
+    include_video_details?: boolean;
+  }) => {
+    const response = await api.get(`/influencers/${id}/`, { params });
     return response.data;
-  }
+  },
+
+  getInfluencersWithListings: async (params?: {
+    name?: string;
+    id?: string;
+    youtube_channel_id?: string;
+    youtube_channel_url?: string;
+    skip?: number;
+    limit?: number;
+    include_video_details?: boolean;
+  }) => {
+    const response = await api.get("/influencers/", {
+      params: {
+        ...params,
+        include_listings: true,
+      },
+    });
+    return response.data;
+  },
 };
+
+export { influencerActions };

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Listing, SearchParams } from '@/types';
+import { Listing, SearchParams } from '@/lib/types';
 import { listingActions } from '@/lib/actions';
 
 export const useListings = (params?: SearchParams) => {
@@ -98,6 +98,38 @@ export const useRestaurantListings = (restaurantId: string) => {
     loading,
     error,
     refetch: fetchListings
+  };
+};
+
+export const useMostRecentListing = (influencerId: string) => {
+  const [listing, setListing] = useState<Listing | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchMostRecentListing = useCallback(async () => {
+    if (!influencerId) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await listingActions.getMostRecentListingByInfluencer(influencerId);
+      setListing(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch most recent listing');
+    } finally {
+      setLoading(false);
+    }
+  }, [influencerId]);
+
+  useEffect(() => {
+    fetchMostRecentListing();
+  }, [fetchMostRecentListing]);
+
+  return {
+    listing,
+    loading,
+    error,
+    refetch: fetchMostRecentListing
   };
 };
 

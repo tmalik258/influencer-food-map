@@ -1,4 +1,4 @@
-import { GoogleReviewsResponse } from "@/types/google-reviews";
+import { GoogleReviewsResponse } from "@/lib/types/google-reviews";
 import api from "../api";
 
 export const googleReviewsActions = {

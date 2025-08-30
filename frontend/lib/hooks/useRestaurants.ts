@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Restaurant, SearchParams } from "@/types";
+import { Restaurant, SearchParams } from "@/lib/types";
 import { restaurantActions } from "@/lib/actions";
 
 export const useRestaurants = (params?: SearchParams) => {

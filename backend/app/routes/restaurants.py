@@ -119,12 +119,28 @@ async def get_restaurants(
             if include_listings and restaurant.listings:
                 listings_data = []
                 for listing in restaurant.listings:
+                    # Create InfluencerResponse manually to avoid lazy loading issues
+                    influencer_response = InfluencerResponse(
+                        id=listing.influencer.id,
+                        name=listing.influencer.name,
+                        bio=listing.influencer.bio,
+                        avatar_url=listing.influencer.avatar_url,
+                        banner_url=listing.influencer.banner_url,
+                        region=listing.influencer.region,
+                        youtube_channel_id=listing.influencer.youtube_channel_id,
+                        youtube_channel_url=listing.influencer.youtube_channel_url,
+                        subscriber_count=listing.influencer.subscriber_count,
+                        created_at=listing.influencer.created_at,
+                        updated_at=listing.influencer.updated_at,
+                        listings=None  # Explicitly set to None to avoid lazy loading
+                    )
+                    
                     if include_video_details:
                         listing_response = ListingLightResponse(
                             id=listing.id,
                             restaurant_id=listing.restaurant.id,
                             video=VideoResponse.model_validate(listing.video),
-                            influencer=InfluencerResponse.model_validate(listing.influencer),
+                            influencer=influencer_response,
                             visit_date=listing.visit_date,
                             quotes=listing.quotes,
                             created_at=listing.created_at,
@@ -134,7 +150,7 @@ async def get_restaurants(
                         listing_response = ListingLightResponse(
                             id=listing.id,
                             restaurant_id=listing.restaurant.id,
-                            influencer=InfluencerResponse.model_validate(listing.influencer),
+                            influencer=influencer_response,
                             video=listing.video.id,
                             visit_date=listing.visit_date,
                             quotes=listing.quotes,
@@ -247,10 +263,26 @@ def get_featured_optimized(db: Session = Depends(get_db)):
                 for listing in restaurant.listings:
                     if listing.influencer:
                         # Create optimized listing with only essential data
+                        # Manually construct InfluencerResponse to avoid lazy loading issues
+                        influencer_response = InfluencerResponse(
+                            id=listing.influencer.id,
+                            name=listing.influencer.name,
+                            bio=listing.influencer.bio,
+                            avatar_url=listing.influencer.avatar_url,
+                            banner_url=listing.influencer.banner_url,
+                            region=listing.influencer.region,
+                            youtube_channel_id=listing.influencer.youtube_channel_id,
+                            youtube_channel_url=listing.influencer.youtube_channel_url,
+                            subscriber_count=listing.influencer.subscriber_count,
+                            created_at=listing.influencer.created_at,
+                            updated_at=listing.influencer.updated_at,
+                            listings=None  # Explicitly set to None to avoid lazy loading
+                        )
+                        
                         listing_optimized = ListingLightResponse(
                             id=listing.id,
                             restaurant_id=listing.restaurant.id,
-                            influencer=InfluencerResponse.model_validate(listing.influencer),
+                            influencer=influencer_response,
                             visit_date=listing.visit_date,
                             quotes=listing.quotes,
                             context=listing.context,
@@ -312,18 +344,66 @@ def get_restaurant(
         if not restaurant:
             raise HTTPException(status_code=404, detail="Restaurant not found")
         
-        # Convert to response format
-        restaurant_data = RestaurantResponse.model_validate(restaurant)
+        # Convert to response format - manually construct to avoid validation issues
+        restaurant_data = RestaurantResponse(
+            id=restaurant.id,
+            name=restaurant.name,
+            address=restaurant.address,
+            latitude=restaurant.latitude,
+            longitude=restaurant.longitude,
+            city=restaurant.city,
+            country=restaurant.country,
+            google_place_id=restaurant.google_place_id,
+            google_rating=restaurant.google_rating,
+            business_status=restaurant.business_status,
+            photo_url=restaurant.photo_url,
+            is_active=restaurant.is_active,
+            created_at=restaurant.created_at,
+            updated_at=restaurant.updated_at,
+            tags=[TagResponse.model_validate(rt.tag) for rt in restaurant.restaurant_tags] if restaurant.restaurant_tags else None,
+            listings=None  # Will be set separately if needed
+        )
         
         if include_listings and restaurant.listings:
             listings_data = []
             for listing in restaurant.listings:
+                # Create InfluencerResponse manually to avoid lazy loading issues
+                influencer_response = InfluencerResponse(
+                    id=listing.influencer.id,
+                    name=listing.influencer.name,
+                    bio=listing.influencer.bio,
+                    avatar_url=listing.influencer.avatar_url,
+                    banner_url=listing.influencer.banner_url,
+                    region=listing.influencer.region,
+                    youtube_channel_id=listing.influencer.youtube_channel_id,
+                    youtube_channel_url=listing.influencer.youtube_channel_url,
+                    subscriber_count=listing.influencer.subscriber_count,
+                    created_at=listing.influencer.created_at,
+                    updated_at=listing.influencer.updated_at,
+                    listings=None  # Explicitly set to None to avoid lazy loading
+                )
+                
                 if include_video_details:
+                    # Manually construct VideoResponse to avoid validation issues
+                    video_response = VideoResponse(
+                        id=listing.video.id,
+                        influencer_id=listing.video.influencer_id,
+                        youtube_video_id=listing.video.youtube_video_id,
+                        title=listing.video.title,
+                        description=listing.video.description,
+                        video_url=listing.video.video_url,
+                        published_at=listing.video.published_at,
+                        transcription=listing.video.transcription,
+                        summary=getattr(listing.video, 'summary', None),
+                        created_at=listing.video.created_at,
+                        updated_at=listing.video.updated_at
+                    )
+                    
                     listing_response = ListingLightResponse(
                         id=listing.id,
                         restaurant=listing.restaurant.id,
-                        video=VideoResponse.model_validate(listing.video),
-                        influencer=InfluencerResponse.model_validate(listing.influencer),
+                        video=video_response,
+                        influencer=influencer_response,
                         visit_date=listing.visit_date,
                         quotes=listing.quotes,
                         created_at=listing.created_at,
@@ -334,7 +414,7 @@ def get_restaurant(
                         id=listing.id,
                         restaurant=listing.restaurant.id,
                         video=listing.video.id,
-                        influencer=InfluencerResponse.model_validate(listing.influencer),
+                        influencer=influencer_response,
                         visit_date=listing.visit_date,
                         quotes=listing.quotes,
                         created_at=listing.created_at,

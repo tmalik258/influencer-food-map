@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Video } from '@/types';
+import { Video } from '@/lib/types';
 import { videoActions } from '@/lib/actions';
 
 export const useVideos = (params?: {

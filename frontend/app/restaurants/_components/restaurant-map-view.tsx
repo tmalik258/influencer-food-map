@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import RestaurantMap from "@/components/dynamic-restaurant-map";
 import RatingStars from "@/components/rating-stars";
-import { Restaurant } from "@/types/index";
+import { Restaurant } from "@/lib/types/index";
 
 interface RestaurantMapViewProps {
   filteredRestaurants: Restaurant[];

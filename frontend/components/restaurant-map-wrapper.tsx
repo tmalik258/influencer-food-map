@@ -1,13 +1,13 @@
 'use client';
 
 import React from 'react';
-import { Restaurant } from '@/types';
+import { Restaurant } from '@/lib/types';
 import dynamic from 'next/dynamic';
 
 interface RestaurantMapProps {
-  restaurants: Restaurant[];
-  selectedRestaurant?: Restaurant | null;
-  onRestaurantSelect?: (restaurant: Restaurant | null) => void;
+  restaurants: (Restaurant | null)[];
+  selectedRestaurant?: (Restaurant | null);
+  onRestaurantSelect?: (restaurant: (Restaurant | null)) => void;
   className?: string;
 }
 

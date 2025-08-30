@@ -1,14 +1,14 @@
 "use client";
 
 import React, { useEffect, useState, useRef } from "react";
-import { Restaurant } from "@/types";
+import { Restaurant } from "@/lib/types";
 import { MapPin, Star } from "lucide-react";
 import Image from "next/image";
 
 interface RestaurantMapProps {
-  restaurants: Restaurant[];
-  selectedRestaurant?: Restaurant | null;
-  onRestaurantSelect?: (restaurant: Restaurant | null) => void;
+  restaurants: (Restaurant | null)[];
+  selectedRestaurant?: (Restaurant | null);
+  onRestaurantSelect?: (restaurant: (Restaurant | null)) => void;
   className?: string;
 }
 
@@ -26,7 +26,7 @@ const RestaurantMapClient: React.FC<RestaurantMapProps> = ({
     Marker: typeof import("react-leaflet").Marker;
     Popup: typeof import("react-leaflet").Popup;
     createCustomIcon: (isHighlighted?: boolean) => L.DivIcon;
-    MapBounds: React.FC<{ restaurants: Restaurant[] }>;
+    MapBounds: React.FC<{ restaurants: (Restaurant | null)[] }>;
   } | null>(null);
 
   useEffect(() => {
@@ -84,18 +84,18 @@ const RestaurantMapClient: React.FC<RestaurantMapProps> = ({
           const MapBoundsComponent = ({
             restaurants,
           }: {
-            restaurants: Restaurant[];
+            restaurants: (Restaurant | null)[];
           }) => {
             const map = reactLeaflet.useMap();
 
             React.useEffect(() => {
               if (restaurants.length > 0) {
                 const validRestaurants = restaurants.filter(
-                  (r) => r.latitude && r.longitude
+                  (r) => r?.latitude && r?.longitude
                 );
                 if (validRestaurants.length > 0) {
                   const bounds = L.latLngBounds(
-                    validRestaurants.map((r) => [r.latitude!, r.longitude!])
+                    validRestaurants.map((r) => [r?.latitude ?? 0, r?.longitude ?? 0])
                   );
                   map.fitBounds(bounds, { padding: [20, 20] });
                 }
@@ -126,7 +126,7 @@ const RestaurantMapClient: React.FC<RestaurantMapProps> = ({
 
   // Filter restaurants that have coordinates
   const mappableRestaurants = restaurants.filter(
-    (r) => r.latitude && r.longitude
+    (r) => r?.latitude && r?.longitude
   );
 
   // Default center (Kuala Lumpur based on the data)
@@ -208,12 +208,12 @@ const RestaurantMapClient: React.FC<RestaurantMapProps> = ({
         <MapBounds restaurants={mappableRestaurants} />
 
         {mappableRestaurants.map((restaurant) => {
-          const isSelected = selectedRestaurant?.id === restaurant.id;
+          const isSelected = selectedRestaurant?.id === restaurant?.id;
 
           return (
             <Marker
-              key={restaurant.id}
-              position={[restaurant.latitude!, restaurant.longitude!]}
+              key={restaurant?.id}
+              position={[restaurant?.latitude ?? 0, restaurant?.longitude ?? 0]}
               icon={createCustomIcon(isSelected)}
               eventHandlers={{
                 click: () => {
@@ -230,7 +230,7 @@ const RestaurantMapClient: React.FC<RestaurantMapProps> = ({
                   <div
                     className="flex items-start gap-3 cursor-pointer hover:bg-gray-50 transition-colors duration-200 p-2 rounded-lg"
                     onClick={() => {
-                      if (restaurant.google_place_id) {
+                      if (restaurant?.google_place_id) {
                         window.open(
                           `https://www.google.com/maps/place/?q=place_id:${restaurant.google_place_id}`,
                           "_blank",
@@ -252,25 +252,25 @@ const RestaurantMapClient: React.FC<RestaurantMapProps> = ({
                         />
                       ) : (
                         <span className="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center">
-                          {restaurant.name.charAt(0)}
+                          {restaurant?.name.charAt(0)}
                         </span>
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-bold text-slate-900 text-sm mb-1 truncate">
-                        {restaurant.name}
+                        {restaurant?.name}
                       </h3>
                       <div className="flex items-center text-slate-600 mb-2">
                         <MapPin className="w-3 h-3 mr-1" />
                         <span className="text-xs truncate">
-                          {restaurant.city}
+                          {restaurant?.city}
                         </span>
                       </div>
-                      {restaurant.google_rating && (
+                      {restaurant?.google_rating && (
                         <div className="flex items-center mb-2">
                           <Star className="w-3 h-3 text-yellow-500 fill-current mr-1" />
                           <span className="text-xs font-medium">
-                            {restaurant.google_rating}
+                            {restaurant?.google_rating}
                           </span>
                         </div>
                       )}

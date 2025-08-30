@@ -1,4 +1,4 @@
-import { Video } from '@/types';
+import { Video } from '@/lib/types';
 import api from '../api';
 
 export const videoActions = {

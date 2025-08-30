@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { OptimizedFeaturedResponse } from '@/types';
+import { OptimizedFeaturedResponse } from '@/lib/types';
 import { restaurantActions } from '@/lib/actions';
 
 export const useFeaturedOptimized = () => {

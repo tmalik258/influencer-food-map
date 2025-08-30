@@ -34,9 +34,12 @@ export interface Influencer {
   youtube_channel_id: string;
   youtube_channel_url?: string;
   subscriber_count?: number;
+  total_videos?: number;
+  unique_restaurants?: number;
   created_at: string;
   updated_at: string;
   videos?: Video[];
+  listings?: Listing[];
 }
 
 export interface Video {
@@ -54,9 +57,12 @@ export interface Video {
 
 export interface Listing {
   id: string;
-  restaurant: Restaurant;
-  video: Video;
-  influencer: Influencer;
+  restaurant_id?: string;
+  restaurant?: Restaurant;
+  video_id?: string;
+  video?: Video;
+  influencer_id?: string;
+  influencer?: Influencer;
   visit_date?: string;
   quotes?: string[];
   context?: string[];

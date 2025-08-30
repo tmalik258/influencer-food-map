@@ -9,7 +9,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Search } from "lucide-react";
-import { Tag } from "@/types";
+import { Tag } from "@/lib/types";
 import { TagFilterDropdown } from "./tag-filter-dropdown";
 
 interface RestaurantSearchFilterProps {

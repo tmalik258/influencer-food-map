@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { Tag } from "@/types";
+import { Tag } from "@/lib/types";
 import { tagActions } from "@/lib/actions";
 
 export const useTags = () => {

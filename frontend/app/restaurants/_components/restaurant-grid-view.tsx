@@ -1,7 +1,7 @@
 "use client";
 
 import { RestaurantCard } from "@/components/restaurant-card";
-import { Restaurant } from "@/types/index";
+import { Restaurant } from "@/lib/types/index";
 
 interface RestaurantGridViewProps {
   filteredRestaurants: Restaurant[];

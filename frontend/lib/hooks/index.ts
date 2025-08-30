@@ -1,6 +1,8 @@
 export { useRestaurants, useRestaurant, useRestaurantWithListings } from './useRestaurants';
-export { useInfluencers, useInfluencer } from './useInfluencers';
-export { useListings, useListing, useRestaurantListings, useInfluencerListings } from './useListings';
+export { useRestaurantsPaginated } from './useRestaurantsPaginated';
+export { useInfluencers, useInfluencer, useInfluencersWithListings, useInfluencerWithListings } from './useInfluencers';
+export { useInfluencersPaginated } from './useInfluencersPaginated';
+export { useListings, useListing, useRestaurantListings, useInfluencerListings, useMostRecentListing } from './useListings';
 export { usePopularCities } from './usePopularCities';
 export { useApiWithRetry, usePaginatedApiWithRetry } from './useApiWithRetry';
 export { useAutoRefresh, useMultipleAutoRefresh } from './useAutoRefresh';

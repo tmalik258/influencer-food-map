@@ -1,0 +1,102 @@
+'use client';
+
+import { useState, useEffect, useCallback } from 'react';
+import { Influencer } from '@/lib/types';
+import { influencerActions } from '@/lib/actions';
+
+interface PaginatedInfluencersParams {
+  name?: string;
+  id?: string;
+  youtube_channel_id?: string;
+  youtube_channel_url?: string;
+  include_video_details?: boolean;
+  page?: number;
+  limit?: number;
+}
+
+interface PaginatedInfluencersResponse {
+  influencers: Influencer[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export const useInfluencersPaginated = (initialParams?: PaginatedInfluencersParams) => {
+  const [data, setData] = useState<PaginatedInfluencersResponse>({
+    influencers: [],
+    total: 0,
+    page: 1,
+    limit: 12,
+    totalPages: 0
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [params, setParams] = useState<PaginatedInfluencersParams>({
+    page: 1,
+    limit: 12,
+    ...initialParams
+  });
+
+  const fetchInfluencers = useCallback(async (searchParams?: PaginatedInfluencersParams) => {
+    const currentParams = searchParams || params;
+    const { page = 1, limit = 12, ...otherParams } = currentParams;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await influencerActions.getInfluencersWithListings({
+        ...otherParams,
+        skip: (page - 1) * limit,
+        limit
+      });
+      
+      // For now, we'll simulate pagination response structure
+      // In a real implementation, the API should return total count
+      const influencers = Array.isArray(response) ? response : response.influencers || [];
+      const total = response.total || influencers.length;
+      const totalPages = Math.ceil(total / limit);
+      
+      setData({
+        influencers,
+        total,
+        page,
+        limit,
+        totalPages
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch influencers');
+    } finally {
+      setLoading(false);
+    }
+  }, [params]);
+
+  const updateParams = useCallback((newParams: Partial<PaginatedInfluencersParams>) => {
+    setParams(prev => ({ ...prev, ...newParams }));
+  }, []);
+
+  const goToPage = useCallback((page: number) => {
+    updateParams({ page });
+  }, [updateParams]);
+
+  const setSearchQuery = useCallback((name: string) => {
+    updateParams({ name, page: 1 }); // Reset to first page when searching
+  }, [updateParams]);
+
+  useEffect(() => {
+    fetchInfluencers(params);
+  }, [params, fetchInfluencers]);
+
+  return {
+    ...data,
+    loading,
+    error,
+    params,
+    fetchInfluencers,
+    updateParams,
+    goToPage,
+    setSearchQuery,
+    refetch: () => fetchInfluencers(params)
+  };
+};

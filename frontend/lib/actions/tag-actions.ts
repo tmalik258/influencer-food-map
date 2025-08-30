@@ -1,4 +1,4 @@
-import { Tag } from '@/types';
+import { Tag } from '@/lib/types';
 import api from '../api';
 
 export const tagActions = {

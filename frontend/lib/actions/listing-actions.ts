@@ -1,4 +1,4 @@
-import { Listing, SearchParams } from '@/types';
+import { Listing, SearchParams } from '@/lib/types';
 import api from '../api';
 
 export const listingActions = {
@@ -24,5 +24,17 @@ export const listingActions = {
       params: { influencer_id: influencerId, approved_status: 'Approved' } 
     });
     return response.data;
+  },
+  
+  getMostRecentListingByInfluencer: async (influencerId: string): Promise<Listing | null> => {
+    const response = await api.get('/listings', { 
+      params: { 
+        influencer_id: influencerId, 
+        approved: true,
+        sort_by_published_date: true,
+        limit: 1
+      } 
+    });
+    return response.data.length > 0 ? response.data[0] : null;
   }
 };

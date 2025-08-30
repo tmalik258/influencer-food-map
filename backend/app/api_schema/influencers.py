@@ -1,8 +1,11 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, TYPE_CHECKING
 from uuid import UUID
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
+
+if TYPE_CHECKING:
+    from app.api_schema.listings import ListingLightResponse
 
 class InfluencerResponse(BaseModel):
     id: UUID
@@ -16,5 +19,11 @@ class InfluencerResponse(BaseModel):
     subscriber_count: Optional[int] = None
     created_at: datetime
     updated_at: datetime
+    listings: Optional[List["ListingLightResponse"]] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+# Import after class definition to avoid circular imports
+def rebuild_models():
+    from app.api_schema.listings import ListingLightResponse
+    InfluencerResponse.model_rebuild()

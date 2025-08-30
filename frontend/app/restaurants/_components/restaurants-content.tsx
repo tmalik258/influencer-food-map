@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { MapPin, ArrowLeft, Grid3X3, Map, X } from "lucide-react";
-import { Restaurant, Tag } from "@/types";
+import { Restaurant, Tag } from "@/lib/types";
 import { getSearchPlaceholder } from "@/lib/utils/search-utils";
-import { useRestaurants } from "@/lib/hooks";
+import { useRestaurantsPaginated } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { RestaurantSkeletonLoader } from "@/app/restaurants/_components/restaurant-skeleton-loader";
@@ -16,6 +16,7 @@ import { RestaurantSearchFilter } from "./restaurant-search-filter";
 import { RestaurantGridView } from "./restaurant-grid-view";
 import { RestaurantMapView } from "./restaurant-map-view";
 import { RestaurantLatestListings } from "./restaurant-latest-listings";
+import RestaurantsPagination from "./restaurants-pagination";
 import ErrorCard from "@/components/error-card";
 
 export function RestaurantsContent() {
@@ -76,6 +77,7 @@ export function RestaurantsContent() {
       : pathname;
 
     router.push(newUrl);
+    setCityFilter("");
   };
 
   // Function to update URL with selected tags
@@ -109,6 +111,7 @@ export function RestaurantsContent() {
 
     router.replace(newUrl, { scroll: false });
     setSearchQuery(query);
+    updateSearchQueryPaginated(query);
   };
 
   // Function to update search type with URL parameter
@@ -147,32 +150,21 @@ export function RestaurantsContent() {
     restaurants,
     loading,
     error,
-    searchByCity,
-    fetchRestaurantsWithListings,
-  } = useRestaurants();
+    page,
+    totalPages,
+    goToPage,
+    setSearchQuery: updateSearchQueryPaginated,
+    setCityFilter,
+    refetch,
+  } = useRestaurantsPaginated({
+    city: city || undefined,
+    name: searchQuery || undefined,
+  });
   const handleRefresh = () => {
-    if (city) {
-      searchByCity(city, true, false); // Include listings, exclude video details for performance
-    } else {
-      fetchRestaurantsWithListings(undefined, false); // Fetch with listings, exclude video details
-    }
+    refetch();
   };
 
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        if (city) {
-          await searchByCity(city, true, false); // Include listings, exclude video details for performance
-        } else {
-          await fetchRestaurantsWithListings(undefined, false); // Fetch with listings, exclude video details
-        }
-      } catch (error) {
-        console.error("Error loading restaurants data:", error);
-      }
-    };
-
-    loadData();
-  }, [city, searchByCity, fetchRestaurantsWithListings]);
+  // Data loading is handled by useRestaurantsPaginated hook automatically
 
   // Set up filtered restaurants and listings
   useEffect(() => {
@@ -527,9 +519,17 @@ export function RestaurantsContent() {
 
             {/* Grid View */}
             {viewMode === "grid" && (
-              <RestaurantGridView
-                filteredRestaurants={filteredRestaurants}
-              />
+              <>
+                <RestaurantGridView
+                  filteredRestaurants={filteredRestaurants}
+                />
+                <RestaurantsPagination
+                  currentPage={page}
+                  totalPages={totalPages}
+                  onPageChange={goToPage}
+                  loading={loading}
+                />
+              </>
             )}
           </>
         )}

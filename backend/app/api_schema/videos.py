@@ -13,7 +13,6 @@ class VideoResponse(BaseModel):
     video_url: str
     published_at: Optional[datetime] = None
     transcription: Optional[str] = None
-    summary: Optional[str] = None
     created_at: datetime
     updated_at: datetime
 

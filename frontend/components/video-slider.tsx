@@ -11,7 +11,7 @@ import {
   CarouselPrevious,
 } from "@/components/ui/carousel";
 
-import { Video } from '@/types';
+import { Video } from '@/lib/types';
 
 interface VideoSliderProps {
   videos: Video[];

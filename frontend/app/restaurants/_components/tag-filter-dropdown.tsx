@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Check, ChevronDown, Tag as TagIcon } from "lucide-react";
-import { Tag } from "@/types";
+import { Tag } from "@/lib/types";
 import { useTags } from "@/lib/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";

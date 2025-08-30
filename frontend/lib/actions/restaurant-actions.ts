@@ -1,5 +1,5 @@
 import api from '../api';
-import { Restaurant, SearchParams, OptimizedFeaturedResponse } from '@/types';
+import { Restaurant, SearchParams, OptimizedFeaturedResponse } from '@/lib/types';
 
 export const restaurantActions = {
   getRestaurants: async (params?: SearchParams): Promise<Restaurant[]> => {

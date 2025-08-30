@@ -6,7 +6,7 @@ import { Star } from "lucide-react";
 import Image from "next/image";
 import ErrorCard from "@/components/error-card";
 import { googleReviewsActions } from "@/lib/actions/google-reviews-actions";
-import { GoogleReview } from "@/types/google-reviews";
+import { GoogleReview } from "@/lib/types/google-reviews";
 
 interface GoogleReviewsProps {
   placeId: string;

@@ -10,7 +10,7 @@ import {
   type CarouselApi,
 } from "@/components/ui/carousel";
 import Link from "next/link";
-import { OptimizedFeaturedResponse } from "@/types";
+import { OptimizedFeaturedResponse } from "@/lib/types";
 import { RestaurantCard } from "@/components/restaurant-card";
 import React, { useEffect, useState } from "react";
 

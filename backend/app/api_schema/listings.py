@@ -1,5 +1,5 @@
-from typing import List, Optional, TYPE_CHECKING
 from uuid import UUID
+from typing import List, Optional
 from datetime import date, datetime
 
 from pydantic import BaseModel
