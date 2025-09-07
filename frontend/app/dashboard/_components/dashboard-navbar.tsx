@@ -71,7 +71,7 @@ export function DashboardNavbar() {
   };
 
   return (
-    <header className="sticky top-2 z-50 ml-2 w-[calc(100vw-1rem)] border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 shadow-lg rounded-md">
+    <header className="sticky top-2 z-50 ml-2 w-[calc(100vw-1rem)] border-b border-border/40 bg-background/80 backdrop-blur-xl supports-[backdrop-filter]:bg-background/60 shadow-lg rounded-md px-5">
       <div className="container mx-auto flex h-16 items-center">
         <div className="hidden md:flex">
           <Link href="/dashboard" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">

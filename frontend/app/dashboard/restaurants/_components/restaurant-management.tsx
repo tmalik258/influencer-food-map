@@ -1,58 +1,81 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { 
-  Search, 
-  Plus, 
-  Edit, 
-  Trash2, 
-  MapPin, 
-  Star, 
-  Clock,
-  Filter,
-} from "lucide-react";
-
-import { 
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useRestaurants } from "@/lib/hooks";
+import {
+  Table,
+  TableBody,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import { useRestaurantsPaginated, useAdminRestaurant } from "@/lib/hooks";
 import { Restaurant } from "@/lib/types";
-import LoadingSkeleton from "@/components/loading-skeleton";
-
-
+import { RestaurantFilters } from "./restaurant-filters";
+import { RestaurantTableRow } from "./restaurant-table-row";
+import { RestaurantLoading } from "./restaurant-loading";
+import ErrorCard from "@/components/error-card";
+import { DeleteConfirmationModal } from "@/components/delete-confirmation-modal";
+import { MapPin, Star } from "lucide-react";
+import { toast } from "sonner";
 
 export function RestaurantManagement() {
-  const { restaurants, fetchRestaurants, loading, error, refetch } = useRestaurants();
+  const {
+    restaurants,
+    total,
+    page,
+    totalPages,
+    loading,
+    error,
+    goToPage,
+    refetch,
+  } = useRestaurantsPaginated({ limit: 10 });
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedTag, setSelectedTag] = useState<string>("all");
+  const [selectedCuisine, setSelectedCuisine] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("name");
+  const [filteredRestaurants, setFilteredRestaurants] = useState<Restaurant[]>([]);
 
-  useEffect(() => {
-    fetchRestaurants();
-  }, [fetchRestaurants]); // Only run once on mount
+  const router = useRouter();
+  const { deleteRestaurant, loading: deleteLoading } = useAdminRestaurant();
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+  const [restaurantToDelete, setRestaurantToDelete] = useState<string | null>(null);
 
   const handleEdit = (restaurant: Restaurant) => {
-    // TODO: Open edit modal or navigate to edit page
-    console.log("Edit restaurant:", restaurant);
+    router.push(`/dashboard/restaurants/${restaurant.id}?mode=edit`);
   };
 
   const handleDelete = (id: string) => {
-    // TODO: Show confirmation dialog and delete restaurant
-    console.log("Delete restaurant:", id);
+    setRestaurantToDelete(id);
+    setDeleteModalOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!restaurantToDelete) return;
+    
+    try {
+      await deleteRestaurant(restaurantToDelete);
+      toast.success("Restaurant deleted successfully");
+      refetch(); // Refresh the list
+      setDeleteModalOpen(false);
+      setRestaurantToDelete(null);
+    } catch (error) {
+      toast.error("Failed to delete restaurant");
+    }
   };
 
   const handleView = (restaurant: Restaurant) => {
-    // TODO: Navigate to restaurant detail page
-    console.log("View restaurant:", restaurant);
+    router.push(`/dashboard/restaurants/${restaurant.id}`);
   };
 
   const handleAddNew = () => {
@@ -60,202 +83,242 @@ export function RestaurantManagement() {
     console.log("Add new restaurant");
   };
 
+  const handleSearch = (value: string) => {
+    if (value.trim()) {
+      setSearchTerm(value.trim());
+    } else {
+      setSearchTerm("");
+    }
+  };
+
+  // Client-side filtering logic
+  useEffect(() => {
+    if (restaurants && restaurants.length > 0) {
+      let filtered = [...restaurants];
+
+      // Apply search filter
+      if (searchTerm.trim()) {
+        const query = searchTerm.toLowerCase();
+        filtered = filtered.filter((restaurant) => {
+          return (
+            restaurant.name.toLowerCase().includes(query) ||
+            restaurant.city?.toLowerCase().includes(query) ||
+            restaurant.address?.toLowerCase().includes(query) ||
+            restaurant.tags?.some((tag) =>
+              tag.name.toLowerCase().includes(query)
+            ) ||
+            restaurant.cuisines?.some((cuisine) =>
+              cuisine.name.toLowerCase().includes(query)
+            )
+          );
+        });
+      }
+
+      // Apply tag filter
+      if (selectedTag !== "all") {
+        filtered = filtered.filter((restaurant) => {
+          return restaurant.tags?.some((tag) => tag.name === selectedTag);
+        });
+      }
+
+      // Apply cuisine filter
+      if (selectedCuisine !== "all") {
+        filtered = filtered.filter((restaurant) => {
+          return restaurant.cuisines?.some((cuisine) => cuisine.name === selectedCuisine);
+        });
+      }
+
+      // Apply sorting
+      filtered.sort((a, b) => {
+        switch (sortBy) {
+          case "name":
+            return a.name.localeCompare(b.name);
+          case "rating":
+            return (b.google_rating || 0) - (a.google_rating || 0);
+          case "city":
+            return (a.city || "").localeCompare(b.city || "");
+          case "updated":
+            return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+          default:
+            return 0;
+        }
+      });
+
+      setFilteredRestaurants(filtered);
+    } else {
+      setFilteredRestaurants([]);
+    }
+  }, [restaurants, searchTerm, selectedTag, selectedCuisine, sortBy]);
+
   if (loading) {
-    return <LoadingSkeleton variant="restaurant" count={6} />;
+    return <RestaurantLoading count={6} />;
   }
 
   if (error) {
     return (
-      <Card>
-        <CardContent className="pt-6 text-center text-orange-600">
-          <p>Failed to load restaurants: {error}</p>
-          <Button onClick={() => refetch()} className="mt-4">
-            Retry
-          </Button>
-        </CardContent>
-      </Card>
+      <ErrorCard
+        title="Failed to Load Restaurants"
+        message="We&apos;re having trouble loading your restaurant data. Please check your connection and try again."
+        error={error}
+        onRefresh={() => refetch()}
+        showRefreshButton={true}
+      />
     );
   }
 
-  // Filter and sort restaurants
-  const filteredRestaurants = restaurants?.filter(restaurant => {
-    const matchesSearch = restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         restaurant.address?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         restaurant.city?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTag = selectedTag === "all" || 
-                      restaurant.tags?.some(tag => tag.name === selectedTag);
-    return matchesSearch && matchesTag;
-  }) || [];
-
-  const sortedRestaurants = [...filteredRestaurants].sort((a, b) => {
-    switch (sortBy) {
-      case "name":
-        return a.name.localeCompare(b.name);
-      case "rating":
-        return (b.google_rating || 0) - (a.google_rating || 0);
-      case "city":
-        return (a.city || '').localeCompare(b.city || '');
-      case "updated":
-        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
-      default:
-        return 0;
-    }
-  });
-
-  // Get unique tags for filter
-  const allTags = restaurants?.flatMap(r => r.tags || []) || [];
-  const uniqueTags = Array.from(new Set(allTags.map(tag => tag.name))).sort();
+  // Get unique tags for filter (from all restaurants data)
+  const allTags = restaurants?.flatMap((r) => r.tags || []) || [];
+  const uniqueTags = Array.from(new Set(allTags.map((tag) => tag.name))).sort();
+  
+  // Get unique cuisines for filter (from all restaurants data)
+  const allCuisines = restaurants?.flatMap((r) => r.cuisines || []) || [];
+  const uniqueCuisines = Array.from(new Set(allCuisines.map((cuisine) => cuisine.name))).sort();
 
   return (
     <div className="space-y-6">
       {/* Header Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="flex flex-1 gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search restaurants..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <Select value={selectedTag} onValueChange={setSelectedTag}>
-            <SelectTrigger className="w-48">
-              <Filter className="h-4 w-4 mr-2" />
-              <SelectValue placeholder="Filter by tag" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Tags</SelectItem>
-              {uniqueTags.map(tag => (
-                <SelectItem key={tag} value={tag}>
-                  {tag}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">Name</SelectItem>
-              <SelectItem value="rating">Rating</SelectItem>
-              <SelectItem value="city">City</SelectItem>
-              <SelectItem value="updated">Last Updated</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <Button onClick={handleAddNew}>
-          <Plus className="h-4 w-4 mr-2" />
-          Add Restaurant
-        </Button>
-      </div>
+      <RestaurantFilters
+        searchTerm={searchTerm}
+        selectedTag={selectedTag}
+        selectedCuisine={selectedCuisine}
+        sortBy={sortBy}
+        uniqueTags={uniqueTags}
+        uniqueCuisines={uniqueCuisines}
+        onSearchChange={handleSearch}
+        onTagChange={setSelectedTag}
+        onCuisineChange={setSelectedCuisine}
+        onSortChange={setSortBy}
+        onAddNew={handleAddNew}
+      />
 
       {/* Results Summary */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Showing {sortedRestaurants.length} of {restaurants?.length || 0} restaurants
+          Showing {filteredRestaurants.length} of {total || 0} restaurants
+          {(searchTerm || selectedTag !== "all" || selectedCuisine !== "all") && " (filtered)"}
+          {" "} (Page {page} of {totalPages})
         </p>
       </div>
 
       {/* Restaurant Table */}
-      {sortedRestaurants.length === 0 ? (
+      {filteredRestaurants.length === 0 ? (
         <Card>
           <CardContent className="pt-6 text-center text-muted-foreground">
-            <p>No restaurants found matching your criteria.</p>
+            <p>
+              {restaurants?.length === 0
+                ? "No restaurants found."
+                : "No restaurants match your current filters."}
+            </p>
+            {(searchTerm || selectedTag !== "all" || selectedCuisine !== "all") && (
+              <p className="text-xs mt-2">
+                Try adjusting your search terms or filters.
+              </p>
+            )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => {
+          setDeleteModalOpen(false);
+          setRestaurantToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        title="Delete Restaurant"
+        description="Are you sure you want to delete this restaurant? This action cannot be undone."
+        isLoading={deleteLoading}
+      />
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card className="p-0">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
-                  <TableHead>Location</TableHead>
-                  <TableHead>Rating</TableHead>
+                  <TableHead>
+                    <div className="inline-flex items-center gap-2">
+                      <MapPin className="h-4 w-4 text-muted-foreground" />{" "}
+                      Location
+                    </div>
+                  </TableHead>
+                  <TableHead>
+                    <div className="inline-flex items-center gap-2">
+                      <Star className="h-4 w-4 text-yellow-500 fill-current" />{" "}
+                      Rating
+                    </div>
+                  </TableHead>
                   <TableHead>Tags</TableHead>
+                  <TableHead>Cuisines</TableHead>
                   <TableHead>Updated</TableHead>
                   <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sortedRestaurants.map(restaurant => (
-                  <TableRow key={restaurant.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleView(restaurant)}>
-                    <TableCell className="font-medium">
-                      <div>
-                        <div className="font-semibold">{restaurant.name}</div>
-                        <div className="text-sm text-muted-foreground truncate max-w-[200px]">
-                          {restaurant.address}
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <MapPin className="h-4 w-4 text-muted-foreground" />
-                        <span>{restaurant.city || 'Unknown'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1">
-                        <Star className="h-4 w-4 text-yellow-500" />
-                        <span>{restaurant.google_rating?.toFixed(1) || 'N/A'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex flex-wrap gap-1 max-w-[200px]">
-                        {restaurant.tags?.slice(0, 2).map((tag) => (
-                          <Badge key={tag.id} variant="secondary" className="text-xs">
-                            {tag.name}
-                          </Badge>
-                        ))}
-                        {restaurant.tags && restaurant.tags.length > 2 && (
-                          <Badge variant="outline" className="text-xs">
-                            +{restaurant.tags.length - 2}
-                          </Badge>
-                        )}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                        <Clock className="h-3 w-3" />
-                        <span>{new Date(restaurant.updated_at).toLocaleDateString()}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(restaurant);
-                          }}
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(restaurant.id);
-                          }}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
+                {filteredRestaurants.map((restaurant) => (
+                  <RestaurantTableRow
+                    key={restaurant.id}
+                    restaurant={restaurant}
+                    onView={handleView}
+                    onEdit={handleEdit}
+                    onDelete={handleDelete}
+                  />
                 ))}
               </TableBody>
             </Table>
           </CardContent>
         </Card>
+      )}
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex justify-center mt-6">
+          <Pagination>
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  onClick={() => page > 1 && goToPage(page - 1)}
+                  className={`${
+                    page <= 1 || loading
+                      ? "pointer-events-none opacity-50"
+                      : "hover:bg-orange-50 hover:text-orange-600 cursor-pointer"
+                  }`}
+                />
+              </PaginationItem>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (pageNum) => (
+                  <PaginationItem key={pageNum}>
+                    <PaginationLink
+                      onClick={() => goToPage(pageNum)}
+                      isActive={pageNum === page}
+                      className={`${
+                        loading
+                          ? "pointer-events-none opacity-50"
+                          : page === pageNum
+                          ? "bg-orange-600 text-white hover:bg-orange-700"
+                          : "hover:bg-orange-50 hover:text-orange-600 cursor-pointer"
+                      }`}
+                    >
+                      {pageNum}
+                    </PaginationLink>
+                  </PaginationItem>
+                )
+              )}
+
+              <PaginationItem>
+                <PaginationNext
+                  onClick={() => page < totalPages && goToPage(page + 1)}
+                  className={
+                    page >= totalPages
+                      ? "pointer-events-none opacity-50"
+                      : "hover:bg-orange-50 hover:text-orange-600 cursor-pointer"
+                  }
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        </div>
       )}
     </div>
   );

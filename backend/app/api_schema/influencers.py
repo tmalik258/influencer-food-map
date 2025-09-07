@@ -7,6 +7,21 @@ from pydantic.config import ConfigDict
 if TYPE_CHECKING:
     from app.api_schema.listings import ListingLightResponse
 
+class InfluencerLightResponse(BaseModel):
+    """Lightweight influencer response without listings to avoid circular references"""
+    id: UUID
+    name: str
+    bio: Optional[str] = None
+    avatar_url: Optional[str] = None
+    banner_url: Optional[str] = None
+    youtube_channel_id: str
+    youtube_channel_url: Optional[str] = None
+    subscriber_count: Optional[int] = None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
 class InfluencerResponse(BaseModel):
     id: UUID
     name: str

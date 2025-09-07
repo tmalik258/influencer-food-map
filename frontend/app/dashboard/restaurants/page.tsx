@@ -1,6 +1,7 @@
 import { Suspense } from 'react';
 import { RestaurantManagement } from './_components/restaurant-management';
 import LoadingSkeleton from '@/components/loading-skeleton';
+import { RestaurantLoading } from './_components/restaurant-loading';
 
 export default function RestaurantsPage() {
   return (
@@ -14,7 +15,7 @@ export default function RestaurantsPage() {
         </p>
       </div>
       
-      <Suspense fallback={<LoadingSkeleton variant="restaurant" count={6} />}>
+      <Suspense fallback={<RestaurantLoading count={6} />}>
         <RestaurantManagement />
       </Suspense>
     </div>

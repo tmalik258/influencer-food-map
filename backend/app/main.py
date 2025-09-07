@@ -21,6 +21,7 @@ from app.routes.restaurants import router as restaurants_router
 from app.routes.google_reviews import router as google_reviews_router
 from app.routes.admin.listings import router as admin_listings_router
 from app.routes.admin.jobs import router as admin_jobs_router
+from app.routes.admin.restaurants import router as admin_restaurants_router
 
 # Configure logging
 logger = setup_logger(__name__)
@@ -55,6 +56,7 @@ app.include_router(cuisines_router, prefix="/cuisines", tags=["cuisines"])
 app.include_router(google_reviews_router, prefix="/google-reviews", tags=["google-reviews"])
 app.include_router(admin_listings_router, prefix="/admin/listings", tags=["admin"])
 app.include_router(admin_jobs_router, prefix="/admin/jobs", tags=["admin"])
+app.include_router(admin_restaurants_router, prefix="/admin/restaurants", tags=["admin"])
 
 
 # Custom exception handler for validation errors

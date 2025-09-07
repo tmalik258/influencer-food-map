@@ -1,7 +1,8 @@
 'use client';
 
-import { DashboardNavbar } from './_components/dashboard-navbar';
+import { AuthProvider } from '@/lib/contexts/auth-context';
 import { Sidebar } from './_components/sidebar';
+import { ProtectedRoute } from '@/components/protected-route';
 
 export default function DashboardLayout({
   children,
@@ -9,20 +10,21 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="min-h-screen bg-background">
-      <DashboardNavbar />
-      <div className="flex">
-        <aside className="hidden w-64 border-r border-border/40 bg-background/60 backdrop-blur-xl md:block shadow-lg">
-          <div className="h-full bg-gradient-to-b from-background/80 to-background/60 backdrop-blur-xl">
-            <Sidebar className="h-full" />
-          </div>
-        </aside>
-        <main className="flex-1 overflow-hidden">
-          <div className="h-full p-6">
-            {children}
-          </div>
-        </main>
-      </div>
-    </div>
+    <AuthProvider>
+      <ProtectedRoute>
+        <div className="min-h-screen bg-background flex">
+          <aside className="hidden w-64 overflow-hidden fixed m-2 rounded-lg inset-y-0 left-0 border border-border/40 bg-background/95 backdrop-blur-xl md:block shadow-xl z-50">
+            <div className="h-full bg-gradient-to-b from-background/90 to-background/70 backdrop-blur-xl">
+              <Sidebar />
+            </div>
+          </aside>
+          <main className="flex-1 overflow-hidden md:pl-64">
+            <div className="h-screen overflow-y-auto p-12">
+              {children}
+            </div>
+          </main>
+        </div>
+      </ProtectedRoute>
+    </AuthProvider>
   );
 }

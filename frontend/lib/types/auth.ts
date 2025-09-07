@@ -21,10 +21,8 @@ export interface AuthContextType {
   user: User | null;
   session: Session | null;
   loading: boolean;
-  signIn: (credentials: LoginCredentials) => Promise<{ error?: string }>;
-  signUp: (credentials: SignUpCredentials) => Promise<{ error?: string }>;
-  signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error?: string }>;
+  // isAdmin: () => boolean;
+  getAccessToken: () => Promise<string | null>;
 }
 
 export interface ProtectedRouteProps {

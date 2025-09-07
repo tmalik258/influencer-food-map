@@ -2,7 +2,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { BarChart3, RefreshCw, Users, FileText } from 'lucide-react';
+import { BarChart3, RefreshCw, FileText } from 'lucide-react';
 
 export function QuickActionsCard() {
   return (
@@ -20,10 +20,6 @@ export function QuickActionsCard() {
           <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
             <BarChart3 className="h-5 w-5" />
             <span className="text-sm">View Analytics</span>
-          </Button>
-          <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
-            <Users className="h-5 w-5" />
-            <span className="text-sm">Manage Users</span>
           </Button>
           <Button variant="outline" className="h-auto p-4 flex flex-col items-center space-y-2">
             <FileText className="h-5 w-5" />

@@ -10,3 +10,4 @@ export { useVideos, useInfluencerVideos } from './useVideos';
 export { useTags, useTag } from './useTags';
 export { useCuisines, useCuisine } from './useCuisines';
 export { useJobs, useJob, useJobsSummary, useJobActions, useDataSync, useSystemStats } from './useAdmin';
+export { useAdminRestaurant } from './useAdminRestaurant';

@@ -4,7 +4,7 @@ import LoadingSkeleton from "@/components/loading-skeleton";
 
 export default function VideosPage() {
   return (
-    <div className="container mx-auto py-6">
+    <div className="container mx-auto">
       <Suspense fallback={<LoadingSkeleton />}>
         <VideoManagement />
       </Suspense>

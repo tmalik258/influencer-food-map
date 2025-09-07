@@ -7,7 +7,7 @@ from pydantic.config import ConfigDict
 
 from app.api_schema.videos import VideoResponse
 from app.api_schema.restaurants import RestaurantResponse
-from app.api_schema.influencers import InfluencerResponse
+from app.api_schema.influencers import InfluencerResponse, InfluencerLightResponse
 
 class ListingResponse(BaseModel):
     id: UUID
@@ -28,7 +28,7 @@ class ListingLightResponse(BaseModel):
     id: UUID
     restaurant_id: Optional[UUID] = None
     video: Optional[VideoResponse | UUID] = None
-    influencer: Optional[InfluencerResponse | UUID] = None
+    influencer: Optional[InfluencerLightResponse | UUID] = None
     visit_date: Optional[date] = None
     quotes: Optional[List[str]] = None
     context: Optional[List[str]] = None
