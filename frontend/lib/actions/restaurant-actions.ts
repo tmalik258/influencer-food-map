@@ -1,8 +1,8 @@
 import api from '../api';
-import { Restaurant, SearchParams, OptimizedFeaturedResponse } from '@/lib/types';
+import { Restaurant, SearchParams, OptimizedFeaturedResponse, PaginatedRestaurantsResponse } from '@/lib/types';
 
 export const restaurantActions = {
-  getRestaurants: async (params?: SearchParams): Promise<Restaurant[]> => {
+  getRestaurants: async (params?: SearchParams): Promise<PaginatedRestaurantsResponse> => {
     const response = await api.get('/restaurants', { params });
     return response.data;
   },
@@ -18,7 +18,7 @@ export const restaurantActions = {
   },
   
   // New method to get restaurants with listings (optimized for performance)
-  getRestaurantsWithListings: async (params?: Omit<SearchParams, 'include_listings'>, includeVideoDetails = false): Promise<Restaurant[]> => {
+  getRestaurantsWithListings: async (params?: Omit<SearchParams, 'include_listings'>, includeVideoDetails = false): Promise<PaginatedRestaurantsResponse> => {
     const response = await api.get('/restaurants', {
       params: {
         ...params,

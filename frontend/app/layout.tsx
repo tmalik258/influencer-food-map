@@ -1,9 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { Navbar } from "@/components/navbar";
-import Footer from "@/components/footer";
-import ErrorBoundary from "@/components/error-boundary";
 import "./globals.css";
+import { Toaster } from "@/components/ui/sonner";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,7 +15,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "FoodTuber - Discover Restaurants by Influencers",
-  description: "Discover amazing restaurants recommended by your favorite food influencers",
+  description:
+    "Discover amazing restaurants recommended by your favorite food influencers",
 };
 
 export default function RootLayout({
@@ -30,11 +29,8 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gradient-to-br from-slate-50 to-gray-100`}
       >
-        <Navbar />
-        <ErrorBoundary>
-          <main>{children}</main>
-        </ErrorBoundary>
-        <Footer />
+        <main>{children}</main>
+        <Toaster />
       </body>
     </html>
   );

@@ -1,0 +1,182 @@
+import { RefreshCw, MapPin, User, Video, TrendingUp, Calendar, CheckCircle, XCircle, Eye, Edit, Trash2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+
+import type { ListingTableProps } from '@/lib/types';
+
+export function ListingTable({
+  listings,
+  loading,
+  actionLoading,
+  onApprove,
+  onReject,
+  onView,
+  onEdit,
+  onDelete
+}: ListingTableProps) {
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const getStatusBadgeVariant = (approved?: boolean) => {
+    if (approved === true) return 'default';
+    if (approved === false) return 'destructive';
+    return 'secondary';
+  };
+
+  const getStatusText = (approved?: boolean) => {
+    if (approved === true) return 'Approved';
+    if (approved === false) return 'Rejected';
+    return 'Pending';
+  };
+
+  if (loading) {
+    return (
+      <div className="text-center py-8">
+        <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+        <p>Loading listings...</p>
+      </div>
+    );
+  }
+
+  if (listings.length === 0) {
+    return (
+      <div className="text-center py-8 text-gray-500">
+        <p>No listings found</p>
+      </div>
+    );
+  }
+
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>
+            <div className="flex items-center gap-2">
+              <MapPin className="h-4 w-4" />
+              Restaurant
+            </div>
+          </TableHead>
+          <TableHead>
+            <div className="flex items-center gap-2">
+              <User className="h-4 w-4" />
+              Influencer
+            </div>
+          </TableHead>
+          <TableHead>
+            <div className="flex items-center gap-2">
+              <Video className="h-4 w-4" />
+              Video
+            </div>
+          </TableHead>
+          <TableHead className="w-24">Status</TableHead>
+          <TableHead className="w-32">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              Confidence
+            </div>
+          </TableHead>
+          <TableHead className="w-32">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Visit Date
+            </div>
+          </TableHead>
+          <TableHead className="w-32">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4" />
+              Created
+            </div>
+          </TableHead>
+          <TableHead className="w-48 text-right">Actions</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {listings.map((listing) => (
+          <TableRow key={listing.id} className="hover:bg-muted/50">
+            <TableCell className="font-medium">
+              {listing.restaurant?.name || 'Unknown Restaurant'}
+            </TableCell>
+            <TableCell className="text-muted-foreground">
+              {listing.influencer?.name || 'Unknown Influencer'}
+            </TableCell>
+            <TableCell className="text-muted-foreground">
+              <div className="max-w-[200px] truncate">
+                {listing.video?.title || 'No Video'}
+              </div>
+            </TableCell>
+            <TableCell>
+              <Badge variant={getStatusBadgeVariant(listing?.approved)}>
+                {getStatusText(listing?.approved)}
+              </Badge>
+            </TableCell>
+            <TableCell className="text-muted-foreground">
+              {listing.confidence_score ? `${(listing.confidence_score * 100).toFixed(1)}%` : 'N/A'}
+            </TableCell>
+            <TableCell className="text-muted-foreground">
+              {listing?.visit_date ? formatDate(listing?.visit_date) : 'N/A'}
+            </TableCell>
+            <TableCell className="text-muted-foreground">
+              {formatDate(listing.created_at)}
+            </TableCell>
+            <TableCell className="text-right">
+              <div className="flex justify-end gap-1">
+                {listing.approved === undefined && (
+                  <>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onApprove(listing.id)}
+                      className="h-8 w-8 p-0 cursor-pointer text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                      disabled={actionLoading === listing.id}
+                    >
+                      {actionLoading === listing.id ? (
+                        <RefreshCw className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <CheckCircle className="h-4 w-4" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onReject(listing.id)}
+                      className="h-8 w-8 p-0 cursor-pointer text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                      disabled={actionLoading === listing.id}
+                    >
+                      <XCircle className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onView(listing.id)}
+                  className="h-8 w-8 p-0 cursor-pointer"
+                >
+                  <Eye className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onEdit(listing.id)}
+                  className="h-8 w-8 p-0 cursor-pointer"
+                >
+                  <Edit className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => onDelete(listing.id)}
+                  className="h-8 w-8 p-0 cursor-pointer text-orange-600 hover:text-orange-700 hover:bg-orange-50"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+}

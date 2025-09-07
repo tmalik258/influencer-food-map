@@ -1,0 +1,247 @@
+"use client";
+
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search, X } from "lucide-react";
+import {  RestaurantSearchFilterProps } from "@/lib/types";
+// import { TagFilterDropdown } from "./tag-filter-dropdown";
+import { CuisineFilterDropdown } from "./cuisine-filter-dropdown";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+
+export function RestaurantSearchFilter({
+  city,
+  searchQuery,
+  setSearchQuery,
+  searchType,
+  setSearchType,
+  sortBy,
+  setSortBy,
+  getSearchPlaceholder,
+  // selectedTags,
+  // onTagsChange,
+  selectedCuisines,
+  onCuisinesChange,
+  updateSearchQuery,
+  updateSearchType,
+  updateSortBy,
+  // updateSelectedTags,
+  updateSelectedCuisines,
+}: RestaurantSearchFilterProps) {
+  return (
+    <div className="mb-6 flex flex-col gap-4 z-[10000] shadow-lg p-5 rounded-lg">
+      <div className="flex flex-col gap-4">
+        <div className="flex gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+            <Input
+              placeholder={getSearchPlaceholder(searchType)}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={searchType} onValueChange={setSearchType}>
+            <SelectTrigger className="w-full sm:w-48">
+              <SelectValue placeholder="Search by" />
+            </SelectTrigger>
+            <SelectContent className="z-[2000]">
+              <SelectItem value="restaurant">Restaurant Name</SelectItem>
+              <SelectItem value="influencer">Influencer Name</SelectItem>
+              {/* <SelectItem value="video">Video Name</SelectItem> */}
+              {/* <SelectItem value="tags">Tags</SelectItem> */}
+              <SelectItem value="cuisines">Cuisines</SelectItem>
+              <SelectItem value="city">City</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="flex gap-4">
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="flex-1">
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent className="z-[1000]">
+              <SelectItem value="name">Name</SelectItem>
+              <SelectItem value="rating">Rating</SelectItem>
+              <SelectItem value="city">City</SelectItem>
+            </SelectContent>
+          </Select>
+          {/* <div className="flex-1">
+            <TagFilterDropdown
+              city={city}
+              selectedTags={selectedTags}
+              onTagsChange={onTagsChange}
+            />
+          </div> */}
+          <div className="flex-1">
+            <CuisineFilterDropdown
+              city={city}
+              selectedCuisines={selectedCuisines}
+              onCuisinesChange={onCuisinesChange}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Selected Options Display */}
+      {(selectedCuisines.length > 0 ||
+        searchQuery ||
+        searchType ||
+        sortBy) && (
+        <div className="flex flex-wrap gap-2 mt-4">
+          {/* Search Query Badge */}
+          {searchQuery && (
+            <Badge
+              variant="secondary"
+              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+            >
+              <span className="text-xs text-muted-foreground">Search:</span>
+              <span>{searchQuery}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                onClick={() => updateSearchQuery("")}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </Badge>
+          )}
+
+          {/* Search Type Badge */}
+          {searchType && (
+            <Badge
+              variant="secondary"
+              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+            >
+              <span className="text-xs text-muted-foreground">Search by:</span>
+              <span>
+                {searchType === "restaurant"
+                  ? "Restaurant Name"
+                  : searchType === "influencer"
+                  ? "Influencer Name"
+                  // : searchType === "tags"
+                  // ? "Tags"
+                  : searchType === "cuisines"
+                  ? "Cuisines"
+                  : searchType === "city"
+                  ? "City"
+                  : searchType}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                onClick={() => updateSearchType("")}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </Badge>
+          )}
+
+          {/* Sort By Badge */}
+          {sortBy && (
+            <Badge
+              variant="secondary"
+              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+            >
+              <span className="text-xs text-muted-foreground">Sort by:</span>
+              <span>
+                {sortBy === "name"
+                  ? "Name"
+                  : sortBy === "rating"
+                  ? "Rating"
+                  : sortBy === "city"
+                  ? "City"
+                  : sortBy}
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                onClick={() => updateSortBy("")}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </Badge>
+          )}
+
+          {/* Selected Tags */}
+          {/* {selectedTags.map((tag) => (
+            <Badge
+              key={tag.id}
+              variant="secondary"
+              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+            >
+              <span className="text-xs text-muted-foreground">Tag:</span>
+              <span>{tag.name}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                onClick={() => {
+                  const newTags = selectedTags.filter((t) => t.id !== tag.id);
+                  updateSelectedTags(newTags);
+                }}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </Badge>
+          ))} */}
+
+          {/* Selected Cuisines */}
+          {selectedCuisines.map((cuisine) => (
+            <Badge
+              key={cuisine.id}
+              variant="secondary"
+              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+            >
+              <span className="text-xs text-muted-foreground">Cuisine:</span>
+              <span>{cuisine.name}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                onClick={() => {
+                  const newCuisines = selectedCuisines.filter(
+                    (c) => c.id !== cuisine.id
+                  );
+                  updateSelectedCuisines(newCuisines);
+                }}
+              >
+                <X className="w-3 h-3" />
+              </Button>
+            </Badge>
+          ))}
+
+          {/* Clear All Button */}
+          {(selectedCuisines.length > 0 ||
+            searchQuery ||
+            searchType ||
+            sortBy) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                // updateSelectedTags([]);
+                updateSelectedCuisines([]);
+                updateSearchQuery("");
+                updateSearchType("");
+                updateSortBy("");
+              }}
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+            >
+              Clear all
+            </Button>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

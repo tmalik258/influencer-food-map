@@ -1,20 +1,23 @@
 from enum import Enum
+import json
 from typing import List
 
 from fastapi import (APIRouter, Depends, HTTPException)
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, desc
 from sqlalchemy.orm import joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (Listing, Influencer, Restaurant, RestaurantTag, Video)
 from app.database import get_async_db
 from app.dependencies import get_current_admin
+from app.utils.logging import setup_logger
+from app.api_schema.videos import VideoResponse
 from app.api_schema.listings import ListingResponse
 from app.api_schema.restaurants import RestaurantResponse
-from app.api_schema.videos import VideoResponse
 from app.api_schema.influencers import InfluencerResponse
 
+logger = setup_logger(__name__)
 router = APIRouter()
 
 class ApprovedStatus(str, Enum):
@@ -92,7 +95,7 @@ async def get_listings(
                 is_active=listing.restaurant.is_active,
                 created_at=listing.restaurant.created_at,
                 updated_at=listing.restaurant.updated_at,
-                tags=None,  # Prevent circular dependency
+                tags=listing.restaurant.tags,  # Prevent circular dependency
                 listings=None  # Prevent circular dependency
             )
 
@@ -122,7 +125,8 @@ async def get_listings(
                     bio=listing.influencer.bio,
                     avatar_url=listing.influencer.avatar_url,
                     banner_url=listing.influencer.banner_url,
-                    region=listing.influencer.region,
+                    # region=listing.influencer.region,
+                    # country=listing.influencer.country,
                     youtube_channel_id=listing.influencer.youtube_channel_id,
                     youtube_channel_url=listing.influencer.youtube_channel_url,
                     subscriber_count=listing.influencer.subscriber_count,
@@ -217,7 +221,8 @@ async def get_listing(listing_id: str, db: AsyncSession = Depends(get_async_db))
                 bio=listing.influencer.bio,
                 avatar_url=listing.influencer.avatar_url,
                 banner_url=listing.influencer.banner_url,
-                region=listing.influencer.region,
+                # region=listing.influencer.region,
+                # country=listing.influencer.country,
                 youtube_channel_id=listing.influencer.youtube_channel_id,
                 youtube_channel_url=listing.influencer.youtube_channel_url,
                 subscriber_count=listing.influencer.subscriber_count,

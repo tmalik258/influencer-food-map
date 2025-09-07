@@ -6,7 +6,7 @@ export function getSearchPlaceholder(searchType: string): string {
       return 'Search by city...';
     case 'tags':
       return 'Search by tags...';
-    case 'influencer':
+    case 'name':
       return 'Search by influencer name...';
     case 'video':
       return 'Search by video name or description...';

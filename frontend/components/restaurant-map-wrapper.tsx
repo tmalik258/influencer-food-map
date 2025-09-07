@@ -9,6 +9,7 @@ interface RestaurantMapProps {
   selectedRestaurant?: (Restaurant | null);
   onRestaurantSelect?: (restaurant: (Restaurant | null)) => void;
   className?: string;
+  showRestaurantCount?: boolean;
 }
 
 // Dynamic import of the actual map component to avoid SSR issues

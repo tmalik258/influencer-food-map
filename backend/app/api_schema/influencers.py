@@ -13,7 +13,8 @@ class InfluencerResponse(BaseModel):
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
     banner_url: Optional[str] = None
-    region: Optional[str] = None
+    # region: Optional[str] = None
+    # country: Optional[str] = None
     youtube_channel_id: str
     youtube_channel_url: Optional[str] = None
     subscriber_count: Optional[int] = None
@@ -23,7 +24,16 @@ class InfluencerResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class PaginatedInfluencersResponse(BaseModel):
+    """Response model for paginated influencers with total count"""
+    influencers: List[InfluencerResponse]
+    total: int
+    
+    model_config = ConfigDict(from_attributes=True)
+
 # Import after class definition to avoid circular imports
 def rebuild_models():
+    """Rebuild models to resolve forward references after all imports are complete"""
     from app.api_schema.listings import ListingLightResponse
     InfluencerResponse.model_rebuild()
+    PaginatedInfluencersResponse.model_rebuild()

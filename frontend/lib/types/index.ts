@@ -4,6 +4,12 @@ export interface Tag {
   created_at: string;
 }
 
+export interface Cuisine {
+  id: string;
+  name: string;
+  created_at: string;
+}
+
 export interface Restaurant {
   id: string;
   name: string;
@@ -17,6 +23,7 @@ export interface Restaurant {
   business_status: string;
   photo_url?: string;
   tags?: Tag[];
+  cuisines?: Cuisine[];
   is_active?: boolean;
   created_at: string;
   updated_at: string;
@@ -30,12 +37,11 @@ export interface Influencer {
   bio?: string;
   avatar_url?: string;
   banner_url?: string;
-  region?: string;
+  // region?: string;
+  // country?: string;
   youtube_channel_id: string;
   youtube_channel_url?: string;
   subscriber_count?: number;
-  total_videos?: number;
-  unique_restaurants?: number;
   created_at: string;
   updated_at: string;
   videos?: Video[];
@@ -72,27 +78,10 @@ export interface Listing {
   updated_at: string;
 }
 
-export interface SearchParams {
-  city?: string;
-  name?: string;
-  skip?: number;
-  limit?: number;
-  approved_status?: string;
-  include_listings?: boolean;
-  include_video_details?: boolean;
-}
-
-export interface ApiResponse<T> {
-  data: T;
-  message?: string;
-  error?: string;
-}
-
-export interface CityRestaurants {
-  city: string;
-  restaurants: Restaurant[];
-}
-
-export interface OptimizedFeaturedResponse {
-  cities: CityRestaurants[];
-}
+// Re-export organized types
+export * from './api';
+export * from './components';
+export * from './dashboard';
+export * from './google-reviews';
+export * from './ui';
+export * from './auth';

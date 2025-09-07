@@ -8,7 +8,7 @@ from alembic import context
 # Import your models here to ensure they are registered with SQLAlchemy
 from app.database import Base
 from app.config import DATABASE_URL
-from app.models import (Influencer, Listing, Restaurant, RestaurantTag, Tag, Video)
+from app.models import (Influencer, Listing, Restaurant, RestaurantTag, Tag, RestaurantCuisine, Cuisine, Video, Job)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

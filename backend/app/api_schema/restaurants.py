@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from pydantic.config import ConfigDict
 
 from app.api_schema.tags import TagResponse
+from app.api_schema.cuisines import CuisineResponse
 
 if TYPE_CHECKING:
     from app.api_schema.listings import ListingLightResponse
@@ -25,6 +26,7 @@ class RestaurantResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     tags: Optional[list[TagResponse]] = None
+    cuisines: Optional[list[CuisineResponse]] = None
     listings: Optional[List["ListingLightResponse"]] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -42,6 +44,13 @@ class OptimizedFeaturedResponse(BaseModel):
     
     model_config = ConfigDict(from_attributes=True)
 
+class PaginatedRestaurantsResponse(BaseModel):
+    """Response model for paginated restaurants with total count"""
+    restaurants: List[RestaurantResponse]
+    total: int
+    
+    model_config = ConfigDict(from_attributes=True)
+
 # Rebuild models to resolve forward references
 def rebuild_models():
     """Rebuild models to resolve forward references after all imports are complete"""
@@ -49,3 +58,4 @@ def rebuild_models():
     RestaurantResponse.model_rebuild()
     CityRestaurantsResponse.model_rebuild()
     OptimizedFeaturedResponse.model_rebuild()
+    PaginatedRestaurantsResponse.model_rebuild()

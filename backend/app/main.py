@@ -11,6 +11,7 @@ from app.utils.logging import setup_logger
 from app.scripts.gpt_food_place_processor import GPTFoodPlaceProcessor
 from app.routes.user import router as user_router
 from app.routes.tags import router as tags_router
+from app.routes.cuisines import router as cuisines_router
 from app.routes.videos import router as videos_router
 from app.routes.pexels_images import router as pexels_images_router
 from app.routes.process import router as process_router
@@ -19,6 +20,7 @@ from app.routes.influencers import router as influencers_router
 from app.routes.restaurants import router as restaurants_router
 from app.routes.google_reviews import router as google_reviews_router
 from app.routes.admin.listings import router as admin_listings_router
+from app.routes.admin.jobs import router as admin_jobs_router
 
 # Configure logging
 logger = setup_logger(__name__)
@@ -49,8 +51,10 @@ app.include_router(pexels_images_router, prefix="/pexels-images", tags=["pexels-
 app.include_router(restaurants_router, prefix="/restaurants", tags=["restaurants"])
 app.include_router(listings_router, prefix="/listings", tags=["listings"])
 app.include_router(tags_router, prefix="/tags", tags=["tags"])
+app.include_router(cuisines_router, prefix="/cuisines", tags=["cuisines"])
 app.include_router(google_reviews_router, prefix="/google-reviews", tags=["google-reviews"])
 app.include_router(admin_listings_router, prefix="/admin/listings", tags=["admin"])
+app.include_router(admin_jobs_router, prefix="/admin/jobs", tags=["admin"])
 
 
 # Custom exception handler for validation errors

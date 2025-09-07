@@ -59,6 +59,8 @@ export const useRestaurants = (params?: SearchParams) => {
     }
   }, []);
 
+  const refetch = useCallback(() => fetchRestaurants(params), [fetchRestaurants, params]);
+
   return {
     restaurants,
     loading,
@@ -66,7 +68,7 @@ export const useRestaurants = (params?: SearchParams) => {
     fetchRestaurants,
     fetchRestaurantsWithListings,
     searchByCity,
-    refetch: () => fetchRestaurants(params),
+    refetch,
   };
 };
 

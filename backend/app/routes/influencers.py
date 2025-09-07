@@ -1,15 +1,15 @@
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from sqlalchemy import select
+from sqlalchemy import select, distinct
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Influencer, Listing
 from app.database import get_db, get_async_db
 from app.utils.logging import setup_logger
-from app.api_schema.influencers import InfluencerResponse, rebuild_models
+from app.api_schema.influencers import InfluencerResponse, PaginatedInfluencersResponse, rebuild_models
 from app.api_schema.listings import ListingLightResponse
 from app.api_schema.restaurants import RestaurantResponse
 from app.api_schema.videos import VideoResponse
@@ -21,7 +21,7 @@ logger = setup_logger(__name__)
 
 router = APIRouter()
 
-@router.get("/", response_model=List[InfluencerResponse])
+@router.get("/", response_model=PaginatedInfluencersResponse)
 async def get_influencers(
     db: AsyncSession = Depends(get_async_db),
     name: str | None = None,
@@ -35,7 +35,26 @@ async def get_influencers(
 ):
     """Get influencers with filters for name, ID, YouTube channel ID, or URL."""
     try:
-        # Base query
+        # Base query for counting total records
+        count_query = select(Influencer)
+        
+        # Apply filters to count query
+        if name:
+            count_query = count_query.filter(Influencer.name.ilike(f"%{name}%"))
+        if id:
+            count_query = count_query.filter(Influencer.id == id)
+        if youtube_channel_id:
+            count_query = count_query.filter(Influencer.youtube_channel_id == youtube_channel_id)
+        if youtube_channel_url:
+            count_query = count_query.filter(Influencer.youtube_channel_url == youtube_channel_url)
+        
+        # Get total count
+        from sqlalchemy import func
+        total_count_query = select(func.count()).select_from(count_query.subquery())
+        total_result = await db.execute(total_count_query)
+        total_count = total_result.scalar()
+        
+        # Base query for actual data
         query = select(Influencer)
         
         # Add listings if requested
@@ -55,6 +74,7 @@ async def get_influencers(
                     .joinedload(Listing.restaurant)
                 )
 
+        # Apply same filters to data query
         if name:
             query = query.filter(Influencer.name.ilike(f"%{name}%"))
         if id:
@@ -67,8 +87,9 @@ async def get_influencers(
         result = await db.execute(query.offset(skip).limit(limit))
         influencers = result.unique().scalars().all()
 
+        # Return empty result with total count if no influencers found
         if not influencers:
-            raise HTTPException(status_code=404, detail="No influencers found")
+            return PaginatedInfluencersResponse(influencers=[], total=total_count)
 
         # Convert to response format
         result_list = []
@@ -80,7 +101,8 @@ async def get_influencers(
                 bio=influencer.bio,
                 avatar_url=influencer.avatar_url,
                 banner_url=influencer.banner_url,
-                region=influencer.region,
+                # region=influencer.region,
+                # country=influencer.country,
                 youtube_channel_id=influencer.youtube_channel_id,
                 youtube_channel_url=influencer.youtube_channel_url,
                 subscriber_count=influencer.subscriber_count,
@@ -180,16 +202,69 @@ async def get_influencers(
             
             result_list.append(influencer_data)
 
-        return result_list
+        return PaginatedInfluencersResponse(influencers=result_list, total=total_count)
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error fetching influencers: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching influencers")
 
+# @router.get("/countries/", response_model=Dict[str, List[Dict[str, str]]])
+# async def get_regions_and_countries(
+#     db: AsyncSession = Depends(get_async_db)
+# ):
+#     """Get unique regions and countries from influencers."""
+#     try:
+#         # Get unique country-region pairs from influencers
+#         countries_regions_query = select(Influencer.country, Influencer.region).filter(
+#             Influencer.country.isnot(None)
+#         ).distinct()
+#         countries_regions_result = await db.execute(countries_regions_query)
+#         countries_regions = countries_regions_result.fetchall()
+        
+#         # Create a mapping of countries to their regions
+#         country_region_map = {}
+#         for row in countries_regions:
+#             country = row[0]
+#             region = row[1]
+#             if country and country not in country_region_map:
+#                 country_region_map[country] = region
+        
+#         # Combine regions and countries into a single country structure
+#         # Use regions as codes and countries as names
+#         country_data = []
+        
+#         # Create a set to track unique entries
+#         seen_entries = set()
+        
+#         # Add countries with their corresponding regions as codes
+#         for country_name, region in country_region_map.items():
+#             if country_name and country_name not in seen_entries:
+#                 # Use region as code, fallback to initials from each word in country name if no region
+#                 if region:
+#                     code = region.upper()
+#                 else:
+#                     # Generate initials from each word in the country name
+#                     words = country_name.split()
+#                     if len(words) > 1:
+#                         code = ''.join([word[0].upper() for word in words if word])
+#                     else:
+#                         # For single word countries, use first 2 chars as fallback
+#                         code = country_name[:2].upper() if len(country_name) >= 2 else country_name.upper()
+#                 country_data.append({
+#                     "code": code,
+#                     "name": country_name
+#                 })
+#                 seen_entries.add(country_name)
+        
+#         return {"country": country_data}
+#     except Exception as e:
+#         logger.error(f"Error fetching regions and countries: {e}")
+#         raise HTTPException(status_code=500, detail="Internal server error while fetching regions and countries")
+
 @router.get("/{influencer_id}/", response_model=InfluencerResponse)
 async def get_influencer(
-    influencer_id: str, 
+    influencer_id: str,
     db: AsyncSession = Depends(get_async_db),
     include_listings: Optional[bool] = Query(False, description="Include listings with influencer"),
     include_video_details: Optional[bool] = Query(True, description="Include full video details (description, transcription, summary)")
@@ -221,7 +296,8 @@ async def get_influencer(
             bio=influencer.bio,
             avatar_url=influencer.avatar_url,
             banner_url=influencer.banner_url,
-            region=influencer.region,
+            # region=influencer.region,
+            # country=influencer.country,
             youtube_channel_id=influencer.youtube_channel_id,
             youtube_channel_url=influencer.youtube_channel_url,
             subscriber_count=influencer.subscriber_count,

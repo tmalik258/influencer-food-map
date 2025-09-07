@@ -52,10 +52,9 @@ export const useInfluencersPaginated = (initialParams?: PaginatedInfluencersPara
         limit
       });
       
-      // For now, we'll simulate pagination response structure
-      // In a real implementation, the API should return total count
+      // Handle the new backend response structure with total count
       const influencers = Array.isArray(response) ? response : response.influencers || [];
-      const total = response.total || influencers.length;
+      const total = Array.isArray(response) ? response.length : response.total || 0;
       const totalPages = Math.ceil(total / limit);
       
       setData({

@@ -15,7 +15,11 @@ class Influencer(Base):
     bio = Column(Text)
     avatar_url = Column(String(255), nullable=True)
     banner_url = Column(String(255), nullable=True)
-    region = Column(String(100))
+    """
+    Influencer's region/country, commented for now as we dont need it
+    """
+    # region = Column(String(100)) # 2 to 3 character country code
+    # country = Column(String(255), nullable=True)
     youtube_channel_id = Column(String(100), nullable=False, unique=True)
     youtube_channel_url = Column(String(255))
     subscriber_count = Column(Integer, nullable=True)

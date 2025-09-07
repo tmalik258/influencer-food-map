@@ -40,8 +40,14 @@ class Restaurant(Base):
 
     listings = relationship("Listing", back_populates="restaurant")
     restaurant_tags = relationship("RestaurantTag", back_populates="restaurant")
+    restaurant_cuisines = relationship("RestaurantCuisine", back_populates="restaurant")
     
     @hybrid_property
     def tags(self):
         """Return the actual Tag objects for serialization"""
         return [rt.tag for rt in self.restaurant_tags] if self.restaurant_tags else []
+    
+    @hybrid_property
+    def cuisines(self):
+        """Return the actual Cuisine objects for serialization"""
+        return [rc.cuisine for rc in self.restaurant_cuisines] if self.restaurant_cuisines else []
