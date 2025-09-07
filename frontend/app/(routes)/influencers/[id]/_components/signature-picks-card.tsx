@@ -29,7 +29,7 @@ export const SignaturePicksCard: React.FC<SignaturePicksCardProps> = ({ listings
                 {listing?.restaurant?.name}
               </h3>
               <p className="text-xs text-gray-600">
-                {listing?.restaurant?.tags?.[0]?.name || "Restaurant"} •{" "}
+                {listing?.restaurant?.cuisines?.[0]?.name || "Restaurant"} •{" "}
                 {listing?.restaurant?.city}
               </p>
             </div>

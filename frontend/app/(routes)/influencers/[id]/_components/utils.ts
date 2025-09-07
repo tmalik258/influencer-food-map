@@ -22,9 +22,9 @@ export const getMostReviewedCuisine = (listings: Listing[]): string => {
   const cuisineCount: Record<string, number> = {};
 
   listings.forEach((listing) => {
-    listing?.restaurant?.tags?.forEach((tag) => {
-      if (tag?.name) {
-        cuisineCount[tag.name] = (cuisineCount[tag.name] || 0) + 1;
+    listing?.restaurant?.cuisines?.forEach((cuisine) => {
+      if (cuisine?.name) {
+        cuisineCount[cuisine.name] = (cuisineCount[cuisine.name] || 0) + 1;
       }
     });
   });

@@ -8,7 +8,7 @@ from sqlalchemy import select, delete, desc
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import (Listing, Influencer, Restaurant, RestaurantTag, Video)
+from app.models import (Listing, Influencer, Restaurant, RestaurantTag, RestaurantCuisine, Cuisine, Video)
 from app.database import get_async_db
 from app.dependencies import get_current_admin
 from app.utils.logging import setup_logger
@@ -16,6 +16,8 @@ from app.api_schema.videos import VideoResponse
 from app.api_schema.listings import ListingResponse
 from app.api_schema.restaurants import RestaurantResponse
 from app.api_schema.influencers import InfluencerResponse
+from app.api_schema.tags import TagResponse
+from app.api_schema.cuisines import CuisineResponse
 
 logger = setup_logger(__name__)
 router = APIRouter()
@@ -42,6 +44,7 @@ async def get_listings(
     try:
         query = select(Listing).options(
             joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
+            joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_cuisines).joinedload(RestaurantCuisine.cuisine),
             joinedload(Listing.video),
             joinedload(Listing.influencer)
         )
@@ -79,6 +82,24 @@ async def get_listings(
         # Manually construct response objects to avoid circular dependencies
         response_listings = []
         for listing in listings:
+            # Process tags
+            tags = None
+            if listing.restaurant.restaurant_tags:
+                tags = [TagResponse(
+                    id=rt.tag.id,
+                    name=rt.tag.name,
+                    created_at=rt.tag.created_at
+                ) for rt in listing.restaurant.restaurant_tags]
+            
+            # Process cuisines
+            cuisines = None
+            if listing.restaurant.restaurant_cuisines:
+                cuisines = [CuisineResponse(
+                    id=rc.cuisine.id,
+                    name=rc.cuisine.name,
+                    created_at=rc.cuisine.created_at
+                ) for rc in listing.restaurant.restaurant_cuisines]
+            
             # Construct RestaurantResponse manually
             restaurant_response = RestaurantResponse(
                 id=listing.restaurant.id,
@@ -95,7 +116,8 @@ async def get_listings(
                 is_active=listing.restaurant.is_active,
                 created_at=listing.restaurant.created_at,
                 updated_at=listing.restaurant.updated_at,
-                tags=listing.restaurant.tags,  # Prevent circular dependency
+                tags=tags,
+                cuisines=cuisines,
                 listings=None  # Prevent circular dependency
             )
 
@@ -165,6 +187,7 @@ async def get_listing(listing_id: str, db: AsyncSession = Depends(get_async_db))
     try:
         query = select(Listing).options(
             joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
+            joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_cuisines).joinedload(RestaurantCuisine.cuisine),
             joinedload(Listing.video),
             joinedload(Listing.influencer)
         ).filter(Listing.id == listing_id, Listing.approved == True)
@@ -175,6 +198,24 @@ async def get_listing(listing_id: str, db: AsyncSession = Depends(get_async_db))
         if not listing:
             raise HTTPException(status_code=404, detail="Listing not found")
 
+        # Process tags
+        tags = None
+        if listing.restaurant.restaurant_tags:
+            tags = [TagResponse(
+                id=rt.tag.id,
+                name=rt.tag.name,
+                created_at=rt.tag.created_at
+            ) for rt in listing.restaurant.restaurant_tags]
+        
+        # Process cuisines
+        cuisines = None
+        if listing.restaurant.restaurant_cuisines:
+            cuisines = [CuisineResponse(
+                id=rc.cuisine.id,
+                name=rc.cuisine.name,
+                created_at=rc.cuisine.created_at
+            ) for rc in listing.restaurant.restaurant_cuisines]
+        
         # Construct RestaurantResponse manually
         restaurant_response = RestaurantResponse(
             id=listing.restaurant.id,
@@ -191,7 +232,8 @@ async def get_listing(listing_id: str, db: AsyncSession = Depends(get_async_db))
             is_active=listing.restaurant.is_active,
             created_at=listing.restaurant.created_at,
             updated_at=listing.restaurant.updated_at,
-            tags=None,  # Prevent circular dependency
+            tags=tags,
+            cuisines=cuisines,
             listings=None  # Prevent circular dependency
         )
 
