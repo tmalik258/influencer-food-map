@@ -153,11 +153,7 @@ export interface GoogleReviewsProps {
   showRating?: boolean;
 }
 
-export interface RealTimeIndicatorProps {
-  isConnected: boolean;
-  lastUpdated?: Date;
-  showText?: boolean;
-}
+
 
 // Error boundary
 export interface ErrorBoundaryState {

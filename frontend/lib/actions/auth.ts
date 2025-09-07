@@ -26,7 +26,7 @@ export async function login(formData: FormData) {
   }
 
   revalidatePath("/dashboard", "layout");
-  redirect("/dashboard");
+  return { success: "Signed in successfully" };
 }
 
 export async function signup(formData: FormData) {
@@ -36,7 +36,6 @@ export async function signup(formData: FormData) {
     email: formData.get("email") as string,
     password: formData.get("password") as string,
     fullName: (formData.get("fullName") as string) || null,
-    // avatarUrl: (formData.get("avatarUrl") as string) || null,
   };
 
   const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
@@ -70,7 +69,7 @@ export async function signout() {
   console.log("User signed out successfully");
 
   revalidatePath("/", "layout");
-  redirect("/");
+  return { success: "Signed out successfully" };
 }
 
 export async function signInWithGoogle() {

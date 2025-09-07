@@ -24,6 +24,7 @@ import { useAuth } from '@/lib/contexts/auth-context';
 import { signout } from '@/lib/actions/auth';
 import { toast } from 'sonner';
 import { DashedSpinner } from '@/components/dashed-spinner';
+import { cn } from '@/lib/utils';
 
 const sidebarItems = [
   {
@@ -110,10 +111,13 @@ export function Sidebar({ className }: { className?: string }) {
   const handleSignout = async () => {
     setIsLoggingOut(true);
     try {
-      await signout();
-      toast.success('Signed out successfully');
-    } catch (error) {
-      toast.error('Failed to sign out');
+      const { success, error } = await signout();
+      if (success) {
+        toast.success('Signed out successfully');
+        router.push('/');
+      } else if (error) {
+        toast.error('An unexpected error occurred during sign out');
+      }
     } finally {
       setIsLoggingOut(false);
     }
@@ -183,33 +187,20 @@ export function Sidebar({ className }: { className?: string }) {
 
         {/* User Menu */}
         {user ? (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start hover:bg-accent hover:text-accent-foreground transition-all duration-200"
-              >
-                <EllipsisVertical className="mr-2 h-4 w-4" />
-                Account
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" side="right" className="w-56">
-              <DropdownMenuLabel>My Account</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-red-600 cursor-pointer"
-                onClick={handleSignout}
-              >
-                {isLoggingOut ? (
-                  <DashedSpinner className="mr-2 h-4 w-4" />
-                ) : (
-                  <LogOut className="mr-2 h-4 w-4" />
-                )}
-                Log out
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn("w-full justify-start hover:bg-accent hover:text-accent-foreground transition-all duration-200 text-red-600 cursor-pointer", isLoggingOut && "opacity-50 cursor-not-allowed")}
+            disabled={isLoggingOut}
+            onClick={handleSignout}
+          >
+            {isLoggingOut ? (
+              <DashedSpinner className="mr-2 h-4 w-4" />
+            ) : (
+              <LogOut className="mr-2 h-4 w-4" />
+            )}
+            Log out
+          </Button>
         ) : (
           <div className="space-y-1">
             <Button

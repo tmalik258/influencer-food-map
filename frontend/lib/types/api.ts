@@ -130,19 +130,6 @@ export interface UseApiWithRetryOptions {
   enabled?: boolean;
 }
 
-export interface UseAutoRefreshOptions {
-  interval?: number;
-  enabled?: boolean;
-  onRefresh?: () => void;
-}
-
-export interface AutoRefreshState {
-  isEnabled: boolean;
-  interval: number;
-  lastRefresh: Date | null;
-  nextRefresh: Date | null;
-}
-
 // Pexels API types
 export interface UsePexelsImageProps {
   query: string;

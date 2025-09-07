@@ -130,24 +130,8 @@ export interface SystemStats {
   totalVideos: number;
 }
 
-export interface SystemMetricCardsProps {
-  stats: SystemStats;
-  isLoading?: boolean;
-}
-
-export interface SystemApprovalRateProps {
-  approvedListings: number;
-  totalListings: number;
-  pendingListings: number;
-}
-
 // Import Job from API types
 import type { Job } from "./api";
-
-export interface SystemRecentJobsProps {
-  jobs: Job[];
-  isLoading?: boolean;
-}
 
 // Video management types
 export interface VideoFiltersProps {

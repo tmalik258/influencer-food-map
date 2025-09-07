@@ -19,6 +19,7 @@ import Link from "next/link";
 import { login } from "@/lib/actions/auth";
 import { toast } from "sonner";
 import { DashedSpinner } from "@/components/dashed-spinner";
+import { useRouter } from "next/navigation";
 
 // Define the form schema using Zod
 const formSchema = z.object({
@@ -29,6 +30,7 @@ const formSchema = z.object({
 
 export function LoginForm() {
   const [showPassword, setShowPassword] = React.useState(false);
+  const router = useRouter();
 
   // Initialize react-hook-form with Zod validation
   const form = useForm<z.infer<typeof formSchema>>({
@@ -44,14 +46,15 @@ export function LoginForm() {
     formData.append("email", data.email);
     formData.append("password", data.password);
 
-    const result = await login(formData);
-    if (result?.error) {
-      console.error("Login submission error:", result.error);
-      toast.error(result.error);
+    const {success, error} = await login(formData);
+    if (error) {
+      console.error("Login submission error:", error);
+      toast.error(error);
     }
 
-    if (result && !result.error) {
+    if (success) {
       toast.success("Login successful!");
+      router.push('/dashboard');
     }
   };
 

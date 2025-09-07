@@ -1,103 +1,147 @@
-'use client';
+"use client";
 
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { Users, MapPin, Video, FileText, AlertCircle } from 'lucide-react';
-import { useSystemStats } from '@/lib/hooks';
-import { MetricCard } from './metric-card';
-import { RecentActivityCard } from './recent-activity-card';
-import { QuickActionsCard } from './quick-actions-card';
-import { DashboardStatusBar } from './dashboard-status-bar';
+import { Suspense, useEffect } from "react";
+import { useDashboardData } from "@/lib/hooks/useDashboardData";
+import { MetricCard } from "./metric-card";
+import { RecentActivityCard } from "./recent-activity-card";
+import { QuickActionsCard } from "./quick-actions-card";
+import { RealTimeJobsCard } from "./real-time-jobs-card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { AlertCircle, RefreshCw } from "lucide-react";
 
+function DashboardContent() {
+  const { data, isLoading, error, refresh } = useDashboardData();
 
+  // Fetch data on mount
+  useEffect(() => {
+    refresh();
+  }, [refresh]);
 
-export function DashboardOverview() {
-  const { data: stats, isLoading: statsLoading, error: statsError } = useSystemStats();
-
-  if (statsLoading) {
+  if (isLoading && !data.stats) {
     return (
       <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <div className="flex gap-2">
+            <Skeleton className="h-10 w-24" />
+            <Skeleton className="h-10 w-24" />
+          </div>
+        </div>
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {[...Array(4)].map((_, i) => (
-            <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="h-4 bg-gray-300 rounded animate-pulse w-20" />
-                <div className="h-4 w-4 bg-gray-300 rounded animate-pulse" />
-              </CardHeader>
-              <CardContent>
-                <div className="h-8 bg-gray-300 rounded animate-pulse mb-2" />
-                <div className="h-3 bg-gray-200 rounded animate-pulse w-3/4" />
-              </CardContent>
-            </Card>
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-32" />
           ))}
+        </div>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96" />
+          <Skeleton className="h-96" />
         </div>
       </div>
     );
   }
 
-  if (statsError) {
-    return (
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          Failed to load dashboard data. Please try refreshing the page.
-        </AlertDescription>
-      </Alert>
-    );
-  }
-
-  const defaultStats = {
+  const fallbackStats = {
+    total_listings: 0,
     total_restaurants: 0,
     total_influencers: 0,
     total_videos: 0,
-    total_listings: 0,
-    ...stats
+    ...data.stats,
   };
 
   return (
     <div className="space-y-6">
-      {/* Time and Status Bar */}
-      <DashboardStatusBar />
+      {/* Dashboard Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-2">
+          {data.lastUpdated && (
+            <span className="text-sm text-muted-foreground">
+              Last updated: {data.lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+        </div>
 
-      {/* Key Metrics */}
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refresh}
+            disabled={isLoading}
+            className="cursor-pointer"
+          >
+            <RefreshCw
+              className={`h-4 w-4 mr-2 ${isLoading ? "animate-spin" : ""}`}
+            />
+            Refresh
+          </Button>
+        </div>
+      </div>
+
+      {/* Error Alert */}
+      {error && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <div className="flex flex-col">
+              <span>Connection issue: {error}</span>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={refresh}
+              disabled={isLoading}
+              className="cursor-pointer ml-4"
+            >
+              {isLoading ? "Retrying..." : "Retry"}
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* Metrics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <MetricCard
-          title="Total Restaurants"
-          value={defaultStats.total_restaurants.toLocaleString()}
-          description="Registered restaurants"
-          icon={MapPin}
-          trend={{ value: 12, isPositive: true }}
-        />
-        <MetricCard
-          title="Total Influencers"
-          value={defaultStats.total_influencers.toLocaleString()}
-          description="Active influencers"
-          icon={Users}
-          trend={{ value: 8, isPositive: true }}
-        />
-        <MetricCard
-          title="Total Videos"
-          value={defaultStats.total_videos.toLocaleString()}
-          description="Processed videos"
-          icon={Video}
-          trend={{ value: 23, isPositive: true }}
-        />
-        <MetricCard
           title="Total Listings"
-          value={defaultStats.total_listings.toLocaleString()}
-          description="Restaurant listings"
-          icon={FileText}
-          trend={{ value: 15, isPositive: true }}
+          value={fallbackStats.total_listings}
+          description="Active food listings"
+          isLoading={isLoading}
+        />
+        <MetricCard
+          title="Restaurants"
+          value={fallbackStats.total_restaurants}
+          description="Registered restaurants"
+          isLoading={isLoading}
+        />
+        <MetricCard
+          title="Influencers"
+          value={fallbackStats.total_influencers}
+          description="Active influencers"
+          isLoading={isLoading}
+        />
+        <MetricCard
+          title="Videos"
+          value={fallbackStats.total_videos}
+          description="Total video content"
+          isLoading={isLoading}
         />
       </div>
 
-      {/* Dashboard Cards */}
+      {/* Dashboard Cards Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <RecentActivityCard />
-        </div>
+        <RecentActivityCard />
         <QuickActionsCard />
+        <RealTimeJobsCard jobs={data.jobs} isLoading={isLoading} />
       </div>
     </div>
+  );
+}
+
+export function DashboardOverview() {
+  return (
+    <Suspense fallback={<div>Loading dashboard...</div>}>
+      <DashboardContent />
+    </Suspense>
   );
 }
