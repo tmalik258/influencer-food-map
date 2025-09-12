@@ -4,7 +4,7 @@ import DashboardLoadingSkeleton from '@/app/dashboard/_components/dashboard-load
 
 export default function DataSyncPage() {
   return (
-    <div className="space-y-6 glass-effect backdrop-blur-xl bg-white/80 p-6 rounded-lg border border-orange-200/50 shadow-xl">
+    <div className="space-y-6 dark:bg-black p-6 rounded-lg">
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
           Data Synchronization

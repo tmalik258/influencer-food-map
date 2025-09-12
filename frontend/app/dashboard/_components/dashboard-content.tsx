@@ -68,7 +68,7 @@ const DashboardContent = () => {
             size="sm"
             onClick={refresh}
             disabled={isLoading}
-            className="cursor-pointer bg-orange-600 hover:bg-orange-700 focus:ring-orange-500 text-white border-orange-600"
+            className="cursor-pointer bg-orange-600 dark:bg-orange-600 hover:bg-orange-700 dark:hover:border-orange-500 hover:text-white focus:ring-orange-500 text-white border-orange-600"
           >
             <RefreshCw
               className={`h-4 w-4 mr-2 text-white ${isLoading ? "animate-spin" : ""}`}

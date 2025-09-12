@@ -130,7 +130,7 @@ export default function VideoManagement() {
   };
 
   return (
-    <div className="space-y-6 glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 rounded-xl p-6 shadow-xl">
+    <div className="space-y-6 dark:bg-black rounded-lg p-6">
       <VideoHeader videoCount={filteredAndSortedVideos.length} onCreateClick={() => setIsCreateModalOpen(true)} />
       
       <VideoFilters

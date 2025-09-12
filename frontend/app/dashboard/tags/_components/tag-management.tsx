@@ -106,7 +106,7 @@ export default function TagManagement() {
   }
 
   return (
-    <div className="space-y-6 glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 rounded-xl p-6">
+    <div className="space-y-6 dark:bg-black rounded-lg p-6">
       <TagHeader
           searchTerm={searchTerm}
           setSearchTerm={setSearchTerm}
@@ -116,7 +116,7 @@ export default function TagManagement() {
         />
 
       {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      {/* <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 hover:border-orange-500/50 transition-all duration-300">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
@@ -151,10 +151,10 @@ export default function TagManagement() {
             </div>
           </CardContent>
         </Card>
-      </div>
+      </div> */}
 
       {/* Tags Table */}
-      <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30">
+      <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 p-0">
         <Table>
           <TableHeader>
             <TableRow>

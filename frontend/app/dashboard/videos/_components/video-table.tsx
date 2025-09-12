@@ -44,7 +44,7 @@ export function VideoTable({
   }
 
   return (
-    <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30">
+    <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 p-0">
       <CardContent className="p-0">
         <Table>
           <TableHeader>

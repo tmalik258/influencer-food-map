@@ -160,8 +160,8 @@ export default function InfluencerManagement() {
       </div>
       
       {/* Search and Filters */}
-      <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/20 border-orange-500/20 shadow-2xl">
-        <CardContent className="pt-6">
+      <Card className="p-0 dark:bg-none dark:bg-transparent border-0 shadow-none dark:border-none">
+        <CardContent>
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-orange-500 h-4 w-4" />

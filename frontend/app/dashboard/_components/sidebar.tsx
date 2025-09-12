@@ -389,7 +389,7 @@ export function Sidebar({ className, isMobileOpen = false, onMobileToggle }: Sid
         )}>
           <div className="flex items-center space-x-2">
             <div className={cn(
-              'w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center',
+              'w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center',
               'transition-all duration-300 ease-out transform hover:scale-110',
               'will-change-transform'
             )}>
@@ -402,7 +402,7 @@ export function Sidebar({ className, isMobileOpen = false, onMobileToggle }: Sid
                 ? 'opacity-100 translate-x-0 max-w-none'
                 : 'opacity-0 translate-x-2 max-w-0'
             )}>
-              FoodMap
+              Nomtok
             </span>
           </div>
         </div>
@@ -557,7 +557,7 @@ export function Sidebar({ className, isMobileOpen = false, onMobileToggle }: Sid
             variant="outline"
             size="icon"
             className={cn(
-              'lg:hidden absolute top-4 right-4 z-50 bg-background/80 backdrop-blur-sm border border-border shadow-lg',
+              'md:hidden absolute top-4 right-4 z-50 bg-background/80 backdrop-blur-sm border border-border shadow-lg',
               'hover:bg-accent hover:text-accent-foreground transition-all duration-300 ease-out',
               'transform hover:scale-110 will-change-transform translate3d(0, 0, 0)'
             )}
@@ -620,7 +620,7 @@ export function Sidebar({ className, isMobileOpen = false, onMobileToggle }: Sid
         onClick={toggleDesktopCollapsed}
         disabled={isAnimating}
         className={cn(
-          'hidden md:flex fixed top-4 z-50 rounded-full bg-background/80 backdrop-blur-sm border border-border shadow-lg hover:bg-accent hover:text-accent-foreground transition-all duration-300 transform hover:scale-110',
+          'hidden md:flex fixed top-4 z-50 rounded-full bg-background/80 backdrop-blur-sm border border-orange-500 shadow-lg hover:bg-accent hover:text-accent-foreground transition-all duration-300 transform hover:scale-110',
           'will-change-transform transform translate3d(0, 0, 0)',
           isAnimating && 'pointer-events-none opacity-75',
           isDesktopCollapsed ? 'left-[4.5rem]' : 'left-[19rem]'
