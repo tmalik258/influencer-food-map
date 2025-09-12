@@ -1,13 +1,13 @@
-from typing import List, Optional, Dict
+from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from sqlalchemy import select, distinct
+from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Influencer, Listing
-from app.database import get_db, get_async_db
+from app.models import Influencer, Listing, Video
+from app.database import get_async_db
 from app.utils.logging import setup_logger
 from app.api_schema.influencers import InfluencerResponse, PaginatedInfluencersResponse, rebuild_models
 from app.api_schema.listings import ListingLightResponse
@@ -49,7 +49,6 @@ async def get_influencers(
             count_query = count_query.filter(Influencer.youtube_channel_url == youtube_channel_url)
         
         # Get total count
-        from sqlalchemy import func
         total_count_query = select(func.count()).select_from(count_query.subquery())
         total_result = await db.execute(total_count_query)
         total_count = total_result.scalar()
@@ -91,6 +90,18 @@ async def get_influencers(
         if not influencers:
             return PaginatedInfluencersResponse(influencers=[], total=total_count)
 
+        # Get video counts for all influencers in one query
+        influencer_ids = [inf.id for inf in influencers]
+        video_count_query = select(
+            Video.influencer_id,
+            func.count(Video.id).label('video_count')
+        ).filter(
+            Video.influencer_id.in_(influencer_ids)
+        ).group_by(Video.influencer_id)
+        
+        video_count_result = await db.execute(video_count_query)
+        video_counts = {row.influencer_id: row.video_count for row in video_count_result}
+
         # Convert to response format
         result_list = []
         for influencer in influencers:
@@ -106,6 +117,7 @@ async def get_influencers(
                 youtube_channel_id=influencer.youtube_channel_id,
                 youtube_channel_url=influencer.youtube_channel_url,
                 subscriber_count=influencer.subscriber_count,
+                total_videos=video_counts.get(influencer.id, 0),
                 created_at=influencer.created_at,
                 updated_at=influencer.updated_at,
                 listings=None
@@ -289,6 +301,11 @@ async def get_influencer(
         if not influencer:
             raise HTTPException(status_code=404, detail="Influencer not found")
 
+        # Get video count for this influencer
+        video_count_query = select(func.count(Video.id)).filter(Video.influencer_id == influencer.id)
+        video_count_result = await db.execute(video_count_query)
+        video_count = video_count_result.scalar() or 0
+
         # Convert to response format - manually construct to avoid lazy loading issues
         influencer_data = InfluencerResponse(
             id=influencer.id,
@@ -301,6 +318,7 @@ async def get_influencer(
             youtube_channel_id=influencer.youtube_channel_id,
             youtube_channel_url=influencer.youtube_channel_url,
             subscriber_count=influencer.subscriber_count,
+            total_videos=video_count,
             created_at=influencer.created_at,
             updated_at=influencer.updated_at,
             listings=None  # Explicitly set to None to avoid lazy loading

@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import { ListingManagement } from './_components/listing-management';
-import LoadingSkeleton from '@/components/loading-skeleton';
+import DashboardLoadingSkeleton from '@/app/dashboard/_components/dashboard-loading-skeleton';
 
 export default function ListingsPage() {
   return (
@@ -12,7 +12,7 @@ export default function ListingsPage() {
         </p>
       </div>
       
-      <Suspense fallback={<LoadingSkeleton />}>
+      <Suspense fallback={<DashboardLoadingSkeleton variant="management" />}>
         <ListingManagement />
       </Suspense>
     </div>

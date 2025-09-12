@@ -4,20 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { adminApi } from '@/lib/api';
 import { Restaurant } from '@/lib/types';
-
-interface RestaurantCreateData {
-  name: string;
-  address: string;
-  latitude: number;
-  longitude: number;
-  city?: string;
-  country?: string;
-  google_place_id?: string;
-  google_rating?: number;
-  business_status?: string;
-  photo_url?: string;
-  is_active?: boolean;
-}
+import { CreateRestaurantFormData } from '@/lib/validations/restaurant-create';
 
 interface RestaurantUpdateData {
   name?: string;
@@ -42,7 +29,7 @@ export function useAdminRestaurant() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createRestaurant = async (data: RestaurantCreateData): Promise<AdminRestaurantResponse | null> => {
+  const createRestaurant = async (data: CreateRestaurantFormData): Promise<AdminRestaurantResponse | null> => {
     setLoading(true);
     setError(null);
 

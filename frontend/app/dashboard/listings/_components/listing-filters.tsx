@@ -1,5 +1,4 @@
 import { Search } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
@@ -12,7 +11,6 @@ export function ListingFilters({
   setStatusFilter,
   sortBy,
   setSortBy,
-  onSearch
 }: ListingFiltersProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -24,7 +22,6 @@ export function ListingFilters({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
-            onKeyPress={(e) => e.key === 'Enter' && onSearch()}
           />
         </div>
       </div>
@@ -50,9 +47,6 @@ export function ListingFilters({
             <SelectItem value="confidence_score">Confidence</SelectItem>
           </SelectContent>
         </Select>
-        <Button onClick={onSearch} variant="outline">
-          <Search className="h-4 w-4" />
-        </Button>
       </div>
     </div>
   );

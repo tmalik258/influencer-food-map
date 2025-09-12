@@ -6,6 +6,12 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { useListings } from '@/lib/hooks/useListings';
 import { ListingHeader } from './listing-header';
+import { ListingCreateForm } from './listing-create-form';
+import type { Listing } from '@/lib/types/dashboard';
+
+import { ListingDeleteDialog } from './listing-delete-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
 import { ListingFilters } from './listing-filters';
 import { ListingTable } from './listing-table';
 import { toast } from 'sonner';
@@ -16,6 +22,18 @@ export function ListingManagement() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('created_at');
   const [actionLoading, setActionLoading] = useState<string | null>(null);
+
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+  const router = useRouter();
+
+  const refreshListings = () => {
+    fetchListings();
+    setIsCreateFormOpen(false);
+    setIsDeleteDialogOpen(false);
+    setSelectedListing(null);
+  };
 
   useEffect(() => {
     if (listings.length === 0) {
@@ -61,39 +79,61 @@ export function ListingManagement() {
 
   // Handle edit listing
   const handleEdit = (listingId: string) => {
-    console.log('Edit listing:', listingId);
-    // Navigate to listing edit page or open modal
+    router.push(`/dashboard/listings/${listingId}`);
   };
+
+  // Transform listings to dashboard format and filter
+  const transformedListings: Listing[] = listings.map(listing => ({
+    id: listing.id,
+    restaurant: {
+      name: listing.restaurant?.name || 'Unknown Restaurant',
+      city: listing.restaurant?.city || 'Unknown City'
+    },
+    influencer: {
+      name: listing.influencer?.name || 'Unknown Influencer'
+    },
+    video: {
+      title: listing.video?.title || 'Unknown Video'
+    },
+    quotes: Array.isArray(listing.quotes) ? listing.quotes : (listing.quotes ? [listing.quotes] : []),
+    confidence_score: listing.confidence_score || 0,
+    approved: listing.approved,
+    visit_date: listing.visit_date,
+    status: listing.approved === true ? 'approved' : listing.approved === false ? 'rejected' : 'pending',
+    created_at: listing.created_at
+  }));
 
   // Handle delete listing
   const handleDelete = (listingId: string) => {
-    console.log('Delete listing:', listingId);
-    // Show confirmation dialog and delete
-  };
-
-  const handleSearch = () => {
-    fetchListings();
+    const foundListing = transformedListings.find(listing => listing.id === listingId);
+    setSelectedListing(foundListing || null);
+    setIsDeleteDialogOpen(true);
   };
 
   // Filter listings based on search (client-side filtering as backup)
-  const filteredListings = listings.filter(listing => {
+  const filteredListings = transformedListings.filter(listing => {
     const matchesSearch = !searchTerm || 
-      listing.restaurant?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      listing.influencer?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      listing.video?.title?.toLowerCase().includes(searchTerm.toLowerCase());
+      listing.restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      listing.influencer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      listing.video.title.toLowerCase().includes(searchTerm.toLowerCase());
     
-    return matchesSearch;
+    const matchesStatus = statusFilter === 'all' || 
+      (statusFilter === 'approved' && listing.status === 'approved') ||
+      (statusFilter === 'rejected' && listing.status === 'rejected') ||
+      (statusFilter === 'pending' && listing.status === 'pending');
+    
+    return matchesSearch && matchesStatus;
   });
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <ListingHeader />
+    <div className="space-y-6 glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 rounded-xl p-6">
+      <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30">
+        <ListingHeader listingCount={listings.length} onCreateClick={() => setIsCreateFormOpen(true)} />
         <CardContent>
           {error && (
-            <Alert className="mb-4">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{error}</AlertDescription>
+            <Alert className="mb-4 glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-orange-500/50">
+              <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+              <AlertDescription className="text-gray-900 dark:text-white">{error}</AlertDescription>
             </Alert>
           )}
           
@@ -104,7 +144,6 @@ export function ListingManagement() {
             setStatusFilter={setStatusFilter}
             sortBy={sortBy}
             setSortBy={setSortBy}
-            onSearch={handleSearch}
           />
 
           <ListingTable
@@ -119,6 +158,26 @@ export function ListingManagement() {
           />
         </CardContent>
       </Card>
+
+      <Dialog open={isCreateFormOpen} onOpenChange={setIsCreateFormOpen}>
+        <DialogContent className="sm:max-w-[600px] glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900 dark:text-white">Create New Listing</DialogTitle>
+          </DialogHeader>
+          <ListingCreateForm onSuccess={refreshListings} />
+        </DialogContent>
+      </Dialog>
+
+
+
+      {selectedListing && (
+        <ListingDeleteDialog
+          isOpen={isDeleteDialogOpen}
+          onClose={() => setIsDeleteDialogOpen(false)}
+          listingId={selectedListing.id}
+          onSuccess={refreshListings}
+        />
+      )}
     </div>
   );
 }

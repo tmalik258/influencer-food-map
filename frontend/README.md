@@ -1,4 +1,4 @@
-# FoodTuber Frontend
+# Nomtok Frontend
 
 A modern Next.js application for discovering restaurants through food influencer recommendations. This frontend connects to a FastAPI backend to display restaurant listings, influencer profiles, and their video reviews.
 

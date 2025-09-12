@@ -6,3 +6,4 @@ export { tagActions } from './tag-actions';
 export { cuisineActions } from './cuisine-actions';
 export { googleReviewsActions } from './google-reviews-actions';
 export { adminActions } from './admin-actions';
+export { adminInfluencerActions } from './admin-influencer-actions';

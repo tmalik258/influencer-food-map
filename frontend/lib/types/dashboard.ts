@@ -147,6 +147,7 @@ export interface VideoFiltersProps {
 
 export interface VideoHeaderProps {
   videoCount: number;
+  onCreateClick: () => void;
 }
 
 export interface VideoTableProps {
@@ -188,7 +189,6 @@ export interface ListingFiltersProps {
   setStatusFilter: (value: string) => void;
   sortBy: string;
   setSortBy: (value: string) => void;
-  onSearch: () => void;
 }
 
 export interface ListingHeaderProps {

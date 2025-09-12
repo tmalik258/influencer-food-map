@@ -1,39 +1,11 @@
 "use client";
 
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/lib/contexts/auth-context';
-import { ProtectedRouteProps } from '@/lib/types/auth';
-import { Skeleton } from '@/components/ui/skeleton';
-import { Card, CardContent } from '@/components/ui/card';
-
-// Loading skeleton for protected routes
-function ProtectedRouteLoading() {
-  return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="mx-auto max-w-7xl">
-        {/* Header skeleton */}
-        <div className="mb-8">
-          <Skeleton className="h-8 w-64 mb-2" />
-          <Skeleton className="h-4 w-96" />
-        </div>
-        
-        {/* Content skeleton */}
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Card key={i}>
-              <CardContent className="p-6">
-                <Skeleton className="h-6 w-full mb-4" />
-                <Skeleton className="h-4 w-3/4 mb-2" />
-                <Skeleton className="h-4 w-1/2" />
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
+import { useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/contexts/auth-context";
+import { ProtectedRouteProps } from "@/lib/types/auth";
+import { Card, CardContent } from "@/components/ui/card";
+import { MessageLoading } from "./ui/message-loading";
 
 // Unauthorized access component
 function UnauthorizedAccess() {
@@ -62,11 +34,10 @@ function UnauthorizedAccess() {
             Access Denied
           </h2>
           <p className="text-gray-600 mb-4">
-            You don&apos;t have permission to access this page. Admin privileges are required.
+            You don&apos;t have permission to access this page. Admin privileges
+            are required.
           </p>
-          <p className="text-sm text-gray-500">
-            Redirecting to login page...
-          </p>
+          <p className="text-sm text-gray-500">Redirecting to login page...</p>
         </CardContent>
       </Card>
     </div>
@@ -76,7 +47,7 @@ function UnauthorizedAccess() {
 export function ProtectedRoute({
   children,
   fallback,
-  redirectTo = '/login'
+  redirectTo = "/login",
 }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
@@ -87,7 +58,7 @@ export function ProtectedRoute({
 
     // Redirect if not authenticated
     if (!user) {
-      console.log('User not authenticated, redirecting to:', redirectTo);
+      console.log("User not authenticated, redirecting to:", redirectTo);
       router.push(redirectTo);
       return;
     }
@@ -102,7 +73,13 @@ export function ProtectedRoute({
 
   // Show loading state
   if (loading) {
-    return fallback || <ProtectedRouteLoading />;
+    return (
+      fallback || (
+        <div className="flex items-center justify-center min-h-dvh">
+          <MessageLoading />
+        </div>
+      )
+    );
   }
 
   // Show unauthorized if no user

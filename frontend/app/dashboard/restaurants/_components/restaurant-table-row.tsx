@@ -3,7 +3,7 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Edit, Trash2, MapPin, Star, Clock } from "lucide-react";
+import { Edit, Trash2, Clock } from "lucide-react";
 import { Restaurant } from "@/lib/types";
 
 interface RestaurantTableRowProps {
@@ -24,7 +24,7 @@ export function RestaurantTableRow({ restaurant, onView, onEdit, onDelete }: Res
   return (
     <TableRow 
       key={restaurant.id} 
-      className="cursor-pointer hover:bg-muted/50 focus-within:bg-muted/50" 
+      className="cursor-pointer hover:bg-orange-500/5 focus-within:bg-orange-500/5 border-orange-500/10 transition-all duration-200 hover:shadow-md" 
       onClick={() => onView(restaurant)}
       onKeyDown={handleKeyDown}
       tabIndex={0}
@@ -33,7 +33,7 @@ export function RestaurantTableRow({ restaurant, onView, onEdit, onDelete }: Res
     >
       <TableCell className="font-medium">
         <div>
-          <div className="font-semibold">{restaurant.name}</div>
+          <div className="font-semibold text-foreground hover:text-orange-600 transition-colors">{restaurant.name}</div>
           <div className="text-sm text-muted-foreground truncate max-w-[200px]">
             {restaurant.address}
           </div>
@@ -53,12 +53,12 @@ export function RestaurantTableRow({ restaurant, onView, onEdit, onDelete }: Res
       <TableCell>
         <div className="flex flex-wrap gap-1 max-w-[200px]">
           {restaurant.tags?.slice(0, 2).map((tag) => (
-            <Badge key={tag.id} variant="secondary" className="text-xs">
+            <Badge key={tag.id} variant="secondary" className="text-xs bg-orange-500/10 text-orange-700 hover:bg-orange-500/20 transition-colors">
               {tag.name}
             </Badge>
           ))}
           {restaurant.tags && restaurant.tags.length > 2 && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs border-orange-500/30 text-orange-600">
               +{restaurant.tags.length - 2}
             </Badge>
           )}
@@ -67,12 +67,12 @@ export function RestaurantTableRow({ restaurant, onView, onEdit, onDelete }: Res
       <TableCell>
         <div className="flex flex-wrap gap-1 max-w-[200px]">
           {restaurant.cuisines?.slice(0, 2).map((cuisine) => (
-            <Badge key={cuisine.id} variant="default" className="text-xs">
+            <Badge key={cuisine.id} variant="default" className="text-xs bg-orange-600 hover:bg-orange-700 transition-colors">
               {cuisine.name}
             </Badge>
           ))}
           {restaurant.cuisines && restaurant.cuisines.length > 2 && (
-            <Badge variant="outline" className="text-xs">
+            <Badge variant="outline" className="text-xs border-orange-500/30 text-orange-600">
               +{restaurant.cuisines.length - 2}
             </Badge>
           )}
@@ -93,7 +93,7 @@ export function RestaurantTableRow({ restaurant, onView, onEdit, onDelete }: Res
               e.stopPropagation();
               onEdit(restaurant);
             }}
-            className="cursor-pointer"
+            className="cursor-pointer hover:bg-orange-500/10 hover:text-orange-600 transition-all duration-200"
             aria-label={`Edit ${restaurant.name}`}
           >
             <Edit className="h-4 w-4" aria-hidden="true" />
@@ -106,7 +106,7 @@ export function RestaurantTableRow({ restaurant, onView, onEdit, onDelete }: Res
               e.stopPropagation();
               onDelete(restaurant.id);
             }}
-            className="cursor-pointer"
+            className="cursor-pointer hover:bg-red-500/10 hover:text-red-600 transition-all duration-200"
             aria-label={`Delete ${restaurant.name}`}
           >
             <Trash2 className="h-4 w-4" aria-hidden="true" />

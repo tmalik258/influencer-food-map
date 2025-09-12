@@ -332,6 +332,24 @@
   --sidebar-ring: oklch(0.75 0.15 70);
 }
 
+/* Dark mode input field styling with light orange border */
+.dark input[type="text"],
+.dark input[type="email"],
+.dark input[type="password"],
+.dark input[type="number"],
+.dark input[type="search"],
+.dark input[type="url"],
+.dark input[type="tel"],
+.dark textarea,
+.dark select,
+.dark [role="combobox"] {
+  border: 1px solid #FFA500 !important;
+}
+
+.dark .input-with-orange-border {
+  border: 1px solid #FFA500 !important;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

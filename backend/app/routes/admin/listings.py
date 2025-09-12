@@ -1,49 +1,91 @@
-from fastapi import (APIRouter, Depends, HTTPException)
+from typing import List
+from uuid import UUID
 
-from sqlalchemy import select, update, delete, desc
-from sqlalchemy.orm import joinedload, Session
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Listing
-from app.database import get_async_db, get_db
+from app.api_schema.listings import ListingCreate, ListingUpdate, ListingResponse
+from app.database import get_async_db
 from app.dependencies import get_current_admin
+from app.models.listing import Listing
 from app.models.restaurant import Restaurant
 
-router = APIRouter()
+admin_listings_router = APIRouter()
 
-@router.put("/approve-all")
-def approve_all_listings(db: Session = Depends(get_db), current_admin=Depends(get_current_admin)):
-    """Approve all listings in the database."""
+@admin_listings_router.post(
+    "/", response_model=ListingResponse, status_code=status.HTTP_201_CREATED
+)
+async def create_listing(
+    listing: ListingCreate,
+    db: AsyncSession = Depends(get_async_db),
+    current_admin=Depends(get_current_admin)
+):
+    new_listing = Listing(**listing.model_dump())
+    db.add(new_listing)
+    await db.commit()
+    await db.refresh(new_listing)
+    return new_listing
+
+@admin_listings_router.put(
+    "/{listing_id}", response_model=ListingResponse
+)
+async def update_listing(
+    listing_id: UUID,
+    listing_update: ListingUpdate,
+    db: AsyncSession = Depends(get_async_db),
+    current_admin=Depends(get_current_admin)
+):
+    query = select(Listing).filter(Listing.id == listing_id)
+    result = await db.execute(query)
+    existing_listing = result.scalars().first()
+
+    if not existing_listing:
+        raise HTTPException(status_code=404, detail="Listing not found")
+
+    for field, value in listing_update.model_dump(exclude_unset=True).items():
+        setattr(existing_listing, field, value)
+
+    await db.commit()
+    await db.refresh(existing_listing)
+    return existing_listing
+
+@admin_listings_router.put("/approve-all", response_model=dict)
+async def approve_all_listings(
+    db: AsyncSession = Depends(get_async_db),
+    current_admin=Depends(get_current_admin)
+):
     try:
-        # Update all listings to approved=True
-        result = db.execute(
+        result = await db.execute(
             update(Listing).values(approved=True)
         )
-        db.commit()
-        
+        await db.commit()
         affected_rows = result.rowcount
-        
         return {
             "message": f"Successfully approved {affected_rows} listings",
             "approved_count": affected_rows
         }
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to approve all listings: {str(e)}")
 
-@router.put("/approve/{listing_id}")
-def approve_listing(listing_id: str, db: Session = Depends(get_db), current_admin=Depends(get_current_admin)):
-    """Approve a single listing by ID."""
+@admin_listings_router.put("/approve/{listing_id}", response_model=dict)
+async def approve_listing(
+    listing_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_admin=Depends(get_current_admin)
+):
     try:
-        # Find the listing
-        listing = db.query(Listing).filter(Listing.id == listing_id).first()
+        query = select(Listing).filter(Listing.id == listing_id)
+        result = await db.execute(query)
+        listing = result.scalars().first()
         
         if not listing:
             raise HTTPException(status_code=404, detail="Listing not found")
         
-        # Update the listing to approved
         listing.approved = True
-        db.commit()
+        await db.commit()
+        await db.refresh(listing)
         
         return {
             "message": f"Successfully approved listing {listing_id}",
@@ -53,22 +95,26 @@ def approve_listing(listing_id: str, db: Session = Depends(get_db), current_admi
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to approve listing: {str(e)}")
 
-@router.put("/disapprove/{listing_id}")
-def disapprove_listing(listing_id: str, db: Session = Depends(get_db), current_admin=Depends(get_current_admin)):
-    """Disapprove a single listing by ID."""
+@admin_listings_router.put("/disapprove/{listing_id}", response_model=dict)
+async def disapprove_listing(
+    listing_id: UUID,
+    db: AsyncSession = Depends(get_async_db),
+    current_admin=Depends(get_current_admin)
+):
     try:
-        # Find the listing
-        listing = db.query(Listing).filter(Listing.id == listing_id).first()
+        query = select(Listing).filter(Listing.id == listing_id)
+        result = await db.execute(query)
+        listing = result.scalars().first()
         
         if not listing:
             raise HTTPException(status_code=404, detail="Listing not found")
         
-        # Update the listing to not approved
         listing.approved = False
-        db.commit()
+        await db.commit()
+        await db.refresh(listing)
         
         return {
             "message": f"Successfully disapproved listing {listing_id}",
@@ -78,18 +124,16 @@ def disapprove_listing(listing_id: str, db: Session = Depends(get_db), current_a
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to disapprove listing: {str(e)}")
 
-
-@router.delete("/{listing_id}/")
+@admin_listings_router.delete("/{listing_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_listing(
-    listing_id: str,
+    listing_id: UUID,
     delete_restaurant: bool = False,
     db: AsyncSession = Depends(get_async_db),
     current_admin=Depends(get_current_admin)
 ):
-    """Delete a single listing by ID, with option to delete associated restaurant."""
     try:
         query = select(Listing).filter(Listing.id == listing_id)
         result = await db.execute(query)
@@ -107,7 +151,6 @@ async def delete_listing(
 
         await db.delete(listing)
         await db.commit()
-        return {"detail": "Listing deleted successfully"}
     except HTTPException:
         raise
     except Exception as e:
@@ -115,13 +158,12 @@ async def delete_listing(
         print(f"Error deleting listing {listing_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while deleting listing")
 
-@router.delete("/")
+@admin_listings_router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_all_listings(
     delete_restaurants: bool = False,
     db: AsyncSession = Depends(get_async_db),
     current_admin=Depends(get_current_admin)
 ):
-    """Delete all listings, with option to delete associated restaurants."""
     try:
         await db.execute(delete(Listing))
 
@@ -129,7 +171,6 @@ async def delete_all_listings(
             await db.execute(delete(Restaurant))
 
         await db.commit()
-        return {"detail": "All listings deleted successfully"}
     except Exception as e:
         await db.rollback()
         print(f"Error deleting all listings: {e}")

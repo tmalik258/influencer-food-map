@@ -20,7 +20,7 @@ export function RestaurantCard({
   return (
     <Card
       key={restaurant.id}
-      className="overflow-hidden border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 group p-4"
+      className="overflow-hidden border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 group"
     >
       <div className="relative h-48 rounded-lg overflow-hidden">
         {restaurant.photo_url ? (
@@ -47,7 +47,7 @@ export function RestaurantCard({
           </div>
         )}
       </div>
-      <CardContent className="p-0 flex flex-col flex-grow gap-3">
+      <CardContent className="p-4 flex flex-col flex-grow gap-3">
         <div className="">
           <h3 className="text-xl font-bold text-gray-900 mb-2 group-hover:text-orange-600 transition-colors">
             {restaurant.name}
@@ -99,7 +99,7 @@ export function RestaurantCard({
         {showButton !== false && (
           <Button
             asChild
-            className="w-full mt-auto bg-orange-500 text-white hover:bg-orange-600"
+            className="w-full mt-auto bg-orange-500 text-white hover:bg-orange-600 transition-colors duration-200"
           >
             <Link href={`/restaurants/${restaurant.id}`}>View Details</Link>
           </Button>

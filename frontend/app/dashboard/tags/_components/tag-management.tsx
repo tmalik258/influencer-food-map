@@ -1,22 +1,38 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import { Search, Filter, Plus, Edit, Trash2, Calendar, Hash } from 'lucide-react';
+import { Edit, Trash2, Calendar, Hash } from 'lucide-react';
 import { Tag } from '@/lib/types';
 import { useTags } from '@/lib/hooks';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import LoadingSkeleton from '@/components/loading-skeleton';
+import DashboardLoadingSkeleton from '@/app/dashboard/_components/dashboard-loading-skeleton';
+import TagHeader from './tag-header';
+import TagCreateForm from './tag-create-form';
+
+import TagDeleteDialog from './tag-delete-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
 
 export default function TagManagement() {
   const { tags, loading, error, fetchAllTags, searchTagsByName } = useTags();
   const [searchTerm, setSearchTerm] = useState('');
   const [sortBy, setSortBy] = useState('name');
   const [filterBy, setFilterBy] = useState('all');
+
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedTag, setSelectedTag] = useState<Tag | null>(null);
+  const router = useRouter();
+
+  const refreshTags = () => {
+    fetchAllTags();
+    setIsCreateFormOpen(false);
+    setIsDeleteDialogOpen(false);
+    setSelectedTag(null);
+  };
 
   useEffect(() => {
     fetchAllTags();
@@ -54,33 +70,31 @@ export default function TagManagement() {
     });
 
   const handleEdit = (tag: Tag) => {
-    // TODO: Implement edit functionality
-    console.log('Edit tag:', tag);
+    router.push(`/dashboard/tags/${tag.id}`);
   };
 
   const handleDelete = (tag: Tag) => {
-    // TODO: Implement delete functionality
-    console.log('Delete tag:', tag);
+    setSelectedTag(tag);
+    setIsDeleteDialogOpen(true);
   };
 
   const handleCreate = () => {
-    // TODO: Implement create functionality
-    console.log('Create new tag');
+    setIsCreateFormOpen(true);
   };
 
   if (loading && tags.length === 0) {
-    return <LoadingSkeleton />;
+    return <DashboardLoadingSkeleton variant="management" />;
   }
 
   if (error) {
     return (
-      <Card>
+      <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30">
         <CardContent className="p-6">
-          <div className="text-center text-orange-600">
+          <div className="text-center text-orange-600 dark:text-orange-400">
             <p>Error loading tags: {error}</p>
             <Button 
               onClick={() => fetchAllTags()} 
-              className="mt-4"
+              className="mt-4 bg-orange-600 hover:bg-orange-700 border-orange-500 focus:ring-orange-500 focus:border-orange-500"
               variant="outline"
             >
               Retry
@@ -92,69 +106,47 @@ export default function TagManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 justify-between">
-        <div className="flex flex-1 gap-4">
-          <div className="relative flex-1 max-w-sm">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search tags..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-40">
-              <SelectValue placeholder="Sort by" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="name">Name</SelectItem>
-              <SelectItem value="created_at">Created Date</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <Button onClick={handleCreate} className="cursor-pointer">
-          <Plus className="h-4 w-4 mr-2" />
-          Add Tag
-        </Button>
-      </div>
+    <div className="space-y-6 glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 rounded-xl p-6">
+      <TagHeader
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          sortBy={sortBy}
+          setSortBy={setSortBy}
+          onOpenCreateForm={handleCreate}
+        />
 
       {/* Stats */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
+        <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 hover:border-orange-500/50 transition-all duration-300">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
               Total Tags
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{tags.length}</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{tags.length}</div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 hover:border-orange-500/50 transition-all duration-300">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
               Filtered Results
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{filteredAndSortedTags.length}</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{filteredAndSortedTags.length}</div>
           </CardContent>
         </Card>
         
-        <Card>
+        <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 hover:border-orange-500/50 transition-all duration-300">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
+            <CardTitle className="text-sm font-medium text-gray-600 dark:text-gray-300">
               Search Active
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">
               {searchTerm.trim() ? 'Yes' : 'No'}
             </div>
           </CardContent>
@@ -162,17 +154,17 @@ export default function TagManagement() {
       </div>
 
       {/* Tags Table */}
-      <Card>
+      <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30">
         <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-12">
-                <Hash className="h-4 w-4" />
+                <Hash className="h-4 w-4 text-orange-600 dark:text-orange-400" />
               </TableHead>
               <TableHead>Name</TableHead>
               <TableHead className="w-32">
                 <div className="flex items-center gap-2">
-                  <Calendar className="h-4 w-4" />
+                  <Calendar className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                   Created
                 </div>
               </TableHead>
@@ -181,8 +173,8 @@ export default function TagManagement() {
           </TableHeader>
           <TableBody>
             {filteredAndSortedTags.map((tag) => (
-              <TableRow key={tag.id} className="hover:bg-muted/50">
-                <TableCell className="font-mono text-xs text-muted-foreground">
+              <TableRow key={tag.id} className="hover:bg-orange-50/50 dark:hover:bg-orange-900/20 transition-colors duration-200">
+                <TableCell className="font-mono text-xs text-gray-500 dark:text-gray-400">
                   {tag.id}
                 </TableCell>
                 <TableCell>
@@ -190,7 +182,7 @@ export default function TagManagement() {
                     {tag.name}
                   </Badge>
                 </TableCell>
-                <TableCell className="text-muted-foreground">
+                <TableCell className="text-gray-600 dark:text-gray-300">
                   {new Date(tag.created_at).toLocaleDateString()}
                 </TableCell>
                 <TableCell className="text-right">
@@ -199,18 +191,15 @@ export default function TagManagement() {
                       size="sm"
                       variant="ghost"
                       onClick={() => handleEdit(tag)}
-                      className="h-8 w-8 p-0 cursor-pointer"
+                      className="cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 hover:text-orange-600 dark:hover:text-orange-400 transition-colors duration-200"
                     >
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => handleDelete(tag)}
-                      className="h-8 w-8 p-0 cursor-pointer text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    <TagDeleteDialog
+                      tagId={tag.id}
+                      tagName={tag.name}
+                      onSuccess={refreshTags}
+                    />
                   </div>
                 </TableCell>
               </TableRow>
@@ -219,33 +208,22 @@ export default function TagManagement() {
         </Table>
       </Card>
 
-      {/* Empty State */}
-      {filteredAndSortedTags.length === 0 && !loading && (
-        <Card>
-          <CardContent className="p-12 text-center">
-            <div className="text-muted-foreground">
-              {searchTerm.trim() ? (
-                <>
-                  <p className="text-lg mb-2">No tags found</p>
-                  <p>Try adjusting your search terms</p>
-                </>
-              ) : (
-                <>
-                  <p className="text-lg mb-2">No tags available</p>
-                  <p>Create your first tag to get started</p>
-                  <Button 
-                    onClick={handleCreate} 
-                    className="mt-4 cursor-pointer"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Tag
-                  </Button>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+      {/* Create Tag Dialog */}
+      <Dialog open={isCreateFormOpen} onOpenChange={setIsCreateFormOpen}>
+        <DialogContent className="sm:max-w-[425px] glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900 dark:text-white">Create New Tag</DialogTitle>
+            <DialogDescription className="text-gray-600 dark:text-gray-300">
+              Fill in the details below to create a new tag.
+            </DialogDescription>
+          </DialogHeader>
+          <TagCreateForm onSuccess={refreshTags} />
+        </DialogContent>
+      </Dialog>
+
+
+
+      {/* Delete Tag Dialog (handled within TagDeleteDialog component) */}
     </div>
   );
 }

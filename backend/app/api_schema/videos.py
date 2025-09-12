@@ -17,3 +17,19 @@ class VideoResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class VideoCreate(BaseModel):
+    influencer_id: UUID
+    youtube_video_id: str
+    title: str
+    description: Optional[str] = None
+    video_url: str
+    published_at: Optional[datetime] = None
+    transcription: Optional[str] = None
+
+class VideoUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    video_url: Optional[str] = None
+    published_at: Optional[datetime] = None
+    transcription: Optional[str] = None

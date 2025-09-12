@@ -8,7 +8,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefreshCw, Play, AlertCircle, CheckCircle, Clock } from "lucide-react";
 import { useJobs, useDataSync } from "@/lib/hooks";
-import LoadingSkeleton from "@/components/loading-skeleton";
+import DashboardLoadingSkeleton from "@/app/dashboard/_components/dashboard-loading-skeleton";
 
 import type { JobCardProps } from '@/lib/types';
 
@@ -42,18 +42,18 @@ function JobCard({ job, onTrigger }: JobCardProps) {
   const progress = job.total_items > 0 ? (job.processed_items / job.total_items) * 100 : 0;
 
   return (
-    <Card>
+    <Card className="glass-effect backdrop-blur-xl bg-white/80 border border-orange-200/50 shadow-xl">
       <CardHeader className="pb-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {getStatusIcon(job.status)}
-            <CardTitle className="text-lg">{job.title}</CardTitle>
+            <CardTitle className="text-lg text-gray-900 dark:text-gray-100">{job.title}</CardTitle>
           </div>
           <Badge className={getStatusColor(job.status)}>
             {job.status}
           </Badge>
         </div>
-        <CardDescription>{job.description}</CardDescription>
+        <CardDescription className="text-gray-600 dark:text-gray-400">{job.description}</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
@@ -69,14 +69,14 @@ function JobCard({ job, onTrigger }: JobCardProps) {
           
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-muted-foreground">Started:</span>
-              <p className="font-medium">
+              <span className="text-gray-600 dark:text-gray-400">Started:</span>
+              <p className="font-medium text-gray-900 dark:text-gray-100">
                 {job.started_at ? new Date(job.started_at).toLocaleString() : "Not started"}
               </p>
             </div>
             <div>
-              <span className="text-muted-foreground">Completed:</span>
-              <p className="font-medium">
+              <span className="text-gray-600 dark:text-gray-400">Completed:</span>
+              <p className="font-medium text-gray-900 dark:text-gray-100">
                 {job.completed_at ? new Date(job.completed_at).toLocaleString() : "Not completed"}
               </p>
             </div>
@@ -91,10 +91,9 @@ function JobCard({ job, onTrigger }: JobCardProps) {
           {job.status !== "running" && (
             <Button 
               onClick={() => onTrigger(job.job_type)}
-              className="w-full"
-              variant="outline"
+              className="w-full bg-orange-600 hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-white"
             >
-              <Play className="h-4 w-4 mr-2" />
+              <Play className="h-4 w-4 mr-2 text-white" />
               Restart Job
             </Button>
           )}
@@ -127,18 +126,18 @@ export function DataSyncManagement() {
   };
 
   if (isLoading) {
-    return <LoadingSkeleton />;
+    return <DashboardLoadingSkeleton variant="management" />;
   }
 
   if (error) {
     return (
-      <Card>
+      <Card className="glass-effect backdrop-blur-xl bg-white/80 border border-orange-200/50 shadow-xl">
         <CardContent className="pt-6">
           <div className="text-center text-orange-600">
             <AlertCircle className="h-8 w-8 mx-auto mb-2" />
             <p>Failed to load jobs: {error}</p>
-            <Button onClick={() => refetch()} className="mt-4">
-              <RefreshCw className="h-4 w-4 mr-2" />
+            <Button onClick={() => refetch()} className="mt-4 bg-orange-600 hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-white">
+              <RefreshCw className="h-4 w-4 mr-2 text-white" />
               Retry
             </Button>
           </div>
@@ -154,10 +153,10 @@ export function DataSyncManagement() {
   return (
     <div className="space-y-6">
       {/* Quick Actions */}
-      <Card>
+      <Card className="glass-effect backdrop-blur-xl bg-white/80 border border-orange-200/50 shadow-xl">
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
-          <CardDescription>
+          <CardTitle className="text-gray-900 dark:text-gray-100">Quick Actions</CardTitle>
+          <CardDescription className="text-gray-600 dark:text-gray-400">
             Trigger data synchronization processes
           </CardDescription>
         </CardHeader>
@@ -166,17 +165,17 @@ export function DataSyncManagement() {
             <Button 
               onClick={() => handleTriggerJob("youtube_scraping")}
               disabled={triggering === "youtube_scraping"}
-              className="h-auto p-4 flex flex-col items-start"
+              className="h-auto p-4 flex flex-col items-start bg-orange-600 hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-white"
             >
               <div className="flex items-center gap-2 mb-2">
                 {triggering === "youtube_scraping" ? (
                   <RefreshCw className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Play className="h-5 w-5" />
+                  <Play className="h-5 w-5 text-white" />
                 )}
                 <span className="font-semibold">YouTube Scraping</span>
               </div>
-              <span className="text-sm text-muted-foreground text-left">
+              <span className="text-sm text-orange-100 text-left">
                 Scrape new videos and update existing data
               </span>
             </Button>
@@ -184,18 +183,17 @@ export function DataSyncManagement() {
             <Button 
               onClick={() => handleTriggerJob("nlp_processing")}
               disabled={triggering === "nlp_processing"}
-              className="h-auto p-4 flex flex-col items-start"
-              variant="outline"
+              className="h-auto p-4 flex flex-col items-start glass-effect backdrop-blur-sm bg-white/70 border-orange-200/50 hover:bg-orange-50 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-gray-900 dark:text-gray-100"
             >
               <div className="flex items-center gap-2 mb-2">
                 {triggering === "nlp_processing" ? (
                   <RefreshCw className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Play className="h-5 w-5" />
+                  <Play className="h-5 w-5 text-orange-600" />
                 )}
                 <span className="font-semibold">NLP Processing</span>
               </div>
-              <span className="text-sm text-muted-foreground text-left">
+              <span className="text-sm text-gray-600 dark:text-gray-400 text-left">
                 Process video content and extract insights
               </span>
             </Button>
@@ -205,25 +203,25 @@ export function DataSyncManagement() {
 
       {/* Job Status Tabs */}
       <Tabs defaultValue="running" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="running" className="flex items-center gap-2">
-            <RefreshCw className="h-4 w-4" />
+        <TabsList className="grid w-full grid-cols-3 glass-effect backdrop-blur-sm bg-white/70 border border-orange-200/50">
+          <TabsTrigger value="running" className="flex items-center gap-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white">
+            <RefreshCw className="h-4 w-4 text-orange-600 data-[state=active]:text-white" />
             Running ({runningJobs.length})
           </TabsTrigger>
-          <TabsTrigger value="completed" className="flex items-center gap-2">
-            <CheckCircle className="h-4 w-4" />
+          <TabsTrigger value="completed" className="flex items-center gap-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white">
+            <CheckCircle className="h-4 w-4 text-orange-600 data-[state=active]:text-white" />
             Completed ({completedJobs.length})
           </TabsTrigger>
-          <TabsTrigger value="failed" className="flex items-center gap-2">
-            <AlertCircle className="h-4 w-4" />
+          <TabsTrigger value="failed" className="flex items-center gap-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white">
+            <AlertCircle className="h-4 w-4 text-orange-600 data-[state=active]:text-white" />
             Failed ({failedJobs.length})
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="running" className="space-y-4">
           {runningJobs.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6 text-center text-muted-foreground">
+            <Card className="glass-effect backdrop-blur-xl bg-white/80 border border-orange-200/50 shadow-xl">
+              <CardContent className="pt-6 text-center text-gray-600 dark:text-gray-400">
                 No running jobs
               </CardContent>
             </Card>
@@ -236,8 +234,8 @@ export function DataSyncManagement() {
 
         <TabsContent value="completed" className="space-y-4">
           {completedJobs.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6 text-center text-muted-foreground">
+            <Card className="glass-effect backdrop-blur-xl bg-white/80 border border-orange-200/50 shadow-xl">
+              <CardContent className="pt-6 text-center text-gray-600 dark:text-gray-400">
                 No completed jobs
               </CardContent>
             </Card>
@@ -250,8 +248,8 @@ export function DataSyncManagement() {
 
         <TabsContent value="failed" className="space-y-4">
           {failedJobs.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6 text-center text-muted-foreground">
+            <Card className="glass-effect backdrop-blur-xl bg-white/80 border border-orange-200/50 shadow-xl">
+              <CardContent className="pt-6 text-center text-gray-600 dark:text-gray-400">
                 No failed jobs
               </CardContent>
             </Card>

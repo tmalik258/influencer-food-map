@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "FoodTuber - Discover Restaurants by Influencers",
+  title: "Nomtok - Discover Restaurants by Influencers",
   description:
     "Discover amazing restaurants recommended by your favorite food influencers",
 };

@@ -24,6 +24,26 @@ class ListingResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class ListingCreate(BaseModel):
+    restaurant_id: UUID
+    video_id: UUID
+    influencer_id: UUID
+    visit_date: Optional[date] = None
+    quotes: Optional[List[str]] = None
+    context: Optional[List[str]] = None
+    confidence_score: Optional[float] = None
+    approved: Optional[bool] = False
+
+class ListingUpdate(BaseModel):
+    restaurant_id: Optional[UUID] = None
+    video_id: Optional[UUID] = None
+    influencer_id: Optional[UUID] = None
+    visit_date: Optional[date] = None
+    quotes: Optional[List[str]] = None
+    context: Optional[List[str]] = None
+    confidence_score: Optional[float] = None
+    approved: Optional[bool] = None
+
 class ListingLightResponse(BaseModel):
     id: UUID
     restaurant_id: Optional[UUID] = None

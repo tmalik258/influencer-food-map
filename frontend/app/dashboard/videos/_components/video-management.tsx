@@ -8,6 +8,11 @@ import { Play } from 'lucide-react';
 import { VideoHeader } from './video-header';
 import { VideoFilters } from './video-filters';
 import { VideoTable } from './video-table';
+import { VideoCreateForm } from './video-create-form';
+
+import { VideoDeleteDialog } from './video-delete-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { useRouter } from 'next/navigation';
 
 export default function VideoManagement() {
   const [searchTerm, setSearchTerm] = useState('');
@@ -15,6 +20,10 @@ export default function VideoManagement() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [selectedInfluencer, setSelectedInfluencer] = useState<string>('');
   const [hasListings, setHasListings] = useState<boolean | undefined>(undefined);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  const router = useRouter();
 
   const { videos, loading, error, fetchVideos } = useVideos({
     title: searchTerm || undefined,
@@ -28,6 +37,10 @@ export default function VideoManagement() {
       fetchVideos();
     }
   }, [fetchVideos, videos.length]);
+
+  const refreshVideos = () => {
+    fetchVideos();
+  };
 
   // Filter and sort videos
   const filteredAndSortedVideos = videos
@@ -74,13 +87,12 @@ export default function VideoManagement() {
   };
 
   const handleEditVideo = (video: Video) => {
-    // TODO: Implement edit functionality
-    console.log('Edit video:', video.id);
+    router.push(`/dashboard/videos/${video.id}`);
   };
 
   const handleDeleteVideo = (video: Video) => {
-    // TODO: Implement delete functionality
-    console.log('Delete video:', video.id);
+    setSelectedVideo(video);
+    setIsDeleteDialogOpen(true);
   };
 
   if (loading) {
@@ -98,13 +110,13 @@ export default function VideoManagement() {
 
   if (error) {
     return (
-      <div className="text-center py-12">
+      <div className="text-center py-12 glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 rounded-xl">
         <div className="text-orange-600 mb-4">
           <Play className="w-12 h-12 mx-auto mb-2" />
-          <p className="text-lg font-semibold">Error loading videos</p>
-          <p className="text-sm">{error}</p>
+          <p className="text-lg font-semibold text-gray-900 dark:text-white">Error loading videos</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300">{error}</p>
         </div>
-        <Button onClick={() => fetchVideos()} variant="outline">
+        <Button onClick={() => fetchVideos()} variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-200">
           Try Again
         </Button>
       </div>
@@ -118,8 +130,8 @@ export default function VideoManagement() {
   };
 
   return (
-    <div className="space-y-6">
-      <VideoHeader videoCount={filteredAndSortedVideos.length} />
+    <div className="space-y-6 glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 rounded-xl p-6 shadow-xl">
+      <VideoHeader videoCount={filteredAndSortedVideos.length} onCreateClick={() => setIsCreateModalOpen(true)} />
       
       <VideoFilters
         searchTerm={searchTerm}
@@ -141,6 +153,24 @@ export default function VideoManagement() {
         onEditVideo={handleEditVideo}
         onDeleteVideo={handleDeleteVideo}
         onClearFilters={handleClearFilters}
+      />
+
+      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+        <DialogContent className="sm:max-w-[600px] glass-effect backdrop-blur-xl bg-white/95 dark:bg-gray-900/95 border border-white/20 dark:border-gray-700/30">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900 dark:text-white">Create New Video</DialogTitle>
+          </DialogHeader>
+          <VideoCreateForm onSuccess={() => { refreshVideos(); setIsCreateModalOpen(false); }} />
+        </DialogContent>
+      </Dialog>
+
+
+
+      <VideoDeleteDialog
+        isOpen={isDeleteDialogOpen}
+        onClose={() => setIsDeleteDialogOpen(false)}
+        video={selectedVideo}
+        onSuccess={() => { refreshVideos(); setIsDeleteDialogOpen(false); }}
       />
     </div>
   );

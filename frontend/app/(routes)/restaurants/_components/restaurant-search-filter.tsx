@@ -35,20 +35,20 @@ export function RestaurantSearchFilter({
   updateSelectedCuisines,
 }: RestaurantSearchFilterProps) {
   return (
-    <div className="mb-6 flex flex-col gap-4 z-[10000] shadow-lg p-5 rounded-lg">
+    <div className="mb-8 flex flex-col gap-4 z-[10000] bg-white shadow-lg p-6 rounded-xl border border-gray-100">
       <div className="flex flex-col gap-4">
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <Input
               placeholder={getSearchPlaceholder(searchType)}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
+              className="pl-10 h-11 border-gray-200 focus:border-orange-500 focus:ring-orange-500"
             />
           </div>
           <Select value={searchType} onValueChange={setSearchType}>
-            <SelectTrigger className="w-full sm:w-48">
+            <SelectTrigger className="w-full sm:w-48 h-11 border-gray-200 focus:border-orange-500 focus:ring-orange-500">
               <SelectValue placeholder="Search by" />
             </SelectTrigger>
             <SelectContent className="z-[2000]">
@@ -61,9 +61,9 @@ export function RestaurantSearchFilter({
             </SelectContent>
           </Select>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-4">
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="flex-1">
+            <SelectTrigger className="flex-1 h-11 border-gray-200 focus:border-orange-500 focus:ring-orange-500">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent className="z-[1000]">
@@ -99,14 +99,14 @@ export function RestaurantSearchFilter({
           {searchQuery && (
             <Badge
               variant="secondary"
-              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-gray-200 transition-colors duration-200"
             >
               <span className="text-xs text-muted-foreground">Search:</span>
               <span>{searchQuery}</span>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                className="h-4 w-4 p-0 hover:bg-gray-300 cursor-pointer transition-colors duration-200"
                 onClick={() => updateSearchQuery("")}
               >
                 <X className="w-3 h-3" />
@@ -118,7 +118,7 @@ export function RestaurantSearchFilter({
           {searchType && (
             <Badge
               variant="secondary"
-              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-gray-200 transition-colors duration-200"
             >
               <span className="text-xs text-muted-foreground">Search by:</span>
               <span>
@@ -137,7 +137,7 @@ export function RestaurantSearchFilter({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                className="h-4 w-4 p-0 hover:bg-gray-300 cursor-pointer transition-colors duration-200"
                 onClick={() => updateSearchType("")}
               >
                 <X className="w-3 h-3" />
@@ -149,7 +149,7 @@ export function RestaurantSearchFilter({
           {sortBy && (
             <Badge
               variant="secondary"
-              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-gray-200 transition-colors duration-200"
             >
               <span className="text-xs text-muted-foreground">Sort by:</span>
               <span>
@@ -164,7 +164,7 @@ export function RestaurantSearchFilter({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                className="h-4 w-4 p-0 hover:bg-gray-300 cursor-pointer transition-colors duration-200"
                 onClick={() => updateSortBy("")}
               >
                 <X className="w-3 h-3" />
@@ -184,7 +184,7 @@ export function RestaurantSearchFilter({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                className="h-4 w-4 p-0 hover:bg-gray-300 cursor-pointer transition-colors duration-200"
                 onClick={() => {
                   const newTags = selectedTags.filter((t) => t.id !== tag.id);
                   updateSelectedTags(newTags);
@@ -200,14 +200,14 @@ export function RestaurantSearchFilter({
             <Badge
               key={cuisine.id}
               variant="secondary"
-              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-secondary/80"
+              className="flex items-center gap-1 pr-1 cursor-pointer hover:bg-gray-200 transition-colors duration-200"
             >
               <span className="text-xs text-muted-foreground">Cuisine:</span>
               <span>{cuisine.name}</span>
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-4 w-4 p-0 hover:bg-secondary cursor-pointer"
+                className="h-4 w-4 p-0 hover:bg-gray-300 cursor-pointer transition-colors duration-200"
                 onClick={() => {
                   const newCuisines = selectedCuisines.filter(
                     (c) => c.id !== cuisine.id
@@ -235,7 +235,7 @@ export function RestaurantSearchFilter({
                 updateSearchType("");
                 updateSortBy("");
               }}
-              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+              className="h-8 px-3 text-sm text-muted-foreground hover:text-foreground cursor-pointer border-gray-200 hover:border-gray-300"
             >
               Clear all
             </Button>

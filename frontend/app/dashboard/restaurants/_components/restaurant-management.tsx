@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -25,6 +25,7 @@ import { RestaurantTableRow } from "./restaurant-table-row";
 import { RestaurantLoading } from "./restaurant-loading";
 import ErrorCard from "@/components/error-card";
 import { DeleteConfirmationModal } from "@/components/delete-confirmation-modal";
+import CreateRestaurantModal from "./create-restaurant-modal";
 import { MapPin, Star } from "lucide-react";
 import { toast } from "sonner";
 
@@ -50,6 +51,7 @@ export function RestaurantManagement() {
   const { deleteRestaurant, loading: deleteLoading } = useAdminRestaurant();
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [restaurantToDelete, setRestaurantToDelete] = useState<string | null>(null);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
 
   const handleEdit = (restaurant: Restaurant) => {
     router.push(`/dashboard/restaurants/${restaurant.id}?mode=edit`);
@@ -60,7 +62,7 @@ export function RestaurantManagement() {
     setDeleteModalOpen(true);
   };
 
-  const handleConfirmDelete = async () => {
+  const handleDeleteConfirm = async () => {
     if (!restaurantToDelete) return;
     
     try {
@@ -79,8 +81,13 @@ export function RestaurantManagement() {
   };
 
   const handleAddNew = () => {
-    // TODO: Open create modal or navigate to create page
-    console.log("Add new restaurant");
+    setCreateModalOpen(true);
+  };
+
+  const handleCreateSuccess = () => {
+    setCreateModalOpen(false);
+    refetch(); // Refresh the restaurant list
+    toast.success("Restaurant created successfully!");
   };
 
   const handleSearch = (value: string) => {
@@ -193,7 +200,7 @@ export function RestaurantManagement() {
 
       {/* Results Summary */}
       <div className="flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground font-medium">
           Showing {filteredRestaurants.length} of {total || 0} restaurants
           {(searchTerm || selectedTag !== "all" || selectedCuisine !== "all") && " (filtered)"}
           {" "} (Page {page} of {totalPages})
@@ -202,15 +209,15 @@ export function RestaurantManagement() {
 
       {/* Restaurant Table */}
       {filteredRestaurants.length === 0 ? (
-        <Card>
+        <Card className="glass-effect backdrop-blur-xl border-orange-500/20 shadow-lg">
           <CardContent className="pt-6 text-center text-muted-foreground">
-            <p>
+            <p className="text-lg font-medium">
               {restaurants?.length === 0
                 ? "No restaurants found."
                 : "No restaurants match your current filters."}
             </p>
             {(searchTerm || selectedTag !== "all" || selectedCuisine !== "all") && (
-              <p className="text-xs mt-2">
+              <p className="text-sm mt-2 text-orange-500">
                 Try adjusting your search terms or filters.
               </p>
             )}
@@ -222,7 +229,7 @@ export function RestaurantManagement() {
           setDeleteModalOpen(false);
           setRestaurantToDelete(null);
         }}
-        onConfirm={handleConfirmDelete}
+        onConfirm={handleDeleteConfirm}
         title="Delete Restaurant"
         description="Are you sure you want to delete this restaurant? This action cannot be undone."
         isLoading={deleteLoading}
@@ -230,28 +237,28 @@ export function RestaurantManagement() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="p-0">
+        <Card className="p-0 glass-effect backdrop-blur-xl border-orange-500/20 shadow-lg">
           <CardContent className="p-0">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
+                <TableRow className="border-orange-500/20 hover:bg-orange-500/5">
+                  <TableHead className="font-semibold text-foreground">Name</TableHead>
                   <TableHead>
                     <div className="inline-flex items-center gap-2">
-                      <MapPin className="h-4 w-4 text-muted-foreground" />{" "}
-                      Location
+                      <MapPin className="h-4 w-4 text-orange-500" />{" "}
+                      <span className="font-semibold text-foreground">Location</span>
                     </div>
                   </TableHead>
                   <TableHead>
                     <div className="inline-flex items-center gap-2">
                       <Star className="h-4 w-4 text-yellow-500 fill-current" />{" "}
-                      Rating
+                      <span className="font-semibold text-foreground">Rating</span>
                     </div>
                   </TableHead>
-                  <TableHead>Tags</TableHead>
-                  <TableHead>Cuisines</TableHead>
-                  <TableHead>Updated</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
+                  <TableHead className="font-semibold text-foreground">Tags</TableHead>
+                  <TableHead className="font-semibold text-foreground">Cuisines</TableHead>
+                  <TableHead className="font-semibold text-foreground">Updated</TableHead>
+                  <TableHead className="text-right font-semibold text-foreground">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -320,6 +327,23 @@ export function RestaurantManagement() {
           </Pagination>
         </div>
       )}
+
+      {/* Create Restaurant Modal */}
+      <CreateRestaurantModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSuccess={handleCreateSuccess}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={deleteModalOpen}
+        onClose={() => setDeleteModalOpen(false)}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Restaurant"
+        description="Are you sure you want to delete this restaurant? This action cannot be undone."
+        isLoading={deleteLoading}
+      />
     </div>
   );
 }

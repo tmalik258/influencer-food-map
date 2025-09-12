@@ -310,7 +310,7 @@ export function RestaurantsContent() {
         <RestaurantHeroSection city={city} />
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-6">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between mb-4">
@@ -379,9 +379,9 @@ export function RestaurantsContent() {
             </div>
           </div>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">
+          <h2 className="text-3xl font-bold text-gray-900 mb-6">
             {city ? `Restaurants in ${city}` : "All Restaurants"}
-          </h1>
+          </h2>
         </div>
 
         <RestaurantSearchFilter

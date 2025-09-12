@@ -35,7 +35,7 @@ export const restaurantEditSchema = z.object({
     .string()
     .max(50, "Business status must be less than 50 characters")
     .optional(),
-  photo_url: z.string().url("Must be a valid URL").optional().or(z.literal("")),
+  photo_url: z.url("Must be a valid URL").optional().or(z.literal("")),
   is_active: z.boolean(),
 });
 

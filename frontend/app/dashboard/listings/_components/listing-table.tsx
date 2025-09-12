@@ -34,58 +34,58 @@ export function ListingTable({
   if (loading) {
     return (
       <div className="text-center py-8">
-        <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
-        <p>Loading listings...</p>
+        <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2 text-orange-600 dark:text-orange-400" />
+        <p className="text-gray-900 dark:text-white">Loading listings...</p>
       </div>
     );
   }
 
   if (listings.length === 0) {
     return (
-      <div className="text-center py-8 text-gray-500">
+      <div className="text-center py-8 text-gray-600 dark:text-gray-300">
         <p>No listings found</p>
       </div>
     );
   }
 
   return (
-    <Table>
+    <Table className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 rounded-lg overflow-hidden">
       <TableHeader>
         <TableRow>
           <TableHead>
             <div className="flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
+              <MapPin className="h-4 w-4 text-orange-600 dark:text-orange-400" />
               Restaurant
             </div>
           </TableHead>
           <TableHead>
             <div className="flex items-center gap-2">
-              <User className="h-4 w-4" />
+              <User className="h-4 w-4 text-orange-600 dark:text-orange-400" />
               Influencer
             </div>
           </TableHead>
           <TableHead>
             <div className="flex items-center gap-2">
-              <Video className="h-4 w-4" />
+              <Video className="h-4 w-4 text-orange-600 dark:text-orange-400" />
               Video
             </div>
           </TableHead>
           <TableHead className="w-24">Status</TableHead>
           <TableHead className="w-32">
             <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4" />
+              <TrendingUp className="h-4 w-4 text-orange-600 dark:text-orange-400" />
               Confidence
             </div>
           </TableHead>
           <TableHead className="w-32">
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
+              <Calendar className="h-4 w-4 text-orange-600 dark:text-orange-400" />
               Visit Date
             </div>
           </TableHead>
           <TableHead className="w-32">
             <div className="flex items-center gap-2">
-              <Calendar className="h-4 w-4" />
+              <Calendar className="h-4 w-4 text-orange-600 dark:text-orange-400" />
               Created
             </div>
           </TableHead>
@@ -94,14 +94,14 @@ export function ListingTable({
       </TableHeader>
       <TableBody>
         {listings.map((listing) => (
-          <TableRow key={listing.id} className="hover:bg-muted/50">
-            <TableCell className="font-medium">
+          <TableRow key={listing.id} className="hover:bg-white/20 dark:hover:bg-gray-800/50 border-b border-white/10 dark:border-gray-700/30">
+            <TableCell className="font-medium text-gray-900 dark:text-white">
               {listing.restaurant?.name || 'Unknown Restaurant'}
             </TableCell>
-            <TableCell className="text-muted-foreground">
+            <TableCell className="text-gray-600 dark:text-gray-300">
               {listing.influencer?.name || 'Unknown Influencer'}
             </TableCell>
-            <TableCell className="text-muted-foreground">
+            <TableCell className="text-gray-600 dark:text-gray-300">
               <div className="max-w-[200px] truncate">
                 {listing.video?.title || 'No Video'}
               </div>
@@ -111,13 +111,13 @@ export function ListingTable({
                 {getStatusText(listing?.approved)}
               </Badge>
             </TableCell>
-            <TableCell className="text-muted-foreground">
+            <TableCell className="text-gray-600 dark:text-gray-300">
               {listing.confidence_score ? `${(listing.confidence_score * 100).toFixed(1)}%` : 'N/A'}
             </TableCell>
-            <TableCell className="text-muted-foreground">
+            <TableCell className="text-gray-600 dark:text-gray-300">
               {listing?.visit_date ? formatDate(listing?.visit_date) : 'N/A'}
             </TableCell>
-            <TableCell className="text-muted-foreground">
+            <TableCell className="text-gray-600 dark:text-gray-300">
               {formatDate(listing.created_at)}
             </TableCell>
             <TableCell className="text-right">
@@ -152,7 +152,7 @@ export function ListingTable({
                   variant="ghost"
                   size="sm"
                   onClick={() => onView(listing.id)}
-                  className="h-8 w-8 p-0 cursor-pointer"
+                  className="h-8 w-8 p-0 cursor-pointer text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20"
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
@@ -160,7 +160,7 @@ export function ListingTable({
                   variant="ghost"
                   size="sm"
                   onClick={() => onEdit(listing.id)}
-                  className="h-8 w-8 p-0 cursor-pointer"
+                  className="h-8 w-8 p-0 cursor-pointer text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20"
                 >
                   <Edit className="h-4 w-4" />
                 </Button>

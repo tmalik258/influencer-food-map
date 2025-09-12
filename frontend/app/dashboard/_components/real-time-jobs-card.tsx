@@ -59,10 +59,10 @@ function formatJobDuration(startedAt?: string, completedAt?: string) {
 export function RealTimeJobsCard({ jobs, isLoading }: RealTimeJobsCardProps) {
   if (isLoading && jobs.length === 0) {
     return (
-      <Card>
+      <Card className="glass-effect backdrop-blur-xl bg-white/80 border-orange-200/50 shadow-xl">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Play className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-gray-800 dark:text-gray-200">
+            <Play className="h-5 w-5 text-orange-600 dark:text-orange-400" />
             System Jobs
           </CardTitle>
         </CardHeader>
@@ -89,11 +89,11 @@ export function RealTimeJobsCard({ jobs, isLoading }: RealTimeJobsCardProps) {
   ).length;
 
   return (
-    <Card>
+    <Card className="glass-effect backdrop-blur-xl bg-white/80 border-orange-200/50 shadow-xl">
       <CardHeader>
-        <CardTitle className="flex items-center justify-between">
+        <CardTitle className="flex items-center justify-between text-gray-800 dark:text-gray-200">
           <div className="flex items-center gap-2">
-            <Play className="h-5 w-5" />
+            <Play className="h-5 w-5 text-orange-600 dark:text-orange-400" />
             System Jobs
           </div>
           {runningJobs > 0 && (
@@ -105,8 +105,8 @@ export function RealTimeJobsCard({ jobs, isLoading }: RealTimeJobsCardProps) {
       </CardHeader>
       <CardContent>
         {recentJobs.length === 0 ? (
-          <div className="text-center py-8 text-muted-foreground">
-            <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+          <div className="text-center py-8 text-gray-600 dark:text-gray-400">
+            <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50 text-orange-600 dark:text-orange-400" />
             <p>No recent jobs found</p>
           </div>
         ) : (
@@ -115,23 +115,23 @@ export function RealTimeJobsCard({ jobs, isLoading }: RealTimeJobsCardProps) {
               {recentJobs.map((job) => (
                 <div 
                   key={job.id} 
-                  className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                  className="flex items-center justify-between p-3 glass-effect backdrop-blur-sm bg-white/60 border border-orange-200/50 rounded-lg hover:bg-orange-50/80 hover:border-orange-300/60 transition-colors"
                 >
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     {getJobStatusIcon(job.status || 'unknown')}
                     <div className="flex-1 min-w-0">
-                      <p className="font-medium text-sm truncate">
+                      <p className="font-medium text-sm truncate text-gray-800 dark:text-gray-200">
                         {job.title || job.job_type || 'Unknown Job'}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 truncate">
                         {job.description || 'No description'}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="text-xs text-muted-foreground">
+                        <span className="text-xs text-gray-600 dark:text-gray-400">
                           {formatJobDuration(job.started_at, job.completed_at)}
                         </span>
                         {job.started_by && (
-                          <span className="text-xs text-muted-foreground">
+                          <span className="text-xs text-gray-600 dark:text-gray-400">
                             • by {job.started_by}
                           </span>
                         )}
@@ -151,8 +151,8 @@ export function RealTimeJobsCard({ jobs, isLoading }: RealTimeJobsCardProps) {
         )}
         
         {jobs.length > 5 && (
-          <div className="text-center mt-3 pt-3 border-t">
-            <p className="text-xs text-muted-foreground">
+          <div className="text-center mt-3 pt-3 border-t border-orange-200/50">
+            <p className="text-xs text-gray-600 dark:text-gray-400">
               Showing 5 of {jobs.length} jobs
             </p>
           </div>

@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import LoadingSkeleton from '@/components/loading-skeleton';
+import DashboardLoadingSkeleton from '@/app/dashboard/_components/dashboard-loading-skeleton';
 import TagManagement from './_components/tag-management';
 
 export default function TagsPage() {
@@ -12,7 +12,7 @@ export default function TagsPage() {
         </p>
       </div>
       
-      <Suspense fallback={<LoadingSkeleton />}>
+      <Suspense fallback={<DashboardLoadingSkeleton variant="management" />}>
         <TagManagement />
       </Suspense>
     </div>

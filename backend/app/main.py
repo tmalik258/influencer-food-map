@@ -19,9 +19,13 @@ from app.routes.listings import router as listings_router
 from app.routes.influencers import router as influencers_router
 from app.routes.restaurants import router as restaurants_router
 from app.routes.google_reviews import router as google_reviews_router
-from app.routes.admin.listings import router as admin_listings_router
+from app.routes.admin.listings import admin_listings_router
 from app.routes.admin.jobs import router as admin_jobs_router
 from app.routes.admin.restaurants import router as admin_restaurants_router
+from app.routes.admin.videos import admin_videos_router
+from app.routes.admin.influencers import admin_influencers_router
+from app.routes.admin.tags import admin_tags_router
+from app.routes.admin.cuisines import admin_cuisines_router
 from app.routes.dashboard import router as dashboard_router
 
 # Configure logging
@@ -58,6 +62,10 @@ app.include_router(google_reviews_router, prefix="/google-reviews", tags=["googl
 app.include_router(admin_listings_router, prefix="/admin/listings", tags=["admin"])
 app.include_router(admin_jobs_router, prefix="/admin/jobs", tags=["admin"])
 app.include_router(admin_restaurants_router, prefix="/admin/restaurants", tags=["admin"])
+app.include_router(admin_videos_router, prefix="/admin/videos", tags=["admin"])
+app.include_router(admin_influencers_router, prefix="/admin/influencers", tags=["admin"])
+app.include_router(admin_tags_router, prefix="/admin/tags", tags=["admin"])
+app.include_router(admin_cuisines_router, prefix="/admin/cuisines", tags=["admin"])
 app.include_router(dashboard_router, tags=["dashboard"])
 
 

@@ -1,20 +1,20 @@
 import { Suspense } from 'react';
 import { DataSyncManagement } from './_components/data-sync-management';
-import LoadingSkeleton from '@/components/loading-skeleton';
+import DashboardLoadingSkeleton from '@/app/dashboard/_components/dashboard-loading-skeleton';
 
 export default function DataSyncPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 glass-effect backdrop-blur-xl bg-white/80 p-6 rounded-lg border border-orange-200/50 shadow-xl">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">
+        <h1 className="text-3xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
           Data Synchronization
         </h1>
-        <p className="text-muted-foreground">
+        <p className="text-gray-600 dark:text-gray-400">
           Monitor and manage data synchronization jobs and processes
         </p>
       </div>
       
-      <Suspense fallback={<LoadingSkeleton />}>
+      <Suspense fallback={<DashboardLoadingSkeleton variant="management" />}>
         <DataSyncManagement />
       </Suspense>
     </div>

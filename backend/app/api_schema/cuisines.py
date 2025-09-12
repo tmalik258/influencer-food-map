@@ -9,3 +9,9 @@ class CuisineResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class CuisineCreate(BaseModel):
+    name: str
+
+class CuisineUpdate(BaseModel):
+    name: str
