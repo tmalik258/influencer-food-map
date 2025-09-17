@@ -12,6 +12,10 @@ if not DATABASE_URL:
     logger.error("DATABASE_URL environment variable is not set")
     raise ValueError("DATABASE_URL environment variable is required but not set")
 
+if not ASYNC_DATABASE_URL:
+    logger.error("ASYNC_DATABASE_URL environment variable is not set")
+    raise ValueError("ASYNC_DATABASE_URL environment variable is required but not set")
+
 # Synchronous engine for Supabase
 try:
     sync_engine = create_engine(DATABASE_URL, connect_args={"sslmode": "require"})
@@ -47,7 +51,7 @@ except Exception as e:
 AsyncSessionLocal = async_sessionmaker(async_engine, class_=AsyncSession, expire_on_commit=False)
 
 # Async session dependency
-async def get_async_db() -> AsyncSession:
+async def get_async_db():
     async with AsyncSessionLocal() as session:
         try:
             yield session

@@ -13,6 +13,7 @@ from sqlalchemy.orm import Session
 from app.models import Influencer, Video
 from app.config import REDIS_URL, YOUTUBE_API_KEY, INFLUENCER_CHANNELS, SCRAPE_YOUTUBE_LOCK
 from app.utils.logging import setup_logger
+# from app.utils.country_utils import normalize_region_to_country_info
 
 # Setup logging
 logger = setup_logger(__name__)
@@ -100,6 +101,37 @@ def get_channel(channel_url: str) -> dict | None:
         logger.error(f"Error fetching channel ID for {channel_url}: {e}")
         return None
 
+def get_video_metadata(video_id: str) -> dict | None:
+    """Fetch metadata for a single video by video ID."""
+    try:
+        response = youtube.videos().list(
+            part="snippet,contentDetails,statistics",
+            id=video_id
+        ).execute()
+        
+        if "items" not in response or len(response["items"]) == 0:
+            logger.error(f"No video found for ID: {video_id}")
+            return None
+        
+        video = response["items"][0]
+        snippet = video["snippet"]
+        
+        return {
+            "youtube_video_id": video_id,
+            "title": snippet["title"],
+            "description": snippet.get("description", ""),
+            "video_url": f"https://www.youtube.com/watch?v={video_id}",
+            "published_at": snippet["publishedAt"],
+            "channel_id": snippet["channelId"],
+            "channel_title": snippet["channelTitle"]
+        }
+    except HttpError as e:
+        logger.error(f"Error fetching video metadata for {video_id}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error fetching video metadata for {video_id}: {e}")
+        return None
+
 def get_videos(channel_id: str) -> list[dict]:
     """Fetch videos from a channel's upload playlist."""
     try:
@@ -147,12 +179,18 @@ def store_influencer(db: Session, static_channel: dict, channel_data: dict) -> I
         logger.info(f"Storing influencer: {static_channel['name']} with channel ID: {channel_data['id']}")
         influencer = db.query(Influencer).filter(Influencer.youtube_channel_id == channel_data['id']).first()
         if not influencer:
+            # Get region from API or static data
+            # raw_region = channel_data.get("data", {}).get("snippet", {}).get("country", None) or static_channel.get("region", None)
+            # # Normalize region to country code and name
+            # country_code, country_name = normalize_region_to_country_info(raw_region) if raw_region else (None, None)
+            
             influencer = Influencer(
                 id=uuid.uuid4(),
                 name=channel_data["title"] or static_channel["name"],  # Prefer API title
                 youtube_channel_id=channel_data["id"],
                 youtube_channel_url=static_channel["url"],
-                region=channel_data.get("data", {}).get("snippet", {}).get("country", None) or static_channel.get("region", None),
+                # region=raw_region,
+                # country=country_name,
                 bio=channel_data["description"],
                 avatar_url=channel_data["avatar_url"],
                 banner_url=channel_data.get("banner_url"),
@@ -164,12 +202,18 @@ def store_influencer(db: Session, static_channel: dict, channel_data: dict) -> I
             logger.info(f"Influencer {static_channel['name']} stored successfully.")
         else:
             logger.info(f"Influencer {static_channel['name']} already exists, updating details.")
+            # Get region from API or static data
+            # raw_region = channel_data.get("data", {}).get("snippet", {}).get("country", None) or static_channel.get("region", None)
+            # # Normalize region to country code and name
+            # country_code, country_name = normalize_region_to_country_info(raw_region) if raw_region else (None, None)
+            
             influencer.name = channel_data["title"] or static_channel["name"]
             influencer.bio = channel_data["description"]
             influencer.avatar_url = channel_data["avatar_url"]
             influencer.banner_url = channel_data.get("banner_url")
             influencer.subscriber_count = channel_data.get("subscriber_count")
-            influencer.region = channel_data.get("data", {}).get("snippet", {}).get("country", None) or static_channel.get("region", None)
+            # influencer.region = raw_region
+            # influencer.country = country_name
             db.commit()
             db.refresh(influencer)
         logger.info(f"Influencer {static_channel['name']} updated/stored successfully.")

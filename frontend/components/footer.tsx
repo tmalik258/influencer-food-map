@@ -9,7 +9,7 @@ const Footer = () => {
           <div className="flex items-center space-x-2">
             <Image height={50} width={50} src="/globe.svg" alt="Logo" className="h-8 w-8" />
 
-            <span className="text-2xl font-bold">FoodTuber</span>
+            <span className="text-2xl font-bold">Nomtok</span>
           </div>
 
           {/* Navigation Links */}

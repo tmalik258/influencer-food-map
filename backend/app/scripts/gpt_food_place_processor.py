@@ -56,6 +56,7 @@ class GPTFoodPlaceProcessor:
                     ~ “These bites show a lot. Varying textures, playful and dominant flavors. The quality of the ingredients is unquestionable. After a nice crunch, it simply melts in your mouth. This is a wonderful opening.”
 
                 - **tags**: An array of descriptive tags about food, experience, or cuisine (examples: "BBQ", "vegan", "Michelin-starred"). Use an empty array if no tags apply.
+                - **cuisines**: An array of cuisine types served at this place (examples: "Italian", "Chinese", "Mexican", "French", "Indian", "Japanese", "Thai", "Mediterranean", "American", "Korean"). Use an empty array if no cuisines can be determined.
                 - **context**: An array of up to 7 relevant transcript or description lines/passages that directly support the identification of the restaurant name, location information, and the selected quotes. If no such context exists, set it to null.
                 - **confidence_score**: A float from 0.0 to 1.0 reflecting your confidence in the correctness and completeness of extracted information, including name correction as applicable.
         4. If no valid food-related place can be confidently extracted based on the transcript, return a single empty JSON array: [].
@@ -77,10 +78,11 @@ class GPTFoodPlaceProcessor:
             },
             "quotes": ["string", "..."] or null,
             "tags": ["tag1", "tag2", "..."],
+            "cuisines": ["cuisine1", "cuisine2", "..."],
             "context": ["string", "..."] or null,
             "confidence_score": float (0.0-1.0)
         }
-        - Use null for any missing fields, and [] for tags if none apply.
+        - Use null for any missing fields, and [] for tags or cuisines if none apply.
         - Do not include objects where restaurant_name is null.
         - Always preserve quotation marks for any direct quotes captured in the "quotes" field.
         - Do not include any non-JSON content, explanations, or commentary.
@@ -106,6 +108,7 @@ class GPTFoodPlaceProcessor:
                     "Honestly, this might be the juiciest chicken tikka I've had on this trip. Each bite is smoky, succulent, and bursting with flavor. The marinade seeps deep into the meat, leaving you craving more."
                 ],
                 "tags": ["BBQ", "chicken tikka", "Pakistani"],
+                "cuisines": ["Pakistani", "Middle Eastern"],
                 "context": [
                     "So today we're at Al Habib BBQ in Lahore, and the aroma here is just amazing. The air is thick with the scent of charcoal and spices, and you can feel the energy of the place as families gather around sizzling platters.",
                     "Honestly, this might be the juiciest chicken tikka I've had on this trip. Each bite is smoky, succulent, and bursting with flavor. The marinade seeps deep into the meat, leaving you craving more.",
@@ -222,8 +225,12 @@ class GPTFoodPlaceProcessor:
                 ~ The identification of the restaurant name.
                 ~ The location information.
                 ~ The selected quotes.
+
         ## Context Instructions
         - The "context" field should be an array of up to 7 relevant transcript or description lines/passages. If no such context exists, set it to null.
+
+        ## Cuisines Instructions
+        - Write cuisines from pre-defined list only [French, Italian, Indian, Chinese, Japanese, Thai, Mexican, Spanish, Greek, Turkish, Lebanese, Moroccan, Ethiopian, Korean, Vietnamese, Malaysian, Indonesian, Filipino, Brazilian, Argentine, Peruvian, "American (Traditional)", "Fast Food", "BBQ / Barbecue", "Cajun / Creole", Caribbean, Cuban, Jamaican, German, Austrian, Swiss, Belgian, "Scandinavian (Nordic)", British, Irish, Russian, Polish, "Hungarian", "Middle Eastern (General)", "Persian / Iranian", Afghan, Pakistani, Bangladeshi, Nepalese, Tibetan, "African (General)", "West African (e.g., Nigerian, Ghanaian)", "South African", "Mediterranean (General)", "Fusion / Contemporary"]
 
         # Notes
         - Do not infer, invent, or hallucinate information. Output only what can be directly supported by the transcript or confidently cross-referenced (such as place name).

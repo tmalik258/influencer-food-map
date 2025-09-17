@@ -9,3 +9,9 @@ class TagResponse(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class TagCreate(BaseModel):
+    name: str
+
+class TagUpdate(BaseModel):
+    name: str

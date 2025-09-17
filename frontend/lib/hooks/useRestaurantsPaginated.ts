@@ -25,7 +25,7 @@ export const useRestaurantsPaginated = (initialParams?: PaginatedRestaurantsPara
     limit: 12,
     totalPages: 0
   });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [params, setParams] = useState<PaginatedRestaurantsParams>({
     page: 1,
@@ -47,10 +47,9 @@ export const useRestaurantsPaginated = (initialParams?: PaginatedRestaurantsPara
         limit
       });
       
-      // For now, we'll simulate pagination response structure
-      // In a real implementation, the API should return total count
-      const restaurants = Array.isArray(response) ? response : response.restaurants || [];
-      const total = response.total || restaurants.length;
+      // Handle the paginated response from the API
+      const restaurants = response.restaurants || [];
+      const total = response.total || 0;
       const totalPages = Math.ceil(total / limit);
       
       setData({

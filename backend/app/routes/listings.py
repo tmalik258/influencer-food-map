@@ -1,20 +1,25 @@
 from enum import Enum
+import json
 from typing import List
 
 from fastapi import (APIRouter, Depends, HTTPException)
 
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, delete, desc
 from sqlalchemy.orm import joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import (Listing, Influencer, Restaurant, RestaurantTag, Video)
+from app.models import (Listing, Influencer, Restaurant, RestaurantTag, RestaurantCuisine, Cuisine, Video)
 from app.database import get_async_db
 from app.dependencies import get_current_admin
+from app.utils.logging import setup_logger
+from app.api_schema.videos import VideoResponse
 from app.api_schema.listings import ListingResponse
 from app.api_schema.restaurants import RestaurantResponse
-from app.api_schema.videos import VideoResponse
-from app.api_schema.influencers import InfluencerResponse
+from app.api_schema.influencers import InfluencerLightResponse, InfluencerResponse
+from app.api_schema.tags import TagResponse
+from app.api_schema.cuisines import CuisineResponse
 
+logger = setup_logger(__name__)
 router = APIRouter()
 
 class ApprovedStatus(str, Enum):
@@ -39,6 +44,7 @@ async def get_listings(
     try:
         query = select(Listing).options(
             joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
+            joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_cuisines).joinedload(RestaurantCuisine.cuisine),
             joinedload(Listing.video),
             joinedload(Listing.influencer)
         )
@@ -76,6 +82,24 @@ async def get_listings(
         # Manually construct response objects to avoid circular dependencies
         response_listings = []
         for listing in listings:
+            # Process tags
+            tags = None
+            if listing.restaurant.restaurant_tags:
+                tags = [TagResponse(
+                    id=rt.tag.id,
+                    name=rt.tag.name,
+                    created_at=rt.tag.created_at
+                ) for rt in listing.restaurant.restaurant_tags]
+            
+            # Process cuisines
+            cuisines = None
+            if listing.restaurant.restaurant_cuisines:
+                cuisines = [CuisineResponse(
+                    id=rc.cuisine.id,
+                    name=rc.cuisine.name,
+                    created_at=rc.cuisine.created_at
+                ) for rc in listing.restaurant.restaurant_cuisines]
+            
             # Construct RestaurantResponse manually
             restaurant_response = RestaurantResponse(
                 id=listing.restaurant.id,
@@ -92,23 +116,39 @@ async def get_listings(
                 is_active=listing.restaurant.is_active,
                 created_at=listing.restaurant.created_at,
                 updated_at=listing.restaurant.updated_at,
-                tags=None,  # Prevent circular dependency
+                tags=tags,
+                cuisines=cuisines,
                 listings=None  # Prevent circular dependency
             )
 
             # Construct VideoResponse manually if video exists
             video_response = None
             if listing.video:
+                # Get influencer data for the video
+                video_influencer_response = None
+                if listing.video.influencer:
+                    video_influencer_response = InfluencerLightResponse(
+                        id=listing.video.influencer.id,
+                        name=listing.video.influencer.name,
+                        bio=listing.video.influencer.bio,
+                        avatar_url=listing.video.influencer.avatar_url,
+                        banner_url=listing.video.influencer.banner_url,
+                        youtube_channel_id=listing.video.influencer.youtube_channel_id,
+                        youtube_channel_url=listing.video.influencer.youtube_channel_url,
+                        subscriber_count=listing.video.influencer.subscriber_count,
+                        created_at=listing.video.influencer.created_at,
+                        updated_at=listing.video.influencer.updated_at
+                    )
+                
                 video_response = VideoResponse(
                     id=listing.video.id,
-                    influencer_id=listing.video.influencer_id,
+                    influencer=video_influencer_response,
                     youtube_video_id=listing.video.youtube_video_id,
                     title=listing.video.title,
                     description=listing.video.description,
                     video_url=listing.video.video_url,
                     published_at=listing.video.published_at,
                     transcription=listing.video.transcription,
-                    summary=None,  # Video model doesn't have summary field
                     created_at=listing.video.created_at,
                     updated_at=listing.video.updated_at
                 )
@@ -122,7 +162,8 @@ async def get_listings(
                     bio=listing.influencer.bio,
                     avatar_url=listing.influencer.avatar_url,
                     banner_url=listing.influencer.banner_url,
-                    region=listing.influencer.region,
+                    # region=listing.influencer.region,
+                    # country=listing.influencer.country,
                     youtube_channel_id=listing.influencer.youtube_channel_id,
                     youtube_channel_url=listing.influencer.youtube_channel_url,
                     subscriber_count=listing.influencer.subscriber_count,
@@ -161,6 +202,7 @@ async def get_listing(listing_id: str, db: AsyncSession = Depends(get_async_db))
     try:
         query = select(Listing).options(
             joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
+            joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_cuisines).joinedload(RestaurantCuisine.cuisine),
             joinedload(Listing.video),
             joinedload(Listing.influencer)
         ).filter(Listing.id == listing_id, Listing.approved == True)
@@ -171,6 +213,24 @@ async def get_listing(listing_id: str, db: AsyncSession = Depends(get_async_db))
         if not listing:
             raise HTTPException(status_code=404, detail="Listing not found")
 
+        # Process tags
+        tags = None
+        if listing.restaurant.restaurant_tags:
+            tags = [TagResponse(
+                id=rt.tag.id,
+                name=rt.tag.name,
+                created_at=rt.tag.created_at
+            ) for rt in listing.restaurant.restaurant_tags]
+        
+        # Process cuisines
+        cuisines = None
+        if listing.restaurant.restaurant_cuisines:
+            cuisines = [CuisineResponse(
+                id=rc.cuisine.id,
+                name=rc.cuisine.name,
+                created_at=rc.cuisine.created_at
+            ) for rc in listing.restaurant.restaurant_cuisines]
+        
         # Construct RestaurantResponse manually
         restaurant_response = RestaurantResponse(
             id=listing.restaurant.id,
@@ -187,23 +247,39 @@ async def get_listing(listing_id: str, db: AsyncSession = Depends(get_async_db))
             is_active=listing.restaurant.is_active,
             created_at=listing.restaurant.created_at,
             updated_at=listing.restaurant.updated_at,
-            tags=None,  # Prevent circular dependency
+            tags=tags,
+            cuisines=cuisines,
             listings=None  # Prevent circular dependency
         )
 
         # Construct VideoResponse manually if video exists
         video_response = None
         if listing.video:
+            # Get influencer data for the video
+            video_influencer_response = None
+            if listing.video.influencer:
+                video_influencer_response = InfluencerLightResponse(
+                    id=listing.video.influencer.id,
+                    name=listing.video.influencer.name,
+                    bio=listing.video.influencer.bio,
+                    avatar_url=listing.video.influencer.avatar_url,
+                    banner_url=listing.video.influencer.banner_url,
+                    youtube_channel_id=listing.video.influencer.youtube_channel_id,
+                    youtube_channel_url=listing.video.influencer.youtube_channel_url,
+                    subscriber_count=listing.video.influencer.subscriber_count,
+                    created_at=listing.video.influencer.created_at,
+                    updated_at=listing.video.influencer.updated_at
+                )
+            
             video_response = VideoResponse(
                 id=listing.video.id,
-                influencer_id=listing.video.influencer_id,
+                influencer=video_influencer_response,
                 youtube_video_id=listing.video.youtube_video_id,
                 title=listing.video.title,
                 description=listing.video.description,
                 video_url=listing.video.video_url,
                 published_at=listing.video.published_at,
                 transcription=listing.video.transcription,
-                summary=None,  # Video model doesn't have summary field
                 created_at=listing.video.created_at,
                 updated_at=listing.video.updated_at
             )
@@ -217,7 +293,8 @@ async def get_listing(listing_id: str, db: AsyncSession = Depends(get_async_db))
                 bio=listing.influencer.bio,
                 avatar_url=listing.influencer.avatar_url,
                 banner_url=listing.influencer.banner_url,
-                region=listing.influencer.region,
+                # region=listing.influencer.region,
+                # country=listing.influencer.country,
                 youtube_channel_id=listing.influencer.youtube_channel_id,
                 youtube_channel_url=listing.influencer.youtube_channel_url,
                 subscriber_count=listing.influencer.subscriber_count,
@@ -248,58 +325,3 @@ async def get_listing(listing_id: str, db: AsyncSession = Depends(get_async_db))
     except Exception as e:
         print(f"Error fetching listing {listing_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch listing. Please try again later.")
-
-
-
-@router.delete("/{listing_id}/")
-async def delete_listing(
-    listing_id: str,
-    delete_restaurant: bool = False,
-    db: AsyncSession = Depends(get_async_db),
-    current_admin=Depends(get_current_admin)
-):
-    """Delete a single listing by ID, with option to delete associated restaurant."""
-    try:
-        query = select(Listing).filter(Listing.id == listing_id)
-        result = await db.execute(query)
-        listing = result.scalars().first()
-        
-        if not listing:
-            raise HTTPException(status_code=404, detail="Listing not found")
-
-        if delete_restaurant:
-            restaurant_query = select(Restaurant).filter(Restaurant.id == listing.restaurant_id)
-            restaurant_result = await db.execute(restaurant_query)
-            restaurant = restaurant_result.scalars().first()
-            if restaurant:
-                await db.delete(restaurant)
-
-        await db.delete(listing)
-        await db.commit()
-        return {"detail": "Listing deleted successfully"}
-    except HTTPException:
-        raise
-    except Exception as e:
-        await db.rollback()
-        print(f"Error deleting listing {listing_id}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error while deleting listing")
-
-@router.delete("/")
-async def delete_all_listings(
-    delete_restaurants: bool = False,
-    db: AsyncSession = Depends(get_async_db),
-    current_admin=Depends(get_current_admin)
-):
-    """Delete all listings, with option to delete associated restaurants."""
-    try:
-        await db.execute(delete(Listing))
-
-        if delete_restaurants:
-            await db.execute(delete(Restaurant))
-
-        await db.commit()
-        return {"detail": "All listings deleted successfully"}
-    except Exception as e:
-        await db.rollback()
-        print(f"Error deleting all listings: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error while deleting listings")

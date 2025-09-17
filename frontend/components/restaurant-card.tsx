@@ -54,14 +54,14 @@ export function RestaurantCard({
           </h3>
           <p className="text-gray-600 mb-1">{restaurant?.city}</p>
           <p className="text-gray-600 mb-1">
-            {restaurant.tags &&
-              restaurant.tags.length > 0 &&
-              restaurant.tags.slice(0, 4).map((tag) => (
+            {restaurant.cuisines &&
+              restaurant.cuisines.length > 0 &&
+              restaurant.cuisines.slice(0, 4).map((cuisine) => (
                 <Badge
-                  key={tag.id}
+                  key={cuisine.id}
                   className="mr-2 bg-orange-600/15 text-orange-600"
                 >
-                  {tag.name.charAt(0).toUpperCase() + tag.name.slice(1)}
+                  {cuisine.name.charAt(0).toUpperCase() + cuisine.name.slice(1)}
                 </Badge>
               ))}
           </p>
@@ -70,7 +70,6 @@ export function RestaurantCard({
         <div className="flex-grow flex flex-col ">
           {listings && listings.length > 0 && (
             <div className="my-auto">
-              {/* <h4 className="text-md font-semibold text-gray-800 mb-2">Influencers:</h4> */}
               {listings.map((listing) => (
                 <div key={listing.id} className="flex items-center mb-2">
                   {listing.influencer && listing.influencer.avatar_url && (
@@ -100,7 +99,7 @@ export function RestaurantCard({
         {showButton !== false && (
           <Button
             asChild
-            className="w-full mt-auto bg-orange-500 text-white hover:bg-orange-600"
+            className="w-full mt-auto bg-orange-500 text-white hover:bg-orange-600 transition-colors duration-200"
           >
             <Link href={`/restaurants/${restaurant.id}`}>View Details</Link>
           </Button>

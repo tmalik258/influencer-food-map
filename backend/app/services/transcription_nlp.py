@@ -16,7 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from googlemaps import Client as GoogleMapsClient
 from googlemaps.exceptions import ApiError
 
-from app.models import Video, Restaurant, Listing, Influencer, Tag, RestaurantTag, BusinessStatus
+from app.models import Video, Restaurant, Listing, Influencer, Tag, RestaurantTag, Cuisine, RestaurantCuisine, BusinessStatus
 from app.config import (
     GOOGLE_MAPS_API_KEY,
     REDIS_URL,
@@ -279,6 +279,7 @@ async def validate_restaurant(entities: dict) -> dict:
                 "photo_url": photo_url,
                 "confidence_score": entities.get("confidence_score", 0.8),
                 "tags": entities.get("tags", []),
+                "cuisines": entities.get("cuisines", []),
             }
         return {"valid": False}
     except ApiError as e:
@@ -344,6 +345,31 @@ async def store_restaurant_and_listing(
                         restaurant_id=restaurant.id, tag_id=tag.id
                     )
                     db.add(restaurant_tag)
+                    await db.flush()
+
+            # Store cuisines
+            for cuisine_name in validated.get("cuisines", []):
+                cuisine_name = cuisine_name.lower().strip()
+                result = await db.execute(select(Cuisine).filter(Cuisine.name == cuisine_name))
+                cuisine = result.scalars().first()
+                if not cuisine:
+                    cuisine = Cuisine(id=uuid.uuid4(), name=cuisine_name)
+                    db.add(cuisine)
+                    await db.flush()
+                    await db.refresh(cuisine)
+
+                # Check for existing restaurant_cuisine
+                result = await db.execute(
+                    select(RestaurantCuisine).filter(
+                        RestaurantCuisine.restaurant_id == restaurant.id,
+                        RestaurantCuisine.cuisine_id == cuisine.id,
+                    )
+                )
+                if not result.scalars().first():
+                    restaurant_cuisine = RestaurantCuisine(
+                        restaurant_id=restaurant.id, cuisine_id=cuisine.id
+                    )
+                    db.add(restaurant_cuisine)
                     await db.flush()
 
             # Store listing

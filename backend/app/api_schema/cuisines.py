@@ -1,0 +1,17 @@
+from datetime import datetime
+from uuid import UUID
+from pydantic import BaseModel
+from pydantic.config import ConfigDict
+
+class CuisineResponse(BaseModel):
+    id: UUID
+    name: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+class CuisineCreate(BaseModel):
+    name: str
+
+class CuisineUpdate(BaseModel):
+    name: str

@@ -12,7 +12,7 @@ export function Navbar() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 text-2xl font-bold text-slate-300 tracking-tight hover:text-slate-200 transition-colors">
             <MapPin className="w-8 h-8 text-orange-500" />
-            FoodTuber
+            Nomtok
           </Link>
 
           {/* Navigation Links */}

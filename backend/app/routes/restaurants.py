@@ -1,5 +1,6 @@
 import time
 from typing import List, Optional
+from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
@@ -7,14 +8,15 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Restaurant, RestaurantTag, Listing
+from app.models import Restaurant, RestaurantTag, RestaurantCuisine, Listing
 from app.database import get_async_db, get_db
 from app.utils.logging import setup_logger
 from app.api_schema.tags import TagResponse
+from app.api_schema.cuisines import CuisineResponse
 from app.api_schema.videos import VideoResponse
 from app.api_schema.listings import ListingLightResponse
-from app.api_schema.influencers import InfluencerResponse
-from app.api_schema.restaurants import RestaurantResponse, OptimizedFeaturedResponse, CityRestaurantsResponse, rebuild_models
+from app.api_schema.influencers import InfluencerResponse, InfluencerLightResponse
+from app.api_schema.restaurants import RestaurantResponse, OptimizedFeaturedResponse, CityRestaurantsResponse, PaginatedRestaurantsResponse, rebuild_models
 
 # Rebuild models to resolve forward references
 rebuild_models()
@@ -23,7 +25,7 @@ logger = setup_logger(__name__)
 
 router = APIRouter()
 
-@router.get("/", response_model=List[RestaurantResponse])
+@router.get("/", response_model=PaginatedRestaurantsResponse)
 async def get_restaurants(
     db: AsyncSession = Depends(get_async_db),
     name: str | None = None,
@@ -38,12 +40,32 @@ async def get_restaurants(
 ):
     """Get restaurants with filters for name, ID, city, country, or Google Place ID."""
     try:
-        # Base query
-        query = select(Restaurant).filter(Restaurant.is_active == True)
-
-        # Always eagerly load restaurant_tags and their related tag objects
+        # Base query for filtering
+        base_filter = Restaurant.is_active == True
+        
+        # Apply filters
+        filters = [base_filter]
+        if name:
+            filters.append(Restaurant.name.ilike(f"%{name}%"))
+        if id:
+            filters.append(Restaurant.id == id)
+        if city:
+            filters.append(Restaurant.city.ilike(f"%{city}%"))
+        if country:
+            filters.append(Restaurant.country == country)
+        if google_place_id:
+            filters.append(Restaurant.google_place_id == google_place_id)
+        
+        # Count query for total
+        count_query = select(func.count(Restaurant.id)).filter(*filters)
+        count_result = await db.execute(count_query)
+        total_count = count_result.scalar()
+        
+        # Data query with eager loading
+        query = select(Restaurant).filter(*filters)
         query = query.options(
-            joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag)
+            joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
+            joinedload(Restaurant.restaurant_cuisines).joinedload(RestaurantCuisine.cuisine)
         )
         
         # Add listings if requested
@@ -62,17 +84,6 @@ async def get_restaurants(
                     joinedload(Restaurant.listings)
                     .joinedload(Listing.influencer)
                 )
-
-        if name:
-            query = query.filter(Restaurant.name.ilike(f"%{name}%"))
-        if id:
-            query = query.filter(Restaurant.id == id)
-        if city:
-            query = query.filter(Restaurant.city.ilike(f"%{city}%"))
-        if country:
-            query = query.filter(Restaurant.country == country)
-        if google_place_id:
-            query = query.filter(Restaurant.google_place_id == google_place_id)
 
         result = await db.execute(query.offset(skip).limit(limit))
         restaurants = result.unique().scalars().all()
@@ -96,6 +107,22 @@ async def get_restaurants(
                 logger.warning(f"Error processing tags for restaurant {restaurant.id}: {tag_error}")
                 tags = None
 
+            # Process cuisines safely - access within the session context
+            cuisines = None
+            try:
+                if restaurant.restaurant_cuisines:
+                    cuisines = []
+                    for restaurant_cuisine in restaurant.restaurant_cuisines:
+                        cuisine_data = {
+                            'id': restaurant_cuisine.cuisine.id,
+                            'name': restaurant_cuisine.cuisine.name,
+                            'created_at': restaurant_cuisine.cuisine.created_at,
+                        }
+                        cuisines.append(CuisineResponse(**cuisine_data))
+            except Exception as cuisine_error:
+                logger.warning(f"Error processing cuisines for restaurant {restaurant.id}: {cuisine_error}")
+                cuisines = None
+
             # Create restaurant data without listings first
             restaurant_data = RestaurantResponse(
                 id=restaurant.id,
@@ -113,6 +140,7 @@ async def get_restaurants(
                 created_at=restaurant.created_at,
                 updated_at=restaurant.updated_at,
                 tags=tags,
+                cuisines=cuisines,
                 listings=None
             )
             
@@ -126,7 +154,8 @@ async def get_restaurants(
                         bio=listing.influencer.bio,
                         avatar_url=listing.influencer.avatar_url,
                         banner_url=listing.influencer.banner_url,
-                        region=listing.influencer.region,
+                        # region=listing.influencer.region,
+                        # country=listing.influencer.country,
                         youtube_channel_id=listing.influencer.youtube_channel_id,
                         youtube_channel_url=listing.influencer.youtube_channel_url,
                         subscriber_count=listing.influencer.subscriber_count,
@@ -162,28 +191,66 @@ async def get_restaurants(
             
             result_list.append(restaurant_data)
 
-        return result_list
+        return PaginatedRestaurantsResponse(
+            restaurants=result_list,
+            total=total_count
+        )
 
     except Exception as e:
         logger.error(f"Error fetching restaurants: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch restaurants. Please try again later.")
 
 @router.get("/popular_cities/", response_model=List[str])
-def get_popular_cities(db: Session = Depends(get_db)):
+async def get_popular_cities(db: AsyncSession = Depends(get_async_db)):
     """Get the top 5 cities with the most restaurant listings."""
     try:
-        popular_cities = db.query(Restaurant.city).filter(
+        query = select(Restaurant.city).filter(
             Restaurant.is_active == True,
             Restaurant.city.isnot(None)
-        ).group_by(Restaurant.city).order_by(func.count(Restaurant.city).desc()).limit(5).all()
+        ).group_by(Restaurant.city).order_by(func.count(Restaurant.city).desc()).limit(5)
+        result = await db.execute(query)
+        popular_cities = result.fetchall()
         return [city[0] for city in popular_cities]
     except Exception as e:
         # Log the error and return default cities if database query fails
         logger.error(f"Error fetching popular cities: {e}")
         return []
 
+@router.get("/countries/")
+async def get_countries(db: AsyncSession = Depends(get_async_db), influencer_id: Optional[str] = None):
+    """Get unique countries from restaurants, optionally filtered by influencer."""
+    try:
+        query = select(Restaurant.country).filter(
+            Restaurant.is_active == True,
+            Restaurant.country.isnot(None)
+        )
+        
+        # If influencer_id is provided, filter by restaurants reviewed by that influencer
+        if influencer_id:
+            try:
+                influencer_uuid = UUID(influencer_id)
+                query = query.join(Listing, Restaurant.id == Listing.restaurant_id).filter(
+                    Listing.influencer_id == influencer_uuid
+                )
+            except ValueError:
+                raise HTTPException(status_code=400, detail="Invalid influencer_id format")
+        
+        query = query.distinct().order_by(Restaurant.country)
+        result = await db.execute(query)
+        countries_result = result.fetchall()
+        
+        countries = [{
+            "code": country[0],
+            "name": country[0]
+        } for country in countries_result]
+        
+        return {"country": countries}
+    except Exception as e:
+        logger.error(f"Error fetching countries from restaurants: {e}")
+        return {"country": []}
+
 @router.get("/featured-optimized/", response_model=OptimizedFeaturedResponse)
-def get_featured_optimized(db: Session = Depends(get_db)):
+async def get_featured_optimized(db: AsyncSession = Depends(get_async_db)):
     """Get top 5 cities with 3 latest restaurants each in a single optimized call.
     
     Enhanced implementation that:
@@ -193,16 +260,17 @@ def get_featured_optimized(db: Session = Depends(get_db)):
     """
     try:
         # Get top 5 cities with most restaurants in a single query
-        popular_cities = db.query(
+        popular_cities_query = select(
             Restaurant.city
         ).filter(
             Restaurant.is_active == True,
             Restaurant.city.isnot(None)
         ).group_by(Restaurant.city).order_by(
             func.count(Restaurant.city).desc()
-        ).limit(5).all()
+        ).limit(5)
         
-        # popular_cities = db.query(popular_cities_subquery.c.city).all()
+        result = await db.execute(popular_cities_query)
+        popular_cities = result.fetchall()
         
         if not popular_cities:
             return OptimizedFeaturedResponse(cities=[])
@@ -211,15 +279,17 @@ def get_featured_optimized(db: Session = Depends(get_db)):
         
         # Single optimized query to get all restaurants for all cities with proper joins
         # Using window function to get top 3 restaurants per city efficiently
-        restaurants_query = db.query(Restaurant).options(
+        restaurants_query = select(Restaurant).options(
             joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
+            joinedload(Restaurant.restaurant_cuisines).joinedload(RestaurantCuisine.cuisine),
             joinedload(Restaurant.listings).joinedload(Listing.influencer)
         ).filter(
             Restaurant.city.in_(city_names),
             Restaurant.is_active == True
         ).order_by(Restaurant.city, Restaurant.created_at.desc())
         
-        all_restaurants = restaurants_query.all()
+        result = await db.execute(restaurants_query)
+        all_restaurants = result.scalars().unique().all()
         
         # Group restaurants by city and limit to 3 per city
         city_restaurant_map = {}
@@ -270,7 +340,8 @@ def get_featured_optimized(db: Session = Depends(get_db)):
                             bio=listing.influencer.bio,
                             avatar_url=listing.influencer.avatar_url,
                             banner_url=listing.influencer.banner_url,
-                            region=listing.influencer.region,
+                            # region=listing.influencer.region,
+                            # country=listing.influencer.country,
                             youtube_channel_id=listing.influencer.youtube_channel_id,
                             youtube_channel_url=listing.influencer.youtube_channel_url,
                             subscriber_count=listing.influencer.subscriber_count,
@@ -303,6 +374,14 @@ def get_featured_optimized(db: Session = Depends(get_db)):
                             tags_data.append(TagResponse.model_validate(restaurant_tag.tag))
                 restaurant_dict['tags'] = tags_data if tags_data else None
                 
+                # Process cuisines with complete data integrity
+                cuisines_data = []
+                if restaurant.restaurant_cuisines:
+                    for restaurant_cuisine in restaurant.restaurant_cuisines:
+                        if restaurant_cuisine.cuisine:
+                            cuisines_data.append(CuisineResponse.model_validate(restaurant_cuisine.cuisine))
+                restaurant_dict['cuisines'] = cuisines_data if cuisines_data else None
+                
                 # Create RestaurantResponse with all fields maintained
                 restaurant_response = RestaurantResponse.model_validate(restaurant_dict)
                 restaurant_responses.append(restaurant_response)
@@ -319,16 +398,19 @@ def get_featured_optimized(db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Failed to fetch featured data. Please try again later.")
 
 @router.get("/{restaurant_id}/", response_model=RestaurantResponse)
-def get_restaurant(
+async def get_restaurant(
     restaurant_id: str, 
-    db: Session = Depends(get_db),
+    db: AsyncSession = Depends(get_async_db),
     include_listings: Optional[bool] = Query(False, description="Include listings with restaurant"),
     include_video_details: Optional[bool] = Query(True, description="Include full video details (description, transcription, summary)")
 ):
     """Get a single restaurant by ID."""
     try:
-        # Base query with tags
-        query = db.query(Restaurant).options(joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag))
+        # Base query with tags and cuisines
+        query = select(Restaurant).options(
+            joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
+            joinedload(Restaurant.restaurant_cuisines).joinedload(RestaurantCuisine.cuisine)
+        )
         
         # Add listings if requested
         if include_listings:
@@ -339,7 +421,9 @@ def get_restaurant(
                 .joinedload(Listing.influencer)
             )
         
-        restaurant = query.filter(Restaurant.id == restaurant_id, Restaurant.is_active == True).first()
+        query = query.filter(Restaurant.id == restaurant_id, Restaurant.is_active == True)
+        result = await db.execute(query)
+        restaurant = result.scalars().first()
 
         if not restaurant:
             raise HTTPException(status_code=404, detail="Restaurant not found")
@@ -361,6 +445,7 @@ def get_restaurant(
             created_at=restaurant.created_at,
             updated_at=restaurant.updated_at,
             tags=[TagResponse.model_validate(rt.tag) for rt in restaurant.restaurant_tags] if restaurant.restaurant_tags else None,
+            cuisines=[CuisineResponse.model_validate(rc.cuisine) for rc in restaurant.restaurant_cuisines] if restaurant.restaurant_cuisines else None,
             listings=None  # Will be set separately if needed
         )
         
@@ -374,7 +459,8 @@ def get_restaurant(
                     bio=listing.influencer.bio,
                     avatar_url=listing.influencer.avatar_url,
                     banner_url=listing.influencer.banner_url,
-                    region=listing.influencer.region,
+                    # region=listing.influencer.region,
+                    # country=listing.influencer.country,
                     youtube_channel_id=listing.influencer.youtube_channel_id,
                     youtube_channel_url=listing.influencer.youtube_channel_url,
                     subscriber_count=listing.influencer.subscriber_count,
@@ -385,16 +471,30 @@ def get_restaurant(
                 
                 if include_video_details:
                     # Manually construct VideoResponse to avoid validation issues
+                    video_influencer_response = None
+                    if listing.video.influencer:
+                        video_influencer_response = InfluencerLightResponse(
+                            id=listing.video.influencer.id,
+                            name=listing.video.influencer.name,
+                            bio=listing.video.influencer.bio,
+                            avatar_url=listing.video.influencer.avatar_url,
+                            banner_url=listing.video.influencer.banner_url,
+                            youtube_channel_id=listing.video.influencer.youtube_channel_id,
+                            youtube_channel_url=listing.video.influencer.youtube_channel_url,
+                            subscriber_count=listing.video.influencer.subscriber_count,
+                            created_at=listing.video.influencer.created_at,
+                            updated_at=listing.video.influencer.updated_at
+                        )
+                    
                     video_response = VideoResponse(
                         id=listing.video.id,
-                        influencer_id=listing.video.influencer_id,
+                        influencer=video_influencer_response,
                         youtube_video_id=listing.video.youtube_video_id,
                         title=listing.video.title,
                         description=listing.video.description,
                         video_url=listing.video.video_url,
                         published_at=listing.video.published_at,
                         transcription=listing.video.transcription,
-                        summary=getattr(listing.video, 'summary', None),
                         created_at=listing.video.created_at,
                         updated_at=listing.video.updated_at
                     )
