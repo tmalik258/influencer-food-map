@@ -59,7 +59,7 @@ export function VideoTable({
           </TableHeader>
           <TableBody>
             {videos.map((video) => (
-              <TableRow key={video.id} className="cursor-pointer hover:bg-orange-50/50 dark:hover:bg-orange-900/20 border-b border-white/10 dark:border-gray-700/30 transition-all duration-200" onClick={() => onViewVideo(video)}>
+              <TableRow key={video.id} className="cursor-pointer hover:bg-orange-50/50 dark:hover:bg-orange-900/20 border-b border-white/10 dark:border-gray-700/30 transition-all duration-200">
                 <TableCell>
                   <div className="w-32 h-18 bg-gray-100 rounded-lg overflow-hidden">
                     <iframe
@@ -93,7 +93,7 @@ export function VideoTable({
                 <TableCell>
                   <div className="flex items-center gap-1">
                     <User className="h-4 w-4 text-orange-500" />
-                    <span className="text-sm text-gray-900 dark:text-white">{video.influencer_id}</span>
+                    <span className="text-sm text-gray-900 dark:text-white">{video.influencer?.name || 'Unknown'}</span>
                   </div>
                 </TableCell>
                 <TableCell>

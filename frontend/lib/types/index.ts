@@ -51,7 +51,18 @@ export interface Influencer {
 
 export interface Video {
   id: string;
-  influencer_id: string;
+  influencer?: {
+    id: string;
+    name: string;
+    bio?: string;
+    avatar_url?: string;
+    banner_url?: string;
+    youtube_channel_id: string;
+    youtube_channel_url?: string;
+    subscriber_count?: number;
+    created_at: string;
+    updated_at: string;
+  };
   youtube_video_id: string;
   title: string;
   description?: string;
@@ -68,7 +79,6 @@ export interface Listing {
   restaurant?: Restaurant;
   video_id?: string;
   video?: Video;
-  influencer_id?: string;
   influencer?: Influencer;
   visit_date?: string;
   quotes?: string[];

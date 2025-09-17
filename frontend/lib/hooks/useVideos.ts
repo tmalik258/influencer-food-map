@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Video } from '@/lib/types';
 import { videoActions } from '@/lib/actions';
+import { adminVideoActions } from '@/lib/actions/admin-video-actions';
 
 export const useVideos = (params?: {
   title?: string;
@@ -70,5 +71,35 @@ export const useInfluencerVideos = (influencerId: string, limit = 20) => {
     loading,
     error,
     refetch: fetchVideos
+  };
+};
+
+/**
+ * Hook for creating videos from YouTube URL
+ */
+export const useCreateVideo = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const createVideoFromUrl = useCallback(async (data: { influencer_id: string; youtube_url: string }) => {
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const video = await adminVideoActions.createVideoFromUrl(data);
+      return video;
+    } catch (err: any) {
+      const errorMessage = err.response?.data?.detail || err.message || 'Failed to create video';
+      setError(errorMessage);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    createVideoFromUrl,
+    loading,
+    error
   };
 };

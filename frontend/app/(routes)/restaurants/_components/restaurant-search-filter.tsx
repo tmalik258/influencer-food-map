@@ -44,7 +44,7 @@ export function RestaurantSearchFilter({
               placeholder={getSearchPlaceholder(searchType)}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10 h-11 border-gray-200 focus:border-orange-500 focus:ring-orange-500"
+              className="pl-10 h-9 border-gray-200 focus:border-orange-500 focus:ring-orange-500"
             />
           </div>
           <Select value={searchType} onValueChange={setSearchType}>

@@ -5,24 +5,12 @@ import { toast } from 'sonner';
 import { adminInfluencerActions } from '@/lib/actions';
 import { Influencer } from '@/lib/types';
 
-interface InfluencerCreateData {
+interface InfluencerFormData {
   name: string;
   bio?: string;
   avatar_url?: string;
   banner_url?: string;
   youtube_channel_id: string;
-  youtube_channel_url?: string;
-  subscriber_count?: number;
-  region?: string;
-  country?: string;
-}
-
-interface InfluencerUpdateData {
-  name?: string;
-  bio?: string;
-  avatar_url?: string;
-  banner_url?: string;
-  youtube_channel_id?: string;
   youtube_channel_url?: string;
   subscriber_count?: number;
   region?: string;
@@ -38,7 +26,7 @@ export function useAdminInfluencer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createInfluencer = async (data: InfluencerCreateData): Promise<AdminInfluencerResponse | null> => {
+  const createInfluencer = async (data: InfluencerFormData): Promise<AdminInfluencerResponse | null> => {
     setLoading(true);
     setError(null);
 
@@ -58,7 +46,7 @@ export function useAdminInfluencer() {
 
   const updateInfluencer = async (
     influencerId: string,
-    data: InfluencerUpdateData
+    data: Partial<InfluencerFormData>
   ): Promise<AdminInfluencerResponse | null> => {
     setLoading(true);
     setError(null);

@@ -4,70 +4,23 @@ import { useState, useEffect, useCallback } from 'react';
 import { Influencer } from '@/lib/types';
 import { influencerActions } from '@/lib/actions';
 
-interface InfluencerParams {
+interface InfluencersParams {
   name?: string;
   id?: string;
   youtube_channel_id?: string;
   youtube_channel_url?: string;
-  skip?: number;
-  limit?: number;
-  include_listings?: boolean;
   include_video_details?: boolean;
+  page?: number;
+  limit?: number;
 }
 
-export const useInfluencers = (params?: InfluencerParams) => {
-  const [influencers, setInfluencers] = useState<Influencer[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchInfluencers = useCallback(async (searchParams?: InfluencerParams) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await influencerActions.getInfluencers(searchParams || params);
-      setInfluencers(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch influencers');
-    } finally {
-      setLoading(false);
-    }
-  }, [params]);
-
-  return {
-    influencers,
-    loading,
-    error,
-    fetchInfluencers,
-    refetch: () => fetchInfluencers(params)
-  };
-};
-
-export const useInfluencersWithListings = (params?: Omit<InfluencerParams, 'include_listings'>) => {
-  const [influencers, setInfluencers] = useState<Influencer[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchInfluencers = useCallback(async (searchParams?: Omit<InfluencerParams, 'include_listings'>) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await influencerActions.getInfluencersWithListings(searchParams || params);
-      setInfluencers(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch influencers with listings');
-    } finally {
-      setLoading(false);
-    }
-  }, [params]);
-
-  return {
-    influencers,
-    loading,
-    error,
-    fetchInfluencers,
-    refetch: () => fetchInfluencers(params)
-  };
-};
+interface InfluencersResponse {
+  influencers: Influencer[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
 
 export const useInfluencer = (id: string, params?: {
   include_listings?: boolean;
@@ -104,11 +57,80 @@ export const useInfluencer = (id: string, params?: {
   };
 };
 
-export const useInfluencerWithListings = (id: string, params?: {
-  include_video_details?: boolean;
-}) => {
-  return useInfluencer(id, {
-    ...params,
-    include_listings: true,
+export const useInfluencers = (initialParams?: InfluencersParams) => {
+  const [data, setData] = useState<InfluencersResponse>({
+    influencers: [],
+    total: 0,
+    page: 1,
+    limit: 12,
+    totalPages: 0
   });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [params, setParams] = useState<InfluencersParams>({
+    page: 1,
+    limit: 12,
+    ...initialParams
+  });
+
+  const fetchInfluencers = useCallback(async (searchParams?: InfluencersParams) => {
+    const currentParams = searchParams || params;
+    const { page = 1, limit = 12, ...otherParams } = currentParams;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await influencerActions.getInfluencersWithListings({
+        ...otherParams,
+        skip: (page - 1) * limit,
+        limit
+      });
+      
+      // Handle the new backend response structure with total count
+      const influencers = Array.isArray(response) ? response : response.influencers || [];
+      const total = Array.isArray(response) ? response.length : response.total || 0;
+      const totalPages = Math.ceil(total / limit);
+      
+      setData({
+        influencers,
+        total,
+        page,
+        limit,
+        totalPages
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch influencers');
+    } finally {
+      setLoading(false);
+    }
+  }, [params]);
+
+  const updateParams = useCallback((newParams: Partial<InfluencersParams>) => {
+    setParams(prev => ({ ...prev, ...newParams }));
+  }, []);
+
+  const goToPage = useCallback((page: number) => {
+    updateParams({ page });
+  }, [updateParams]);
+
+  const setSearchQuery = useCallback((name: string) => {
+    updateParams({ name, page: 1 }); // Reset to first page when searching
+  }, [updateParams]);
+
+  useEffect(() => {
+    fetchInfluencers(params);
+  }, [params, fetchInfluencers]);
+
+  return {
+    ...data,
+    loading,
+    error,
+    params,
+    fetchInfluencers,
+    updateParams,
+    goToPage,
+    setSearchQuery,
+    refetch: () => fetchInfluencers(params)
+  };
 };

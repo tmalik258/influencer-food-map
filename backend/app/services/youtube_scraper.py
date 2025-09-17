@@ -101,6 +101,37 @@ def get_channel(channel_url: str) -> dict | None:
         logger.error(f"Error fetching channel ID for {channel_url}: {e}")
         return None
 
+def get_video_metadata(video_id: str) -> dict | None:
+    """Fetch metadata for a single video by video ID."""
+    try:
+        response = youtube.videos().list(
+            part="snippet,contentDetails,statistics",
+            id=video_id
+        ).execute()
+        
+        if "items" not in response or len(response["items"]) == 0:
+            logger.error(f"No video found for ID: {video_id}")
+            return None
+        
+        video = response["items"][0]
+        snippet = video["snippet"]
+        
+        return {
+            "youtube_video_id": video_id,
+            "title": snippet["title"],
+            "description": snippet.get("description", ""),
+            "video_url": f"https://www.youtube.com/watch?v={video_id}",
+            "published_at": snippet["publishedAt"],
+            "channel_id": snippet["channelId"],
+            "channel_title": snippet["channelTitle"]
+        }
+    except HttpError as e:
+        logger.error(f"Error fetching video metadata for {video_id}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error fetching video metadata for {video_id}: {e}")
+        return None
+
 def get_videos(channel_id: str) -> list[dict]:
     """Fetch videos from a channel's upload playlist."""
     try:

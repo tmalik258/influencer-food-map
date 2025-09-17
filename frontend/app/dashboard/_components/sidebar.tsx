@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from '@/components/ui/sheet';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   FileText,
@@ -578,6 +578,7 @@ export function Sidebar({ className, isMobileOpen = false, onMobileToggle }: Sid
             'will-change-transform'
           )}
         >
+          <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
           <div className={cn(
             'h-full transition-all duration-300 ease-out',
             'animate-in fade-in-0 slide-in-from-left-4',

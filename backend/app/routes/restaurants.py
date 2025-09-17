@@ -15,7 +15,7 @@ from app.api_schema.tags import TagResponse
 from app.api_schema.cuisines import CuisineResponse
 from app.api_schema.videos import VideoResponse
 from app.api_schema.listings import ListingLightResponse
-from app.api_schema.influencers import InfluencerResponse
+from app.api_schema.influencers import InfluencerResponse, InfluencerLightResponse
 from app.api_schema.restaurants import RestaurantResponse, OptimizedFeaturedResponse, CityRestaurantsResponse, PaginatedRestaurantsResponse, rebuild_models
 
 # Rebuild models to resolve forward references
@@ -471,16 +471,30 @@ async def get_restaurant(
                 
                 if include_video_details:
                     # Manually construct VideoResponse to avoid validation issues
+                    video_influencer_response = None
+                    if listing.video.influencer:
+                        video_influencer_response = InfluencerLightResponse(
+                            id=listing.video.influencer.id,
+                            name=listing.video.influencer.name,
+                            bio=listing.video.influencer.bio,
+                            avatar_url=listing.video.influencer.avatar_url,
+                            banner_url=listing.video.influencer.banner_url,
+                            youtube_channel_id=listing.video.influencer.youtube_channel_id,
+                            youtube_channel_url=listing.video.influencer.youtube_channel_url,
+                            subscriber_count=listing.video.influencer.subscriber_count,
+                            created_at=listing.video.influencer.created_at,
+                            updated_at=listing.video.influencer.updated_at
+                        )
+                    
                     video_response = VideoResponse(
                         id=listing.video.id,
-                        influencer_id=listing.video.influencer_id,
+                        influencer=video_influencer_response,
                         youtube_video_id=listing.video.youtube_video_id,
                         title=listing.video.title,
                         description=listing.video.description,
                         video_url=listing.video.video_url,
                         published_at=listing.video.published_at,
                         transcription=listing.video.transcription,
-                        summary=getattr(listing.video, 'summary', None),
                         created_at=listing.video.created_at,
                         updated_at=listing.video.updated_at
                     )

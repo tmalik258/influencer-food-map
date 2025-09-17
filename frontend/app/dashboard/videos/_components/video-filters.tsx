@@ -18,11 +18,8 @@ export function VideoFilters({
   setHasListings
 }: VideoFiltersProps) {
   return (
-    <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30">
-      <CardHeader>
-        <CardTitle className="text-lg text-gray-900 dark:text-white">Filters & Search</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <Card className="border-none shadow-none p-0">
+      <CardContent className="space-y-4 p-0">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Search */}
           <div className="relative">
@@ -37,7 +34,7 @@ export function VideoFilters({
 
           {/* Sort By */}
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white">
+            <SelectTrigger className="w-full glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -49,7 +46,7 @@ export function VideoFilters({
 
           {/* Sort Order */}
           <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
-            <SelectTrigger className="glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white">
+            <SelectTrigger className="w-full glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white">
               <SelectValue placeholder="Sort order" />
             </SelectTrigger>
             <SelectContent>
@@ -66,7 +63,7 @@ export function VideoFilters({
               setHasListings(value === 'true');
             }
           }}>
-            <SelectTrigger className="glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white">
+            <SelectTrigger className="w-full glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white">
               <SelectValue placeholder="Filter by listings" />
             </SelectTrigger>
             <SelectContent>

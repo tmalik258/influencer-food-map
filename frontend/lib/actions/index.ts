@@ -7,3 +7,4 @@ export { cuisineActions } from './cuisine-actions';
 export { googleReviewsActions } from './google-reviews-actions';
 export { adminActions } from './admin-actions';
 export { adminInfluencerActions } from './admin-influencer-actions';
+export { adminVideoActions } from './admin-video-actions';

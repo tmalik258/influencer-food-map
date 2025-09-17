@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Plus, Edit, Trash2, Eye, Youtube, Users, Calendar, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Influencer } from '@/lib/types';
-import { useInfluencersPaginated } from '@/lib/hooks/useInfluencersPaginated';
+import { useInfluencers } from '@/lib/hooks/useInfluencers';
 import { useAdminInfluencer } from '@/lib/hooks/useAdminInfluencer';
 import DashboardLoadingSkeleton from '@/app/dashboard/_components/dashboard-loading-skeleton';
 import { formatNumberAbbreviated } from '@/lib/utils/number-formatter';
@@ -27,7 +27,7 @@ export default function InfluencerManagement() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const itemsPerPage = 10;
 
-  const { influencers, loading, error, refetch } = useInfluencersPaginated({ limit: 1000 }); // Fetch large number for client-side operations
+  const { influencers, loading, error, refetch } = useInfluencers({ limit: 1000 }); // Fetch large number for client-side operations
   const { deleteInfluencer } = useAdminInfluencer();
 
   // Debounce search term

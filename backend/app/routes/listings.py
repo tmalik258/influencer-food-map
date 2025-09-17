@@ -15,7 +15,7 @@ from app.utils.logging import setup_logger
 from app.api_schema.videos import VideoResponse
 from app.api_schema.listings import ListingResponse
 from app.api_schema.restaurants import RestaurantResponse
-from app.api_schema.influencers import InfluencerResponse
+from app.api_schema.influencers import InfluencerLightResponse, InfluencerResponse
 from app.api_schema.tags import TagResponse
 from app.api_schema.cuisines import CuisineResponse
 
@@ -124,16 +124,31 @@ async def get_listings(
             # Construct VideoResponse manually if video exists
             video_response = None
             if listing.video:
+                # Get influencer data for the video
+                video_influencer_response = None
+                if listing.video.influencer:
+                    video_influencer_response = InfluencerLightResponse(
+                        id=listing.video.influencer.id,
+                        name=listing.video.influencer.name,
+                        bio=listing.video.influencer.bio,
+                        avatar_url=listing.video.influencer.avatar_url,
+                        banner_url=listing.video.influencer.banner_url,
+                        youtube_channel_id=listing.video.influencer.youtube_channel_id,
+                        youtube_channel_url=listing.video.influencer.youtube_channel_url,
+                        subscriber_count=listing.video.influencer.subscriber_count,
+                        created_at=listing.video.influencer.created_at,
+                        updated_at=listing.video.influencer.updated_at
+                    )
+                
                 video_response = VideoResponse(
                     id=listing.video.id,
-                    influencer_id=listing.video.influencer_id,
+                    influencer=video_influencer_response,
                     youtube_video_id=listing.video.youtube_video_id,
                     title=listing.video.title,
                     description=listing.video.description,
                     video_url=listing.video.video_url,
                     published_at=listing.video.published_at,
                     transcription=listing.video.transcription,
-                    summary=None,  # Video model doesn't have summary field
                     created_at=listing.video.created_at,
                     updated_at=listing.video.updated_at
                 )
@@ -240,16 +255,31 @@ async def get_listing(listing_id: str, db: AsyncSession = Depends(get_async_db))
         # Construct VideoResponse manually if video exists
         video_response = None
         if listing.video:
+            # Get influencer data for the video
+            video_influencer_response = None
+            if listing.video.influencer:
+                video_influencer_response = InfluencerLightResponse(
+                    id=listing.video.influencer.id,
+                    name=listing.video.influencer.name,
+                    bio=listing.video.influencer.bio,
+                    avatar_url=listing.video.influencer.avatar_url,
+                    banner_url=listing.video.influencer.banner_url,
+                    youtube_channel_id=listing.video.influencer.youtube_channel_id,
+                    youtube_channel_url=listing.video.influencer.youtube_channel_url,
+                    subscriber_count=listing.video.influencer.subscriber_count,
+                    created_at=listing.video.influencer.created_at,
+                    updated_at=listing.video.influencer.updated_at
+                )
+            
             video_response = VideoResponse(
                 id=listing.video.id,
-                influencer_id=listing.video.influencer_id,
+                influencer=video_influencer_response,
                 youtube_video_id=listing.video.youtube_video_id,
                 title=listing.video.title,
                 description=listing.video.description,
                 video_url=listing.video.video_url,
                 published_at=listing.video.published_at,
                 transcription=listing.video.transcription,
-                summary=None,  # Video model doesn't have summary field
                 created_at=listing.video.created_at,
                 updated_at=listing.video.updated_at
             )

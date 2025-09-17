@@ -7,7 +7,7 @@ import { ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 
-import { useInfluencer } from "@/lib/hooks/useInfluencers";
+import { useInfluencer } from "@/lib/hooks";
 import { useAdminInfluencer } from "@/lib/hooks/useAdminInfluencer";
 import { useAdminAuth } from "@/lib/hooks/useAdminAuth";
 import { InfluencerProfileCard } from "./_components/influencer-profile-card";

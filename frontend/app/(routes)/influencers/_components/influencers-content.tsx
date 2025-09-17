@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
-import { useInfluencersPaginated } from "@/lib/hooks";
-import { Tag, Influencer } from "@/lib/types";
+import { useInfluencers } from "@/lib/hooks";
+import { Influencer } from "@/lib/types";
 import InfluencersHero from "./influencers-hero";
 import { InfluencerSearchFilter } from "./influencer-search-filter";
 import InfluencersGrid from "./influencers-grid";
@@ -32,7 +32,7 @@ export default function InfluencersContent() {
     totalPages,
     goToPage,
     refetch
-  } = useInfluencersPaginated({
+  } = useInfluencers({
     limit: 12
   });
 

@@ -79,7 +79,7 @@ export default function VideoManagement() {
 
   // Get unique influencer names for filtering
   const uniqueInfluencers = Array.from(
-    new Set(videos.map(video => video.influencer_id).filter(Boolean))
+    new Set(videos.map(video => video.influencer?.name).filter(Boolean))
   );
 
   const handleViewVideo = (video: Video) => {

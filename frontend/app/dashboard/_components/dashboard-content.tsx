@@ -9,6 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { AlertCircle, RefreshCw } from "lucide-react";
+import ErrorCard from "@/components/error-card";
 
 const DashboardContent = () => {
   const { data, isLoading, error, refresh } = useDashboardData();
@@ -50,6 +51,10 @@ const DashboardContent = () => {
     ...data.stats,
   };
 
+  if (error) {
+    return <ErrorCard title="" error={error} onRefresh={refresh} />
+  }
+
   return (
     <div className="space-y-6">
       {/* Dashboard Header */}
@@ -77,27 +82,6 @@ const DashboardContent = () => {
           </Button>
         </div>
       </div>
-
-      {/* Error Alert */}
-      {error && (
-        <Alert variant="destructive" className="glass-effect backdrop-blur-sm bg-red-50/80 border border-red-200/50">
-          <AlertCircle className="h-4 w-4 text-red-600" />
-          <AlertDescription className="flex items-center justify-between">
-            <div className="flex flex-col">
-              <span className="text-red-800 dark:text-red-200">Connection issue: {error}</span>
-            </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={refresh}
-              disabled={isLoading}
-              className="cursor-pointer ml-4 bg-orange-600 hover:bg-orange-700 focus:ring-orange-500 text-white border-orange-600"
-            >
-              {isLoading ? "Retrying..." : "Retry"}
-            </Button>
-          </AlertDescription>
-        </Alert>
-      )}
 
       {/* Metrics Grid */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
