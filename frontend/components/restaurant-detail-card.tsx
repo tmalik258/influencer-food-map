@@ -41,7 +41,7 @@ export function RestaurantDetailCard({
             ) : (
               <div className="w-full h-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">
                 <span className="text-white font-bold text-2xl">
-                  {restaurant.name.charAt(0)}
+                  {restaurant?.name?.charAt(0) || '?'}
                 </span>
               </div>
             )}

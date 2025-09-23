@@ -10,6 +10,7 @@ from app.database import get_async_db
 from app.dependencies import get_current_admin
 from app.models.listing import Listing
 from app.models.restaurant import Restaurant
+from app.models.video import Video
 
 admin_listings_router = APIRouter()
 
@@ -21,7 +22,19 @@ async def create_listing(
     db: AsyncSession = Depends(get_async_db),
     current_admin=Depends(get_current_admin)
 ):
-    new_listing = Listing(**listing.model_dump())
+    # If visit_date is not provided, extract it from the video's published_at
+    listing_data = listing.model_dump()
+    
+    if not listing_data.get("visit_date") and listing_data.get("video_id"):
+        # Fetch the video to get the published_at date
+        video_query = select(Video).filter(Video.id == listing_data["video_id"])
+        video_result = await db.execute(video_query)
+        video = video_result.scalars().first()
+        
+        if video and video.published_at:
+            listing_data["visit_date"] = video.published_at.date()
+    
+    new_listing = Listing(**listing_data)
     db.add(new_listing)
     await db.commit()
     await db.refresh(new_listing)

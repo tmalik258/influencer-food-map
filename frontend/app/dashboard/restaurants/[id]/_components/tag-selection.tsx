@@ -61,7 +61,7 @@ export function TagSelection({
           </div>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {allTags.map((tag) => {
+            {allTags?.map((tag) => {
               const isSelected = isTagSelected(tag);
               return (
                 <Badge
@@ -74,7 +74,7 @@ export function TagSelection({
                   }`}
                   onClick={() => handleTagToggle(tag)}
                 >
-                  {tag.name}
+                  {tag.name || ""}
                   {isSelected ? (
                     <X className="ml-1 h-3 w-3" />
                   ) : (

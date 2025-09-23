@@ -17,6 +17,7 @@ export const useVideos = (params?: {
   limit?: number;
 }) => {
   const [videos, setVideos] = useState<Video[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -25,16 +26,28 @@ export const useVideos = (params?: {
     setError(null);
     try {
       const data = await videoActions.getVideos(searchParams || params);
-      setVideos(data);
+      setVideos(data.videos);
+      setTotalCount(data.total);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch videos');
     } finally {
       setLoading(false);
     }
-  }, [params]);
+  }, [
+    params?.title,
+    params?.youtube_video_id,
+    params?.video_title,
+    params?.video_url,
+    params?.influencer_id,
+    params?.influencer_name,
+    params?.has_listings,
+    params?.skip,
+    params?.limit
+  ]);
 
   return {
     videos,
+    totalCount,
     loading,
     error,
     fetchVideos,

@@ -11,6 +11,10 @@ interface InfluencerCreateData {
   subscriber_count?: number;
 }
 
+interface InfluencerCreateByUrlData {
+  youtube_channel_url: string;
+}
+
 interface InfluencerUpdateData {
   name?: string;
   bio?: string;
@@ -29,9 +33,9 @@ interface AdminInfluencerResponse {
 
 export const adminInfluencerActions = {
   /**
-   * Create a new influencer
+   * Create a new influencer using YouTube URL
    */
-  createInfluencer: async (data: InfluencerCreateData): Promise<AdminInfluencerResponse> => {
+  createInfluencerByUrl: async (data: InfluencerCreateByUrlData): Promise<AdminInfluencerResponse> => {
     const response = await adminApi.post('/influencers', data);
     return response.data;
   },

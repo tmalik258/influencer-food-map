@@ -34,8 +34,8 @@ export function RestaurantFilters({
   onAddNew
 }: RestaurantFiltersProps) {
   return (
-    <Card role="search" aria-label="Restaurant filters" className="glass-effect backdrop-blur-xl border-orange-500/20 shadow-lg">
-      <CardContent className="flex flex-col lg:flex-row gap-4 justify-between p-6">
+    <Card role="search" aria-label="Restaurant filters" className="p-0 border-none shadow-none">
+      <CardContent className="flex flex-col lg:flex-row gap-4 justify-between p-0">
         <div className="flex flex-col sm:flex-row sm:flex-wrap flex-1 gap-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-orange-500" aria-hidden="true" />

@@ -146,7 +146,6 @@ export interface VideoFiltersProps {
 }
 
 export interface VideoHeaderProps {
-  videoCount: number;
   onCreateClick: () => void;
 }
 
@@ -159,26 +158,37 @@ export interface VideoTableProps {
   onEditVideo: (video: Video) => void;
   onDeleteVideo: (video: Video) => void;
   onClearFilters: () => void;
+  // Pagination props
+  currentPage: number;
+  totalItems: number;
+  itemsPerPage: number;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange: (value: number) => void;
 }
 
 // Listing management types
 export interface Listing {
   id: string;
-  restaurant: {
+  restaurant_id?: string;
+  restaurant?: {
     name: string;
     city: string;
   };
-  influencer: {
+  influencer_id?: string;
+  influencer?: {
     name: string;
   };
-  video: {
+  video_id?: string;
+  video?: {
     title: string;
   };
+  context?: string[];
   quotes: string[];
   confidence_score: number;
   approved?: boolean;
   visit_date?: string;
   status: "pending" | "approved" | "rejected";
+  timestamp?: string;
   created_at: string;
 }
 
@@ -202,7 +212,6 @@ export interface ListingTableProps {
   actionLoading: string | null;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
-  onView: (id: string) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
 }

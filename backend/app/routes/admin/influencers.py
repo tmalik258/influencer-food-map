@@ -7,7 +7,8 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from app.api_schema.influencers import InfluencerCreate, InfluencerUpdate, InfluencerResponse
+from app.api_schema.influencers import InfluencerCreate, InfluencerCreateFromUrl, InfluencerUpdate, InfluencerResponse
+from app.services.youtube_scraper import get_channel
 from app.database import get_async_db
 from app.dependencies import get_current_admin
 from app.models.influencer import Influencer
@@ -27,95 +28,59 @@ def sanitize_string(value: str) -> str:
     "/", response_model=InfluencerResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_influencer(
-    influencer: InfluencerCreate,
+    influencer_data: InfluencerCreateFromUrl,
     db: AsyncSession = Depends(get_async_db),
     current_admin=Depends(get_current_admin)
 ):
-    """Create a new influencer (Admin only)"""
-    logger.info(f"Admin {current_admin.email} attempting to create influencer: {influencer.name}")
+    """Create a new influencer from YouTube URL (Admin only)"""
+    logger.info(f"Admin {current_admin.email} attempting to create influencer from URL: {influencer_data.youtube_url}")
+    
     
     try:
-        # Sanitize input data
-        influencer_data = influencer.model_dump()
-        if influencer_data.get('name'):
-            influencer_data['name'] = sanitize_string(influencer_data['name'])
-        if influencer_data.get('bio'):
-            influencer_data['bio'] = sanitize_string(influencer_data['bio'])
-        if influencer_data.get('youtube_channel_id'):
-            influencer_data['youtube_channel_id'] = sanitize_string(influencer_data['youtube_channel_id'])
-        if influencer_data.get('youtube_channel_name'):
-            influencer_data['youtube_channel_name'] = sanitize_string(influencer_data['youtube_channel_name'])
-        
-        # Validate required fields
-        if not influencer_data.get('name') or len(influencer_data['name'].strip()) == 0:
-            logger.warning(f"Admin {current_admin.email} attempted to create influencer with empty name")
+        # Scrape YouTube channel and create influencer
+        channel = get_channel(influencer_data.youtube_url)
+
+        if not channel:
+            logger.error(f"Failed to scrape channel data for URL: {influencer_data.youtube_url}")
             raise HTTPException(
-                status_code=400,
-                detail="Influencer name is required and cannot be empty"
+                status_code=400, 
+                detail="Failed to scrape channel data from YouTube URL"
             )
-        
-        # Check if influencer with same YouTube channel ID already exists (if provided)
-        if influencer_data.get('youtube_channel_id'):
-            query = select(Influencer).filter(
-                Influencer.youtube_channel_id == influencer_data['youtube_channel_id']
-            )
-            result = await db.execute(query)
-            existing_influencer = result.scalars().first()
-            
-            if existing_influencer:
-                logger.warning(
-                    f"Admin {current_admin.email} attempted to create influencer with duplicate YouTube channel ID: {influencer_data['youtube_channel_id']}"
-                )
-                raise HTTPException(
-                    status_code=400, 
-                    detail=f"Influencer with YouTube channel ID '{influencer_data['youtube_channel_id']}' already exists"
-                )
-        
-        # Create new influencer
-        new_influencer = Influencer(**influencer_data)
-        db.add(new_influencer)
+
+        influencer = Influencer(
+            name=channel.get('name', ''),
+            bio=channel.get('bio', ''),
+            avatar_url=channel.get('avatar_url', ''),
+            banner_url=channel.get('banner_url', ''),
+            youtube_channel_id=channel.get('channel_id', ''),
+            youtube_channel_url=channel.get('channel_url', influencer_data.youtube_url),
+            subscriber_count=channel.get('subscriber_count', 0),
+        )
+        db.add(influencer)
         await db.commit()
-        await db.refresh(new_influencer)
+        await db.refresh(influencer)
         
-        logger.info(f"Admin {current_admin.email} successfully created influencer: {new_influencer.name} (ID: {new_influencer.id})")
-        
-        # Return response without listings to avoid circular dependencies
+        # Return the created influencer
         return InfluencerResponse(
-            id=new_influencer.id,
-            name=new_influencer.name,
-            bio=new_influencer.bio,
-            avatar_url=new_influencer.avatar_url,
-            banner_url=new_influencer.banner_url,
-            youtube_channel_id=new_influencer.youtube_channel_id,
-            youtube_channel_url=new_influencer.youtube_channel_url,
-            subscriber_count=new_influencer.subscriber_count,
-            created_at=new_influencer.created_at,
-            updated_at=new_influencer.updated_at,
+            id=influencer.id,
+            name=influencer.name,
+            bio=influencer.bio,
+            avatar_url=influencer.avatar_url,
+            banner_url=influencer.banner_url,
+            youtube_channel_id=influencer.youtube_channel_id,
+            youtube_channel_url=influencer.youtube_channel_url,
+            subscriber_count=influencer.subscriber_count,
+            created_at=influencer.created_at,
+            updated_at=influencer.updated_at,
             listings=None
         )
     except HTTPException:
-        await db.rollback()
         raise
-    except IntegrityError as e:
-        await db.rollback()
-        logger.error(f"Database integrity error while creating influencer: {str(e)}")
-        raise HTTPException(
-            status_code=400,
-            detail="Database constraint violation. Please check for duplicate values."
-        )
-    except SQLAlchemyError as e:
-        await db.rollback()
-        logger.error(f"Database error while creating influencer: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Database error occurred while creating influencer"
-        )
     except Exception as e:
-        await db.rollback()
-        logger.error(f"Unexpected error while creating influencer: {str(e)}")
+        logger.error(f"Unexpected error while creating influencer from YouTube URL: {str(e)}")
         raise HTTPException(
             status_code=500, 
-            detail="An unexpected error occurred while creating influencer"
+            detail="An unexpected error occurred while creating influencer from YouTube URL"
         )
 
 @admin_influencers_router.put(

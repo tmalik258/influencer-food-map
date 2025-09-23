@@ -1,65 +1,68 @@
 "use client";
 
-import { useState } from "react";
-import axios from "axios";
-import { toast } from "sonner";
-
+import { useState } from 'react';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Cuisine } from "@/lib/types";
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle
+} from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
+import { cuisineActions } from '@/lib/actions/cuisine-actions';
+import { Cuisine } from '@/lib/types';
 
 interface CuisineDeleteDialogProps {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
   cuisine: Cuisine | null;
   onSuccess: () => void;
 }
 
-export function CuisineDeleteDialog({ isOpen, onOpenChange, cuisine, onSuccess }: CuisineDeleteDialogProps) {
+export default function CuisineDeleteDialog({
+  open, onOpenChange, cuisine, onSuccess
+}: CuisineDeleteDialogProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   const handleDelete = async () => {
-    if (!cuisine) {
-      return;
-    }
+    if (!cuisine) return;
+    
     setIsLoading(true);
     try {
-      await axios.delete(`/api/cuisines/${cuisine?.id}`);
-      toast.success("Cuisine deleted successfully.");
+      await cuisineActions.deleteCuisine(cuisine.id);
+      toast.success(`Cuisine '${cuisine.name}' deleted successfully!`);
       onSuccess();
+      onOpenChange(false);
     } catch (error) {
-      console.error("Failed to delete cuisine:", error);
-      toast.error("Failed to delete cuisine.");
+      console.error('Failed to delete cuisine:', error);
+      toast.error(`Failed to delete cuisine '${cuisine.name}'. Please try again.`);
     } finally {
       setIsLoading(false);
     }
   };
 
+  if (!cuisine) return null;
+
   return (
-    <AlertDialog open={isOpen} onOpenChange={onOpenChange}>
-      <AlertDialogContent className="glass-effect backdrop-blur-xl bg-white/90 border border-orange-200/50 shadow-xl">
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle className="text-gray-900 dark:text-gray-100">Are you absolutely sure?</AlertDialogTitle>
-          <AlertDialogDescription className="text-gray-600 dark:text-gray-400">
-            This action cannot be undone. This will permanently delete the cuisine "{cuisine?.name}".
+          <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This action cannot be undone. This will permanently delete the cuisine &quot;{cuisine.name}&quot;.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel disabled={isLoading}>Cancel</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={handleDelete}
-            disabled={isLoading}
-            className="bg-red-600 text-white hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
+          <AlertDialogCancel 
+            onClick={() => onOpenChange(false)}
+            className="cursor-pointer"
           >
-            {isLoading ? "Deleting..." : "Delete"}
+            Cancel
+          </AlertDialogCancel>
+          <AlertDialogAction 
+            onClick={handleDelete} 
+            disabled={isLoading}
+            className="bg-red-600 hover:bg-red-700 focus:ring-red-500 focus:border-red-500 cursor-pointer"
+          >
+            {isLoading ? 'Deleting...' : 'Delete'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

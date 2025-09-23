@@ -1,4 +1,4 @@
-import { Video } from '@/lib/types';
+import { Video, VideosResponse } from '@/lib/types';
 import api from '../api';
 
 export const videoActions = {
@@ -15,7 +15,7 @@ export const videoActions = {
     has_listings?: boolean;
     skip?: number;
     limit?: number;
-  }): Promise<Video[]> {
+  }): Promise<VideosResponse> {
     try {
       const response = await api.get('/videos/', { params });
       return response.data;
@@ -49,7 +49,7 @@ export const videoActions = {
           limit,
         },
       });
-      return response.data;
+      return response.data.videos;
     } catch (error) {
       console.error(`Error fetching videos for influencer ${influencerId}:`, error);
       throw error;
@@ -67,7 +67,7 @@ export const videoActions = {
           limit,
         },
       });
-      return response.data;
+      return response.data.videos;
     } catch (error) {
       console.error('Error fetching videos with listings:', error);
       throw error;
@@ -85,7 +85,7 @@ export const videoActions = {
           limit,
         },
       });
-      return response.data;
+      return response.data.videos;
     } catch (error) {
       console.error(`Error searching videos by title "${title}":`, error);
       throw error;

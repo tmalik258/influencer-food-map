@@ -27,6 +27,7 @@ from app.routes.admin.influencers import admin_influencers_router
 from app.routes.admin.tags import admin_tags_router
 from app.routes.admin.cuisines import admin_cuisines_router
 from app.routes.dashboard import router as dashboard_router
+from app.routes.geocoding import router as geocoding_router
 
 # Configure logging
 logger = setup_logger(__name__)
@@ -66,6 +67,7 @@ app.include_router(admin_videos_router, prefix="/admin/videos", tags=["admin"])
 app.include_router(admin_influencers_router, prefix="/admin/influencers", tags=["admin"])
 app.include_router(admin_tags_router, prefix="/admin/tags", tags=["admin"])
 app.include_router(admin_cuisines_router, prefix="/admin/cuisines", tags=["admin"])
+app.include_router(geocoding_router, prefix="/geocoding", tags=["geocoding"])
 app.include_router(dashboard_router, tags=["dashboard"])
 
 

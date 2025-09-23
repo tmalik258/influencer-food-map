@@ -1,17 +1,19 @@
 from typing import List, Optional
 
 from fastapi import (APIRouter, Depends, HTTPException)
+from pydantic import BaseModel
 
 from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import func
 
 from app.models import (Video, Influencer, Listing)
 from app.database import get_db
-from app.api_schema.videos import VideoResponse
+from app.api_schema.videos import VideoResponse, VideosResponse
 from app.api_schema.influencers import InfluencerLightResponse
 
 router = APIRouter()
 
-@router.get("/", response_model=List[VideoResponse])
+@router.get("/", response_model=VideosResponse)
 def get_videos(
     db: Session = Depends(get_db),
     title: Optional[str] = None,
@@ -44,10 +46,11 @@ def get_videos(
         if influencer_name:
             query = query.join(Influencer).filter(Influencer.name.ilike(f"%{influencer_name}%"))
 
-        videos = query.offset(skip).limit(limit).all()
+        # Get total count before applying pagination
+        total_count = query.count()
 
-        if not videos:
-            raise HTTPException(status_code=404, detail="No videos found")
+        # Apply pagination
+        videos = query.offset(skip).limit(limit).all()
 
         # Manually construct VideoResponse objects with influencer data
         video_responses = []
@@ -81,7 +84,7 @@ def get_videos(
             )
             video_responses.append(video_response)
 
-        return video_responses
+        return VideosResponse(videos=video_responses, total=total_count)
     except HTTPException:
         raise
     except Exception as e:

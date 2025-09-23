@@ -1,12 +1,11 @@
 'use client';
 
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { PlusCircle } from 'lucide-react';
 
 import type { VideoHeaderProps } from '@/lib/types';
 
-export function VideoHeader({ videoCount, onCreateClick }: VideoHeaderProps) {
+export function VideoHeader({ onCreateClick }: VideoHeaderProps) {
   return (
     <div className="flex justify-between items-center">
       <div>
@@ -20,9 +19,6 @@ export function VideoHeader({ videoCount, onCreateClick }: VideoHeaderProps) {
           <PlusCircle className="w-4 h-4" />
           Create New Video
         </Button>
-        <Badge variant="secondary" className="glass-effect backdrop-blur-sm bg-orange-100/80 dark:bg-orange-900/30 text-orange-800 dark:text-orange-200 border border-orange-200 dark:border-orange-700">
-          {videoCount} videos
-        </Badge>
       </div>
     </div>
   );

@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 from pydantic import BaseModel, validator
 from pydantic.config import ConfigDict
@@ -20,6 +20,10 @@ class VideoResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+class VideosResponse(BaseModel):
+    videos: List[VideoResponse]
+    total: int
 
 class VideoCreate(BaseModel):
     influencer_id: UUID

@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+// YouTube URL validation regex
+const YOUTUBE_CHANNEL_URL_REGEX = /^https:\/\/(www\.)?youtube\.com\/(channel\/UC[\w-]{22}|c\/[\w-]+|user\/[\w-]+|@[\w.-]+)$/;
+
 // Base schema for common influencer fields
 const baseInfluencerSchema = {
   name: z
@@ -19,21 +22,14 @@ const baseInfluencerSchema = {
     .number()
     .min(0, "Subscriber count must be positive")
     .optional(),
-  region: z
-    .string()
-    .max(50, "Region must be less than 50 characters")
-    .optional(),
-  country: z
-    .string()
-    .max(50, "Country must be less than 50 characters")
-    .optional(),
 };
 
-// Schema for creating a new influencer
-export const createInfluencerSchema = z.object({
-  ...baseInfluencerSchema,
-  name: baseInfluencerSchema.name,
-  youtube_channel_id: baseInfluencerSchema.youtube_channel_id,
+// Schema for creating influencer with YouTube URL only
+export const createInfluencerByUrlSchema = z.object({
+  youtube_channel_url: z
+    .string()
+    .min(1, "YouTube channel URL is required")
+    .regex(YOUTUBE_CHANNEL_URL_REGEX, "Please enter a valid YouTube channel URL (e.g., https://www.youtube.com/@channelname or https://www.youtube.com/channel/UCxxxxx)")
 });
 
 // Schema for updating an existing influencer
@@ -44,5 +40,5 @@ export const updateInfluencerSchema = z.object({
 });
 
 // Type exports
-export type CreateInfluencerFormData = z.infer<typeof createInfluencerSchema>;
+export type CreateInfluencerByUrlFormData = z.infer<typeof createInfluencerByUrlSchema>;
 export type UpdateInfluencerFormData = z.infer<typeof updateInfluencerSchema>;

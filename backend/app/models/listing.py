@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import (Column, UUID, ForeignKey, Text, Date, Boolean, Float, DateTime, UniqueConstraint)
+from sqlalchemy import (Column, UUID, ForeignKey, Text, Date, Boolean, Float, DateTime, Integer, UniqueConstraint)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -19,6 +19,7 @@ class Listing(Base):
     context = Column(ARRAY(Text)) # Context from the video
     confidence_score = Column(Float)
     approved = Column(Boolean, default=False, server_default="false") # Whether the listing is approved by the admin
+    timestamp = Column(Integer, nullable=True)  # Video timestamp in seconds for start time
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

@@ -1,5 +1,10 @@
 import { Tag } from '@/lib/types';
-import api from '../api';
+import api, { adminApi } from '../api';
+
+interface PaginatedTagsResponse {
+  tags: Tag[];
+  total: number;
+}
 
 export const tagActions = {
   /**
@@ -14,9 +19,38 @@ export const tagActions = {
   }): Promise<Tag[]> {
     try {
       const response = await api.get('/tags/', { params });
-      return response.data;
+      // Handle both old and new response formats for backward compatibility
+      return Array.isArray(response.data) ? response.data : response.data.tags;
     } catch (error) {
       console.error('Error fetching tags:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get paginated tags with total count
+   */
+  async getTagsPaginated(params?: {
+    name?: string;
+    id?: string;
+    city?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<PaginatedTagsResponse> {
+    try {
+      const response = await api.get('/tags/', { params });
+      // Handle both old and new response formats
+      if (Array.isArray(response.data)) {
+        // Old format - return as paginated response
+        return {
+          tags: response.data,
+          total: response.data.length
+        };
+      }
+      // New format - return as is
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching paginated tags:', error);
       throw error;
     }
   },
@@ -66,6 +100,56 @@ export const tagActions = {
       return response.data;
     } catch (error) {
       console.error('Error fetching all tags:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create a new tag
+   */
+  async createTag(tagData: { name: string; description?: string }): Promise<Tag> {
+    try {
+      const response = await adminApi.post('/tags/', tagData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating tag:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update an existing tag
+   */
+  async updateTag(tagId: string, tagData: { name?: string; description?: string }): Promise<Tag> {
+    try {
+      const response = await adminApi.put(`/tags/${tagId}`, tagData);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating tag ${tagId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a tag
+   */
+  async deleteTag(tagId: string): Promise<void> {
+    try {
+      await adminApi.delete(`/tags/${tagId}`);
+    } catch (error) {
+      console.error(`Error deleting tag ${tagId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Remove a restaurant from a tag
+   */
+  async removeRestaurantFromTag(tagId: string, restaurantId: string): Promise<void> {
+    try {
+      await api.delete(`/tags/${tagId}/restaurants/${restaurantId}/`);
+    } catch (error) {
+      console.error(`Error removing restaurant ${restaurantId} from tag ${tagId}:`, error);
       throw error;
     }
   },

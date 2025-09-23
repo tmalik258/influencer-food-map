@@ -9,7 +9,7 @@ import { VideoHeader } from './video-header';
 import { VideoFilters } from './video-filters';
 import { VideoTable } from './video-table';
 import { VideoCreateForm } from './video-create-form';
-
+import EditVideoModal from './edit-video-modal';
 import { VideoDeleteDialog } from './video-delete-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { useRouter } from 'next/navigation';
@@ -21,35 +21,50 @@ export default function VideoManagement() {
   const [selectedInfluencer, setSelectedInfluencer] = useState<string>('');
   const [hasListings, setHasListings] = useState<boolean | undefined>(undefined);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+  
   const router = useRouter();
 
-  const { videos, loading, error, fetchVideos } = useVideos({
+  const { videos, totalCount, loading, error, fetchVideos } = useVideos({
     title: searchTerm || undefined,
     influencer_name: selectedInfluencer || undefined,
     has_listings: hasListings,
-    limit: 50
+    skip: (currentPage - 1) * itemsPerPage,
+    limit: itemsPerPage
   });
 
   useEffect(() => {
-    if (videos.length === 0) {
-      fetchVideos();
-    }
-  }, [fetchVideos, videos.length]);
+    fetchVideos();
+  }, [fetchVideos]);
+
+  useEffect(() => {
+    // Update total items count from the API response
+    setTotalItems(totalCount);
+  }, [totalCount]);
 
   const refreshVideos = () => {
     fetchVideos();
   };
 
-  // Filter and sort videos
-  const filteredAndSortedVideos = videos
-    .filter(video => {
-      const matchesSearch = !searchTerm || 
-        video.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        video.description?.toLowerCase().includes(searchTerm.toLowerCase());
-      return matchesSearch;
-    })
+  // Handle pagination changes
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setItemsPerPage(newItemsPerPage);
+    setCurrentPage(1); // Reset to first page when changing items per page
+  };
+
+  // Filter and sort videos (now handled server-side with pagination)
+  const displayVideos = videos
     .sort((a, b) => {
       let aValue: any;
       let bValue: any;
@@ -77,17 +92,13 @@ export default function VideoManagement() {
       }
     });
 
-  // Get unique influencer names for filtering
-  const uniqueInfluencers = Array.from(
-    new Set(videos.map(video => video.influencer?.name).filter(Boolean))
-  );
-
   const handleViewVideo = (video: Video) => {
     window.open(video.video_url, '_blank');
   };
 
   const handleEditVideo = (video: Video) => {
-    router.push(`/dashboard/videos/${video.id}`);
+    setSelectedVideo(video);
+    setIsEditModalOpen(true);
   };
 
   const handleDeleteVideo = (video: Video) => {
@@ -123,15 +134,16 @@ export default function VideoManagement() {
     );
   }
 
-  const handleClearFilters = () => {
+  const clearFilters = () => {
     setSearchTerm('');
     setSelectedInfluencer('');
     setHasListings(undefined);
+    setCurrentPage(1); // Reset to first page when clearing filters
   };
 
   return (
     <div className="space-y-6 dark:bg-black rounded-lg p-6">
-      <VideoHeader videoCount={filteredAndSortedVideos.length} onCreateClick={() => setIsCreateModalOpen(true)} />
+      <VideoHeader onCreateClick={() => setIsCreateModalOpen(true)} />
       
       <VideoFilters
         searchTerm={searchTerm}
@@ -145,14 +157,19 @@ export default function VideoManagement() {
       />
       
       <VideoTable
-        videos={filteredAndSortedVideos}
+        videos={displayVideos}
         searchTerm={searchTerm}
         selectedInfluencer={selectedInfluencer}
         hasListings={hasListings}
         onViewVideo={handleViewVideo}
         onEditVideo={handleEditVideo}
         onDeleteVideo={handleDeleteVideo}
-        onClearFilters={handleClearFilters}
+        onClearFilters={clearFilters}
+        currentPage={currentPage}
+        totalItems={totalItems}
+        itemsPerPage={itemsPerPage}
+        onPageChange={handlePageChange}
+        onItemsPerPageChange={handleItemsPerPageChange}
       />
 
       <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
@@ -164,7 +181,12 @@ export default function VideoManagement() {
         </DialogContent>
       </Dialog>
 
-
+      <EditVideoModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        video={selectedVideo}
+        onSuccess={() => { refreshVideos(); setIsEditModalOpen(false); }}
+      />
 
       <VideoDeleteDialog
         isOpen={isDeleteDialogOpen}

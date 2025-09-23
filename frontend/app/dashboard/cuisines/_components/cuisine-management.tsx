@@ -1,16 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { PlusCircle, Edit, Trash2, Search } from "lucide-react";
-
+import { useState, useMemo } from "react";
+import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTrigger,
-} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -19,191 +12,271 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { useRouter } from "next/navigation";
-
+import { Pencil, Trash2, Plus } from "lucide-react";
 import { CuisineCreateForm } from "./cuisine-create-form";
-import { CuisineDeleteDialog } from "./cuisine-delete-dialog";
+import CuisineDeleteDialog from "./cuisine-delete-dialog";
+import { PaginationInfo } from "@/components/ui/pagination-info";
+import { PaginationControls } from "@/components/ui/pagination-controls";
 import { Cuisine } from "@/lib/types";
-import { useCuisines } from "@/lib/hooks/useCuisines";
-import DashboardLoadingSkeleton from "@/app/dashboard/_components/dashboard-loading-skeleton";
-import { DialogTitle } from "@radix-ui/react-dialog";
+import { useCuisinesPaginated } from "@/lib/hooks/useCuisinesPaginated";
+import { cuisineActions } from "@/lib/actions";
+import { CuisineHeader } from "./cuisine-header";
+import DashboardLoadingSkeleton from "../../_components/dashboard-loading-skeleton";
 
 export function CuisineManagement() {
-  const router = useRouter();
-  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedCuisine, setSelectedCuisine] = useState<Cuisine | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [sortBy, setSortBy] = useState<"name" | "created_at">("name");
+  const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
+  const [editingCuisine, setEditingCuisine] = useState<Cuisine | null>(null);
+  const [deletingCuisine, setDeletingCuisine] = useState<Cuisine | null>(null);
 
-  const { cuisines, loading, error, fetchAllCuisines, searchCuisinesByName } =
-    useCuisines();
+  const {
+    cuisines,
+    total,
+    page,
+    limit,
+    totalPages,
+    loading,
+    error,
+    goToPage,
+    setSearchQuery,
+    setLimit,
+    refetch,
+  } = useCuisinesPaginated({
+    name: searchTerm,
+    limit: 20,
+  });
 
-  useEffect(() => {
-    fetchAllCuisines();
-  }, [fetchAllCuisines]);
+  // Filter and sort cuisines on the client side for now
+  // In the future, this could be moved to the backend
+  const filteredAndSortedCuisines = useMemo(() => {
+    let filtered = cuisines;
 
-  useEffect(() => {
-    if (searchTerm.trim()) {
-      const debounceTimer = setTimeout(() => {
-        searchCuisinesByName(searchTerm);
-      }, 300);
-      return () => clearTimeout(debounceTimer);
-    } else {
-      fetchAllCuisines();
+    if (searchTerm) {
+      filtered = cuisines.filter((cuisine) =>
+        cuisine.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
     }
-  }, [searchTerm, searchCuisinesByName, fetchAllCuisines]);
 
-  const handleCreate = () => {
-    setIsCreateFormOpen(true);
+    return filtered.sort((a, b) => {
+      if (sortBy === "name") {
+        return a.name.localeCompare(b.name);
+      }
+      return (
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+    });
+  }, [cuisines, searchTerm, sortBy]);
+
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    setSearchQuery(term);
+  };
+
+  const handleSort = (sort: "name" | "created_at") => {
+    setSortBy(sort);
+  };
+
+  const handleEdit = (cuisine: Cuisine) => {
+    setEditingCuisine(cuisine);
+  };
+
+  const handleDelete = (cuisine: Cuisine) => {
+    setDeletingCuisine(cuisine);
   };
 
   const handleCreateSuccess = () => {
     setIsCreateFormOpen(false);
-    fetchAllCuisines(); // Refresh the list
+    refetch();
   };
 
-  const handleEdit = (cuisine: Cuisine) => {
-    router.push(`/dashboard/cuisines/${cuisine.id}`);
+  const handleEditSuccess = () => {
+    setEditingCuisine(null);
+    refetch();
   };
 
-  const handleDelete = (cuisine: Cuisine) => {
-    setSelectedCuisine(cuisine);
-    setIsDeleteDialogOpen(true);
+  const handleDeleteSuccess = async () => {
+    if (!deletingCuisine) return;
+
+    try {
+      await cuisineActions.deleteCuisine(deletingCuisine.id);
+      setDeletingCuisine(null);
+      refetch();
+    } catch (error) {
+      console.error("Error deleting cuisine:", error);
+      // You could add a toast notification here for better UX
+    }
   };
 
-  const handleDeleteSuccess = () => {
-    setIsDeleteDialogOpen(false);
-    setSelectedCuisine(null);
-    fetchAllCuisines(); // Refresh the list
+  const handleItemsPerPageChange = (newLimit: number) => {
+    setLimit(newLimit);
   };
-
-  if (loading) {
-    return <DashboardLoadingSkeleton variant="management" />;
-  }
 
   if (error) {
     return (
-      <div className="space-y-4 glass-effect backdrop-blur-xl bg-white/80 p-6 rounded-lg border border-orange-200/50 shadow-xl">
-        <div className="text-center py-8">
-          <p className="text-orange-600 dark:text-orange-400 mb-4 border border-orange-200 bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg">
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-red-600">
             Error loading cuisines: {error}
-          </p>
-          <Button onClick={() => fetchAllCuisines()}>Try Again</Button>
-        </div>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between space-y-2">
-        <h2 className="text-3xl font-bold tracking-tight">Cuisines</h2>
-      </div>
-      <div className="flex flex-col md:flex-row justify-between gap-4 py-4">
-        <div className="relative w-full">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-orange-500" />
-          <Input
-            placeholder="Search cuisines..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 glass-effect backdrop-blur-sm bg-white/70 border-orange-200/50 focus:border-orange-500 focus:ring-2 focus:ring-orange-500/20"
-          />
-        </div>
-        <div className="flex items-center space-x-2">
-          <Dialog open={isCreateFormOpen} onOpenChange={setIsCreateFormOpen}>
-            <DialogTrigger asChild>
-              <Button className="w-full bg-orange-600 hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800" onClick={handleCreate}>
-                <PlusCircle className="mr-2 h-4 w-4 text-white" /> Add Cuisine
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] glass-effect backdrop-blur-xl bg-white/80 border border-orange-200/50 shadow-xl">
-              <DialogHeader className="font-bold">
-                <DialogTitle className="text-gray-900 dark:text-gray-100">Create New Cuisine</DialogTitle>
-              </DialogHeader>
-              <CuisineCreateForm onSuccess={handleCreateSuccess} />
-            </DialogContent>
-          </Dialog>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <CuisineHeader
+        searchTerm={searchTerm}
+        onSearchChange={handleSearch}
+        sortBy={sortBy}
+        onSortChange={handleSort}
+        onOpenCreateForm={() => setIsCreateFormOpen(true)}
+      />
 
-      <Card className="glass-effect backdrop-blur-xl bg-white/80 border border-orange-200/50 shadow-xl">
-        <CardHeader>
-          <CardTitle className="text-gray-900 dark:text-gray-100">Cuisines ({cuisines.length})</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {cuisines.length === 0 ? (
-            <div className="text-center py-8">
-              <p className="text-gray-600 dark:text-gray-400">
-                {searchTerm
-                  ? `No cuisines found matching "${searchTerm}"`
-                  : "No cuisines found."}
-              </p>
-              {!searchTerm && (
-                <Button
-                  onClick={handleCreate}
-                  className="mt-4 bg-orange-600 hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800"
-                  variant="outline"
-                >
-                  <PlusCircle className="mr-2 h-4 w-4 text-white" />
-                  Add Your First Cuisine
-                </Button>
-              )}
-            </div>
+      {loading ? (
+        <DashboardLoadingSkeleton variant="management" />
+      ) : (
+        <>
+          {/* Results Summary */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground font-medium">
+              Showing {filteredAndSortedCuisines.length} of {total || 0}{" "}
+              cuisines
+              {searchTerm && " (filtered)"} (Page {page} of {totalPages})
+            </p>
+          </div>
+          {/* Cuisine Table */}
+          {filteredAndSortedCuisines.length === 0 ? (
+            <Card className="glass-effect backdrop-blur-xl border-orange-500/20 shadow-lg">
+              <CardContent className="pt-6 text-center text-muted-foreground">
+                <p className="text-lg font-medium">
+                  {cuisines?.length === 0
+                    ? "No cuisines found."
+                    : "No cuisines match your current search."}
+                </p>
+                {searchTerm && (
+                  <p className="text-sm mt-2 text-orange-500">
+                    Try adjusting your search terms.
+                  </p>
+                )}
+                {cuisines?.length === 0 && (
+                  <Button
+                    onClick={() => setIsCreateFormOpen(true)}
+                    className="mt-4 cursor-pointer bg-orange-500 hover:bg-orange-600"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Create First Cuisine
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
           ) : (
-            <Table className="glass-effect backdrop-blur-sm bg-white/50">
-              <TableHeader>
-                <TableRow className="hover:bg-orange-50/50 dark:hover:bg-orange-900/10 border-orange-200/30">
-                  <TableHead>Name</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cuisines.map((cuisine) => (
-                  <TableRow key={cuisine.id} className="hover:bg-orange-50/50 dark:hover:bg-orange-900/10 border-orange-200/30">
-                    <TableCell className="font-medium text-gray-900 dark:text-gray-100">
-                      {cuisine.name}
-                    </TableCell>
-                    <TableCell className="text-gray-600 dark:text-gray-400">
-                      {new Date(cuisine.created_at).toLocaleDateString()}
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleEdit(cuisine)}
-                          className="cursor-pointer text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:text-orange-400 dark:hover:text-orange-300 dark:hover:bg-orange-900/20"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleDelete(cuisine)}
-                          className="cursor-pointer text-red-600 hover:text-red-700 hover:bg-red-50 dark:text-red-400 dark:hover:text-red-300 dark:hover:bg-red-900/20"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <Card className="p-0 glass-effect backdrop-blur-xl border-orange-500/20 shadow-lg">
+              <CardContent className="p-0">
+                <div className="space-y-4">
+                  <div className="overflow-x-auto">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="border-orange-500/20 hover:bg-orange-500/5">
+                          <TableHead className="font-semibold text-foreground">
+                            Name
+                          </TableHead>
+                          <TableHead className="font-semibold text-foreground">
+                            Created
+                          </TableHead>
+                          <TableHead className="text-right font-semibold text-foreground">
+                            Actions
+                          </TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredAndSortedCuisines.map((cuisine) => (
+                          <TableRow
+                            key={cuisine.id}
+                            className="border-orange-500/20 hover:bg-orange-500/5"
+                          >
+                            <TableCell className="py-3 px-4">
+                              <Link
+                                href={`/dashboard/cuisines/${cuisine.id}`}
+                                className="font-medium text-orange-600 hover:text-orange-800 cursor-pointer"
+                              >
+                                {cuisine.name}
+                              </Link>
+                            </TableCell>
+                            <TableCell className="py-3 px-4 text-muted-foreground">
+                              {new Date(
+                                cuisine.created_at
+                              ).toLocaleDateString()}
+                            </TableCell>
+                            <TableCell className="py-3 px-4">
+                              <div className="flex justify-end gap-2">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleEdit(cuisine)}
+                                  className="cursor-pointer border-orange-500/20 hover:bg-orange-500/10 hover:border-orange-500/40"
+                                >
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleDelete(cuisine)}
+                                  className="cursor-pointer text-red-600 hover:text-red-800 border-red-500/20 hover:bg-red-500/10 hover:border-red-500/40"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                  <div className="flex items-center justify-between pt-4">
+                    <PaginationInfo
+                      currentPage={page}
+                      itemsPerPage={limit}
+                      totalItems={total}
+                      totalPages={totalPages}
+                    />
+                    <div className="flex items-center gap-4">
+                      <PaginationControls
+                        currentPage={page}
+                        totalPages={totalPages}
+                        onPageChange={goToPage}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
-
-      {selectedCuisine && (
-        <CuisineDeleteDialog
-          isOpen={isDeleteDialogOpen}
-          onOpenChange={setIsDeleteDialogOpen}
-          cuisine={selectedCuisine}
-          onSuccess={handleDeleteSuccess}
+        </>
+      )}
+      {/* Create Form Dialog */}
+      <CuisineCreateForm
+        open={isCreateFormOpen}
+        onOpenChange={setIsCreateFormOpen}
+        onSuccess={handleCreateSuccess}
+      />
+      {/* Edit Form Dialog */}
+      {editingCuisine && (
+        <CuisineCreateForm
+          open={!!editingCuisine}
+          onOpenChange={(open) => !open && setEditingCuisine(null)}
+          onSuccess={handleEditSuccess}
+          cuisine={editingCuisine}
         />
       )}
+      {/* Delete Dialog */}
+      <CuisineDeleteDialog
+        open={!!deletingCuisine}
+        onOpenChange={(open) => !open && setDeletingCuisine(null)}
+        cuisine={deletingCuisine}
+        onSuccess={handleDeleteSuccess}
+      />
     </div>
   );
 }

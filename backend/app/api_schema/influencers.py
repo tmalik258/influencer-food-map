@@ -1,14 +1,37 @@
 from datetime import datetime
 from typing import Optional, List, TYPE_CHECKING
 from uuid import UUID
-from pydantic import BaseModel, Field
+import re
+from pydantic import BaseModel, Field, validator
 from pydantic.config import ConfigDict
 
 if TYPE_CHECKING:
     from app.api_schema.listings import ListingLightResponse
 
+class InfluencerCreateFromUrl(BaseModel):
+    """Schema for creating a new influencer from YouTube URL"""
+    youtube_url: str = Field(..., min_length=1, description="YouTube channel URL")
+    
+    @validator('youtube_url')
+    def validate_youtube_url(cls, v):
+        """Validate YouTube channel URL format"""
+        youtube_channel_patterns = [
+            r'(?:https?://)?(?:www\.)?youtube\.com/@[\w.-]+',
+            r'(?:https?://)?(?:www\.)?youtube\.com/c/[\w.-]+',
+            r'(?:https?://)?(?:www\.)?youtube\.com/channel/[\w.-]+',
+            r'(?:https?://)?(?:www\.)?youtube\.com/user/[\w.-]+',
+        ]
+        
+        for pattern in youtube_channel_patterns:
+            if re.match(pattern, v):
+                return v
+        
+        raise ValueError('Invalid YouTube channel URL format. Please provide a valid YouTube channel URL.')
+    
+    model_config = ConfigDict(from_attributes=True)
+
 class InfluencerCreate(BaseModel):
-    """Schema for creating a new influencer"""
+    """Schema for creating a new influencer (legacy - for manual creation)"""
     name: str = Field(..., min_length=1, max_length=255, description="Influencer name")
     bio: Optional[str] = Field(None, max_length=1000, description="Influencer biography")
     avatar_url: Optional[str] = Field(None, description="Avatar image URL")

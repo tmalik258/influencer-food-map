@@ -34,7 +34,7 @@ export function RestaurantCard({
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">
             <span className="text-white font-bold text-4xl">
-              {restaurant.name.charAt(0)}
+              {restaurant?.name?.charAt(0) || '?'}
             </span>
           </div>
         )}
@@ -61,7 +61,7 @@ export function RestaurantCard({
                   key={cuisine.id}
                   className="mr-2 bg-orange-600/15 text-orange-600"
                 >
-                  {cuisine.name.charAt(0).toUpperCase() + cuisine.name.slice(1)}
+                  {cuisine?.name?.charAt(0)?.toUpperCase() + (cuisine?.name?.slice(1) || '')}
                 </Badge>
               ))}
           </p>

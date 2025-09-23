@@ -30,7 +30,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ influencer }) => {
               className="rounded-full object-cover"
             />
           ) : (
-            influencer.name.charAt(0)
+            influencer?.name?.charAt(0) || '?'
           )}
         </div>
 
@@ -56,7 +56,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ influencer }) => {
             } - Food Influencer ${influencer.subscriber_count && `with ${formatNumberAbbreviated(
               influencer.subscriber_count
             )} subscribers`}`}
-            description={`Discover amazing restaurants recommended by ${influencer.name}, a top food influencer from ${influencer.region}. Explore their food reviews and recommendations!`}
+            description={`Discover amazing restaurants recommended by ${influencer.name}, a top food influencer. Explore their food reviews and recommendations!`}
             variant="inline"
             className="bg-white backdrop-blur-sm border-white/20 px-4 py-1 rounded-lg"
           />

@@ -297,7 +297,7 @@ const RestaurantMapClient: React.FC<RestaurantMapProps> = ({
                         />
                       ) : (
                         <span className="w-12 h-12 bg-slate-200 rounded-lg flex items-center justify-center">
-                          {restaurant?.name.charAt(0)}
+                          {restaurant?.name?.charAt(0) || '?'}
                         </span>
                       )}
                     </div>

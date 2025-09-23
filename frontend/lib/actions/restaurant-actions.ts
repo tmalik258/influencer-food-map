@@ -42,12 +42,28 @@ export const restaurantActions = {
   },
 
   getPopularCities: async (): Promise<string[]> => {
-    const response = await api.get('/restaurants/popular_cities');
+    const response = await api.get('/restaurants/popular-cities/');
     return response.data;
   },
 
-  getFeaturedOptimized: async (): Promise<OptimizedFeaturedResponse> => {
-    const response = await api.get('/restaurants/featured-optimized');
+  getFeaturedOptimized: async (): Promise<Restaurant[]> => {
+    const response = await api.get('/restaurants/featured-optimized/');
+    return response.data;
+  },
+
+  getRestaurantsByTag: async (
+    tagId: string,
+    skip: number = 0,
+    limit: number = 10,
+    includeListings: boolean = false
+  ): Promise<{ restaurants: Restaurant[]; total: number }> => {
+    const response = await api.get(`/tags/${tagId}/restaurants/`, {
+      params: {
+        skip,
+        limit,
+        include_listings: includeListings,
+      },
+    });
     return response.data;
   },
 };

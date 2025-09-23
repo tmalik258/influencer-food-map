@@ -7,14 +7,18 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 
 interface TagHeaderProps {
   searchTerm: string;
-  setSearchTerm: (term: string) => void;
-  sortBy: string;
-  setSortBy: (sortBy: string) => void;
-  onOpenCreateForm: () => void;
+  onSearchChange: (term: string) => void;
+  sortBy: 'name' | 'created_at';
+  onSortChange: (sortBy: 'name' | 'created_at') => void;
+  onCreateClick: () => void;
 }
 
-export default function TagHeader({
-  searchTerm, setSearchTerm, sortBy, setSortBy, onOpenCreateForm
+export function TagHeader({
+  searchTerm, 
+  onSearchChange, 
+  sortBy, 
+  onSortChange, 
+  onCreateClick
 }: TagHeaderProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-4 justify-between">
@@ -24,23 +28,31 @@ export default function TagHeader({
           <Input
             placeholder="Search tags..."
             value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
+            onChange={(e) => onSearchChange(e.target.value)}
             className="pl-10 glass-effect backdrop-blur-sm bg-white/10 dark:bg-gray-900/10 border-white/20 dark:border-gray-700/30 focus:border-orange-500 focus:ring-orange-500"
+            aria-label="Search tags by name"
           />
         </div>
 
-        <Select value={sortBy} onValueChange={setSortBy}>
-          <SelectTrigger className="w-40 glass-effect backdrop-blur-sm bg-white/10 dark:bg-gray-900/10 border-white/20 dark:border-gray-700/30 focus:border-orange-500 focus:ring-orange-500">
+        <Select value={sortBy} onValueChange={onSortChange}>
+          <SelectTrigger 
+            className="w-40 glass-effect backdrop-blur-sm bg-white/10 dark:bg-gray-900/10 border-white/20 dark:border-gray-700/30 focus:border-orange-500 focus:ring-orange-500"
+            aria-label="Sort tags by"
+          >
             <SelectValue placeholder="Sort by" />
           </SelectTrigger>
-          <SelectContent>
+          <SelectContent className="backdrop-blur-sm bg-white/95 dark:bg-gray-900/95 border-white/20">
             <SelectItem value="name">Name</SelectItem>
             <SelectItem value="created_at">Created Date</SelectItem>
           </SelectContent>
         </Select>
       </div>
 
-      <Button onClick={onOpenCreateForm} className="ml-auto cursor-pointer bg-orange-600 hover:bg-orange-700 focus:ring-orange-500 focus:border-orange-500">
+      <Button 
+        onClick={onCreateClick} 
+        className="cursor-pointer bg-gradient-to-r from-orange-500 to-orange-600 hover:from-orange-600 hover:to-orange-700 text-white border-0 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-105"
+        aria-label="Create new tag"
+      >
         <PlusCircle className="h-4 w-4 mr-2" />
         Add Tag
       </Button>

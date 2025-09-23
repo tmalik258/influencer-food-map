@@ -26,7 +26,7 @@ export default function DashboardLayout({
             className="fixed m-2 rounded-lg inset-y-0 left-0 shadow-xl z-50"
           />
           <main className="flex-1 overflow-hidden md:ml-20">
-            <div className="h-screen overflow-y-auto p-4 md:pt-4 md:p-12">
+            <div className="min-h-screen overflow-y-auto p-4 md:pt-4 md:p-12">
               {children}
             </div>
           </main>

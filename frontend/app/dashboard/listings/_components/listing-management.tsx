@@ -6,7 +6,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
 import { useListings } from '@/lib/hooks/useListings';
 import { ListingHeader } from './listing-header';
-import { ListingCreateForm } from './listing-create-form';
+import { ListingForm } from './listing-form';
 import type { Listing } from '@/lib/types/dashboard';
 
 import { ListingDeleteDialog } from './listing-delete-dialog';
@@ -24,6 +24,7 @@ export function ListingManagement() {
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
+  const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
   const router = useRouter();
@@ -31,6 +32,7 @@ export function ListingManagement() {
   const refreshListings = () => {
     fetchListings();
     setIsCreateFormOpen(false);
+    setIsEditFormOpen(false);
     setIsDeleteDialogOpen(false);
     setSelectedListing(null);
   };
@@ -72,26 +74,29 @@ export function ListingManagement() {
   };
 
   // Handle view listing details
-  const handleView = (listingId: string) => {
-    console.log('View listing:', listingId);
-    // Navigate to listing detail page or open modal
-  };
+  // Remove handleView function since eye icon is removed
 
   // Handle edit listing
   const handleEdit = (listingId: string) => {
-    router.push(`/dashboard/listings/${listingId}`);
+    // Open modal instead of navigation
+    const foundListing = transformedListings.find(listing => listing.id === listingId);
+    setSelectedListing(foundListing || null);
+    setIsEditFormOpen(true);
   };
 
   // Transform listings to dashboard format and filter
   const transformedListings: Listing[] = listings.map(listing => ({
     id: listing.id,
+    restaurant_id: listing.restaurant?.id,
     restaurant: {
       name: listing.restaurant?.name || 'Unknown Restaurant',
       city: listing.restaurant?.city || 'Unknown City'
     },
+    influencer_id: listing.influencer?.id,
     influencer: {
       name: listing.influencer?.name || 'Unknown Influencer'
     },
+    video_id: listing.video?.id,
     video: {
       title: listing.video?.title || 'Unknown Video'
     },
@@ -113,9 +118,9 @@ export function ListingManagement() {
   // Filter listings based on search (client-side filtering as backup)
   const filteredListings = transformedListings.filter(listing => {
     const matchesSearch = !searchTerm || 
-      listing.restaurant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      listing.influencer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      listing.video.title.toLowerCase().includes(searchTerm.toLowerCase());
+      (listing.restaurant?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (listing.influencer?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (listing.video?.title || '').toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStatus = statusFilter === 'all' || 
       (statusFilter === 'approved' && listing.status === 'approved') ||
@@ -126,8 +131,8 @@ export function ListingManagement() {
   });
 
   return (
-    <div className="space-y-6 glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 rounded-xl p-6">
-      <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30">
+    <div className="space-y-6">
+      <Card className="not-dark:glass-effect not-dark:backdrop-blur-xl bg-white/10 dark:bg-black border border-white/20 dark:border-gray-700/30">
         <ListingHeader listingCount={listings.length} onCreateClick={() => setIsCreateFormOpen(true)} />
         <CardContent>
           {error && (
@@ -152,7 +157,6 @@ export function ListingManagement() {
             actionLoading={actionLoading}
             onApprove={handleApprove}
             onReject={handleReject}
-            onView={handleView}
             onEdit={handleEdit}
             onDelete={handleDelete}
           />
@@ -164,7 +168,22 @@ export function ListingManagement() {
           <DialogHeader>
             <DialogTitle className="text-gray-900 dark:text-white">Create New Listing</DialogTitle>
           </DialogHeader>
-          <ListingCreateForm onSuccess={refreshListings} />
+          <ListingForm mode="create" onSuccess={refreshListings} />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isEditFormOpen} onOpenChange={setIsEditFormOpen}>
+        <DialogContent className="sm:max-w-[600px] glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30">
+          <DialogHeader>
+            <DialogTitle className="text-gray-900 dark:text-white">Edit Listing</DialogTitle>
+          </DialogHeader>
+          {selectedListing && (
+            <ListingForm 
+              mode="edit" 
+              listingData={selectedListing}
+              onSuccess={refreshListings} 
+            />
+          )}
         </DialogContent>
       </Dialog>
 

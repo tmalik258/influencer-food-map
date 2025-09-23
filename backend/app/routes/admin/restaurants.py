@@ -16,6 +16,11 @@ from app.api_schema.admin_restaurants import (
     RestaurantCuisineUpdate,
     RestaurantResponse as AdminRestaurantResponse
 )
+from app.services.google_places_service import fetch_restaurant_details_from_google
+from app.utils.logging import setup_logger
+
+# Setup logging
+logger = setup_logger(__name__)
 
 router = APIRouter()
 
@@ -25,21 +30,38 @@ async def create_restaurant(
     db: AsyncSession = Depends(get_async_db),
     current_admin = Depends(get_current_admin)
 ):
-    """Create a new restaurant."""
+    """Create a new restaurant by fetching details from Google Places API using restaurant name."""
     try:
-        # Create new restaurant instance
+        # Fetch restaurant details from Google Places API
+        google_details = await fetch_restaurant_details_from_google(restaurant.name)
+        
+        # Check if restaurant already exists by Google Place ID
+        result = await db.execute(
+            select(Restaurant).filter(
+                Restaurant.google_place_id == google_details["google_place_id"]
+            )
+        )
+        existing_restaurant = result.scalars().first()
+        
+        if existing_restaurant:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Restaurant with Google Place ID '{google_details['google_place_id']}' already exists"
+            )
+        
+        # Create new restaurant with Google API data
         new_restaurant = Restaurant(
-            name=restaurant.name,
-            address=restaurant.address,
-            latitude=restaurant.latitude,
-            longitude=restaurant.longitude,
-            city=restaurant.city,
-            country=restaurant.country,
-            google_place_id=restaurant.google_place_id,
-            google_rating=restaurant.google_rating,
-            business_status=restaurant.business_status,
-            photo_url=restaurant.photo_url,
-            is_active=restaurant.is_active
+            name=google_details["name"],
+            address=google_details["address"],
+            latitude=google_details["latitude"],
+            longitude=google_details["longitude"],
+            city=google_details["city"],
+            country=google_details["country"],
+            google_place_id=google_details["google_place_id"],
+            google_rating=google_details["google_rating"],
+            business_status=google_details["business_status"],
+            photo_url=google_details["photo_url"],
+            is_active=True
         )
         
         # Add to database
@@ -47,12 +69,17 @@ async def create_restaurant(
         await db.commit()
         await db.refresh(new_restaurant)
         
+        logger.info(f"Successfully created restaurant: {new_restaurant.name} (ID: {new_restaurant.id})")
+        
         return AdminRestaurantResponse(
             message="Restaurant created successfully",
             restaurant_id=new_restaurant.id
         )
+    except HTTPException:
+        raise
     except Exception as e:
         await db.rollback()
+        logger.error(f"Error creating restaurant: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create restaurant: {str(e)}"

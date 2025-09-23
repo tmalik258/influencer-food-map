@@ -6,21 +6,8 @@ from uuid import UUID
 from app.models.restaurant import BusinessStatus
 
 class RestaurantCreate(BaseModel):
-    """Schema for creating a new restaurant"""
-    name: str = Field(..., description="Restaurant name")
-    address: str = Field(..., description="Full address of the restaurant")
-    latitude: float = Field(..., description="Latitude coordinate")
-    longitude: float = Field(..., description="Longitude coordinate")
-    city: Optional[str] = Field(None, description="City where restaurant is located")
-    country: Optional[str] = Field(None, description="Country where restaurant is located")
-    google_place_id: Optional[str] = Field(None, description="Google Places API ID")
-    google_rating: Optional[float] = Field(None, description="Rating from Google Maps")
-    business_status: BusinessStatus = Field(
-        default=BusinessStatus.BUSINESS_STATUS_UNSPECIFIED,
-        description="Current business status"
-    )
-    photo_url: Optional[str] = Field(None, description="URL to restaurant photo")
-    is_active: bool = Field(default=True, description="Whether the restaurant is active")
+    """Schema for creating a new restaurant using only restaurant name"""
+    name: str = Field(..., description="Restaurant name to search and create from Google Places API")
     
     model_config = ConfigDict(from_attributes=True)
 

@@ -1,5 +1,6 @@
 import { Listing, SearchParams } from '@/lib/types';
-import api from '../api';
+import { CreateListingFormData } from '@/lib/validations/listing-create';
+import api, { adminApi } from '../api';
 
 export const listingActions = {
   getListings: async (params?: SearchParams): Promise<Listing[]> => {
@@ -36,5 +37,29 @@ export const listingActions = {
       } 
     });
     return response.data.length > 0 ? response.data[0] : null;
+  },
+
+  createListing: async (data: CreateListingFormData): Promise<Listing> => {
+    const payload = {
+      ...data,
+      visit_date: data.visit_date?.toISOString(),
+      quotes: data.quotes.join("\n"),
+      context: data.context.join("\n"),
+    };
+    
+    const response = await adminApi.post("/listings/", payload);
+    return response.data;
+  },
+
+  updateListing: async (id: string, data: CreateListingFormData): Promise<Listing> => {
+    const payload = {
+      ...data,
+      visit_date: data.visit_date?.toISOString(),
+      quotes: data.quotes.join("\n"),
+      context: data.context.join("\n"),
+    };
+    
+    const response = await adminApi.put(`/listings/${id}`, payload);
+    return response.data;
   }
 };

@@ -19,6 +19,7 @@ class ListingResponse(BaseModel):
     context: Optional[List[str]] = None
     confidence_score: Optional[float] = None
     approved: Optional[bool] = None
+    timestamp: Optional[int] = None  # Video timestamp in seconds
     created_at: datetime
     updated_at: datetime
 
@@ -33,6 +34,7 @@ class ListingCreate(BaseModel):
     context: Optional[List[str]] = None
     confidence_score: Optional[float] = None
     approved: Optional[bool] = False
+    timestamp: Optional[int] = None  # Video timestamp in seconds
 
 class ListingUpdate(BaseModel):
     restaurant_id: Optional[UUID] = None
@@ -43,6 +45,7 @@ class ListingUpdate(BaseModel):
     context: Optional[List[str]] = None
     confidence_score: Optional[float] = None
     approved: Optional[bool] = None
+    timestamp: Optional[int] = None  # Video timestamp in seconds
 
 class ListingLightResponse(BaseModel):
     id: UUID
@@ -54,6 +57,7 @@ class ListingLightResponse(BaseModel):
     context: Optional[List[str]] = None
     confidence_score: Optional[float] = None
     approved: Optional[bool] = None
+    timestamp: Optional[int] = None  # Video timestamp in seconds
     created_at: datetime
     updated_at: datetime
 

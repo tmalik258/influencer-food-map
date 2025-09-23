@@ -51,18 +51,7 @@ export interface Influencer {
 
 export interface Video {
   id: string;
-  influencer?: {
-    id: string;
-    name: string;
-    bio?: string;
-    avatar_url?: string;
-    banner_url?: string;
-    youtube_channel_id: string;
-    youtube_channel_url?: string;
-    subscriber_count?: number;
-    created_at: string;
-    updated_at: string;
-  };
+  influencer?: Influencer;
   youtube_video_id: string;
   title: string;
   description?: string;
@@ -71,6 +60,11 @@ export interface Video {
   transcription?: string;
   created_at: string;
   updated_at: string;
+}
+
+export interface VideosResponse {
+  videos: Video[];
+  total: number;
 }
 
 export interface Listing {
@@ -84,6 +78,7 @@ export interface Listing {
   quotes?: string[];
   context?: string[];
   confidence_score?: number;
+  timestamp?: number;  // Video timestamp in seconds for start time
   approved?: boolean;
   created_at: string;
   updated_at: string;

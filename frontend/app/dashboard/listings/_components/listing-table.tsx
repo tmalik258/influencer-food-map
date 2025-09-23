@@ -1,4 +1,4 @@
-import { RefreshCw, MapPin, User, Video, TrendingUp, Calendar, CheckCircle, XCircle, Eye, Edit, Trash2 } from 'lucide-react';
+import { RefreshCw, MapPin, User, Video, TrendingUp, Calendar, CheckCircle, XCircle, Edit, Trash2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -11,7 +11,6 @@ export function ListingTable({
   actionLoading,
   onApprove,
   onReject,
-  onView,
   onEdit,
   onDelete
 }: ListingTableProps) {
@@ -148,14 +147,7 @@ export function ListingTable({
                     </Button>
                   </>
                 )}
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => onView(listing.id)}
-                  className="h-8 w-8 p-0 cursor-pointer text-orange-600 hover:text-orange-700 hover:bg-orange-50 dark:hover:bg-orange-900/20"
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
+
                 <Button
                   variant="ghost"
                   size="sm"

@@ -30,7 +30,7 @@ const ListingCard = ({
                 />
               ) : (
                 <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center text-white font-bold text-lg">
-                  {listing?.influencer?.name.charAt(0)}
+                  {listing?.influencer?.name?.charAt(0) || '?'}
                 </div>
               )}
             </div>
@@ -111,7 +111,7 @@ const ListingCard = ({
                   >
                     <iframe
                       className="absolute top-0 left-0 w-full h-full rounded-lg"
-                      src={`https://www.youtube.com/embed/${videoId}`}
+                      src={`https://www.youtube.com/embed/${videoId}${listing?.timestamp ? `?start=${listing?.timestamp}` : ''}`}
                       title={`${listing?.influencer?.name} - ${restaurant_name} Review`}
                       frameBorder="0"
                       allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"

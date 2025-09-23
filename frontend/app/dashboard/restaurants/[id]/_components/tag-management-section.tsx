@@ -23,18 +23,18 @@ export function TagManagementSection({
 }: TagManagementSectionProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>(
-    tags.map((tag) => tag.id)
+    tags?.map((tag) => tag.id || "") || []
   );
   const [isLoading, setIsLoading] = useState(false);
 
   const handleEdit = () => {
     setIsEditing(true);
-    setSelectedTagIds(tags.map((tag) => tag.id));
+    setSelectedTagIds(tags?.map((tag) => tag.id || "") || []);
   };
 
   const handleCancel = () => {
     setIsEditing(false);
-    setSelectedTagIds(tags.map((tag) => tag.id));
+    setSelectedTagIds(tags?.map((tag) => tag.id || "") || []);
   };
 
   const handleSave = async () => {
@@ -115,10 +115,10 @@ export function TagManagementSection({
           </div>
         ) : (
           <div className="flex flex-wrap gap-2">
-            {tags.length > 0 ? (
-              tags.map((tag) => (
-                <Badge key={tag.id} variant="outline">
-                  {tag.name}
+            {tags?.length > 0 ? (
+              tags?.map((tag) => (
+                <Badge key={tag.id || ""} variant="outline">
+                  {tag.name || ""}
                 </Badge>
               ))
             ) : (

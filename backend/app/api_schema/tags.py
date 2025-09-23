@@ -1,5 +1,6 @@
 from datetime import datetime
 from uuid import UUID
+from typing import List
 from pydantic import BaseModel
 from pydantic.config import ConfigDict
 
@@ -15,3 +16,9 @@ class TagCreate(BaseModel):
 
 class TagUpdate(BaseModel):
     name: str
+
+class PaginatedTagsResponse(BaseModel):
+    tags: List[TagResponse]
+    total: int
+
+    model_config = ConfigDict(from_attributes=True)

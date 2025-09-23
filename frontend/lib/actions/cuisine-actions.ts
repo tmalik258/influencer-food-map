@@ -1,5 +1,10 @@
 import { Cuisine } from '@/lib/types';
-import api from '../api';
+import api, { adminApi } from '../api';
+
+interface PaginatedCuisinesResponse {
+  cuisines: Cuisine[];
+  total: number;
+}
 
 export const cuisineActions = {
   /**
@@ -14,9 +19,38 @@ export const cuisineActions = {
   }): Promise<Cuisine[]> {
     try {
       const response = await api.get('/cuisines/', { params });
-      return response.data;
+      // Handle both old and new response formats for backward compatibility
+      return Array.isArray(response.data) ? response.data : response.data.cuisines;
     } catch (error) {
       console.error('Error fetching cuisines:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get paginated cuisines with total count
+   */
+  async getCuisinesPaginated(params?: {
+    name?: string;
+    id?: string;
+    city?: string;
+    skip?: number;
+    limit?: number;
+  }): Promise<PaginatedCuisinesResponse> {
+    try {
+      const response = await api.get('/cuisines/', { params });
+      // Handle both old and new response formats
+      if (Array.isArray(response.data)) {
+        // Old format - return as paginated response
+        return {
+          cuisines: response.data,
+          total: response.data.length
+        };
+      }
+      // New format - return as is
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching paginated cuisines:', error);
       throw error;
     }
   },
@@ -66,6 +100,77 @@ export const cuisineActions = {
       return response.data;
     } catch (error) {
       console.error('Error fetching all cuisines:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Create a new cuisine
+   */
+  async createCuisine(cuisineData: { name: string; description?: string }): Promise<Cuisine> {
+    try {
+      const response = await adminApi.post('/cuisines/', cuisineData);
+      return response.data;
+    } catch (error) {
+      console.error('Error creating cuisine:', error);
+      throw error;
+    }
+  },
+
+  /**
+   * Update an existing cuisine
+   */
+  async updateCuisine(cuisineId: string, cuisineData: { name?: string; description?: string }): Promise<Cuisine> {
+    try {
+      const response = await adminApi.put(`/cuisines/${cuisineId}`, cuisineData);
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating cuisine ${cuisineId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Delete a cuisine
+   */
+  async deleteCuisine(cuisineId: string): Promise<void> {
+    try {
+      await adminApi.delete(`/cuisines/${cuisineId}`);
+    } catch (error) {
+      console.error(`Error deleting cuisine ${cuisineId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Get restaurants by cuisine ID with pagination
+   */
+  async getRestaurantsByCuisine(
+    cuisineId: string,
+    params?: {
+      skip?: number;
+      limit?: number;
+      include_listings?: boolean;
+      include_video_details?: boolean;
+    }
+  ): Promise<{ restaurants: any[]; total: number }> {
+    try {
+      const response = await api.get(`/cuisines/${cuisineId}/restaurants/`, { params });
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching restaurants for cuisine ${cuisineId}:`, error);
+      throw error;
+    }
+  },
+
+  /**
+   * Remove a restaurant from a cuisine
+   */
+  async removeRestaurantFromCuisine(cuisineId: string, restaurantId: string): Promise<void> {
+    try {
+      await api.delete(`/cuisines/${cuisineId}/restaurants/${restaurantId}/`);
+    } catch (error) {
+      console.error(`Error removing restaurant ${restaurantId} from cuisine ${cuisineId}:`, error);
       throw error;
     }
   },

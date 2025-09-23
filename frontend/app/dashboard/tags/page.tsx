@@ -1,6 +1,6 @@
 import { Suspense } from 'react';
 import DashboardLoadingSkeleton from '@/app/dashboard/_components/dashboard-loading-skeleton';
-import TagManagement from './_components/tag-management';
+import { TagManagement } from './_components/tag-management';
 
 export default function TagsPage() {
   return (

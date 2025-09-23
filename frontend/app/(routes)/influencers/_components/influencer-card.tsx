@@ -40,7 +40,7 @@ const InfluencerCard = ({ influencer }: InfluencerCardProps) => {
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-orange-400 to-red-500 text-white font-bold text-xl">
-                  {influencer.name.charAt(0)}
+                  {influencer?.name?.charAt(0) || '?'}
                 </div>
               )}
             </div>

@@ -15,9 +15,10 @@ import { Video } from '@/lib/types';
 
 interface VideoSliderProps {
   videos: Video[];
+  timestamps?: { [videoId: string]: number }; // Optional timestamps for videos
 }
 
-export function VideoSlider({ videos }: VideoSliderProps) {
+export function VideoSlider({ videos, timestamps }: VideoSliderProps) {
   // If no videos, show a message
   if (!videos || videos.length === 0) {
     return (
@@ -46,7 +47,11 @@ export function VideoSlider({ videos }: VideoSliderProps) {
                   <iframe
                     width="100%"
                     height="100%"
-                    src={`https://www.youtube.com/embed/${video.youtube_video_id}`}
+                    src={`https://www.youtube.com/embed/${video.youtube_video_id}${
+                      timestamps && timestamps[video.id] 
+                        ? `?start=${timestamps[video.id]}` 
+                        : ''
+                    }`}
                     title="YouTube video player"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
                     allowFullScreen

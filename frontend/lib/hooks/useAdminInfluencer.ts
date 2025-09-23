@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { toast } from 'sonner';
 import { adminInfluencerActions } from '@/lib/actions';
 import { Influencer } from '@/lib/types';
+import { CreateInfluencerByUrlFormData } from '@/lib/validations/influencer';
 
 interface InfluencerFormData {
   name: string;
@@ -26,14 +27,21 @@ export function useAdminInfluencer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const createInfluencer = async (data: InfluencerFormData): Promise<AdminInfluencerResponse | null> => {
+  const createInfluencer = async (data: CreateInfluencerByUrlFormData): Promise<AdminInfluencerResponse | null> => {
     setLoading(true);
     setError(null);
 
     try {
-      const response = await adminInfluencerActions.createInfluencer(data);
-      toast.success('Influencer created successfully');
-      return response;
+      let response: AdminInfluencerResponse;
+      
+      // Check if it's YouTube URL-based creation
+      if ('youtube_channel_url' in data && Object.keys(data).length === 1) {
+        response = await adminInfluencerActions.createInfluencerByUrl(data as CreateInfluencerByUrlFormData);
+        toast.success('Influencer created successfully');
+        return response;
+      }
+
+      return null
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail || err.message || 'Failed to create influencer';
       setError(errorMessage);

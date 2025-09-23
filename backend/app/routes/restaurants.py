@@ -200,7 +200,7 @@ async def get_restaurants(
         logger.error(f"Error fetching restaurants: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch restaurants. Please try again later.")
 
-@router.get("/popular_cities/", response_model=List[str])
+@router.get("/popular-cities/", response_model=List[str])
 async def get_popular_cities(db: AsyncSession = Depends(get_async_db)):
     """Get the top 5 cities with the most restaurant listings."""
     try:
