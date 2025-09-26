@@ -1,4 +1,3 @@
-import time
 from typing import List, Optional
 from uuid import UUID
 
@@ -8,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Restaurant, RestaurantTag, RestaurantCuisine, Listing
+from app.models import Restaurant, RestaurantTag, RestaurantCuisine, Listing, Tag, Cuisine
 from app.database import get_async_db, get_db
 from app.utils.logging import setup_logger
 from app.api_schema.tags import TagResponse
@@ -33,12 +32,15 @@ async def get_restaurants(
     city: str | None = None,
     country: str | None = None,
     google_place_id: str | None = None,
+    tag: str | None = Query(None, description="Filter by tag name"),
+    cuisine: str | None = Query(None, description="Filter by cuisine name"),
+    sort_by: str | None = Query("name", description="Sort by: name, rating, city, updated"),
     skip: int = 0,
     limit: int = 10,
     include_listings: Optional[bool] = Query(False, description="Include listings with restaurants"),
     include_video_details: Optional[bool] = Query(False, description="Include full video details (description, transcription, summary)")
 ):
-    """Get restaurants with filters for name, ID, city, country, or Google Place ID."""
+    """Get restaurants with filters for name, ID, city, country, Google Place ID, tags, and cuisines."""
     try:
         # Base query for filtering
         base_filter = Restaurant.is_active == True
@@ -56,6 +58,22 @@ async def get_restaurants(
         if google_place_id:
             filters.append(Restaurant.google_place_id == google_place_id)
         
+        # Tag filtering - join with restaurant_tags and tags table
+        if tag:
+            filters.append(
+                Restaurant.restaurant_tags.any(
+                    RestaurantTag.tag.has(Tag.name.ilike(f"%{tag}%"))
+                )
+            )
+        
+        # Cuisine filtering - join with restaurant_cuisines and cuisines table
+        if cuisine:
+            filters.append(
+                Restaurant.restaurant_cuisines.any(
+                    RestaurantCuisine.cuisine.has(Cuisine.name.ilike(f"%{cuisine}%"))
+                )
+            )
+        
         # Count query for total
         count_query = select(func.count(Restaurant.id)).filter(*filters)
         count_result = await db.execute(count_query)
@@ -67,6 +85,19 @@ async def get_restaurants(
             joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
             joinedload(Restaurant.restaurant_cuisines).joinedload(RestaurantCuisine.cuisine)
         )
+        
+        # Apply sorting
+        if sort_by == "name":
+            query = query.order_by(Restaurant.name.asc())
+        elif sort_by == "rating":
+            query = query.order_by(Restaurant.google_rating.desc().nulls_last())
+        elif sort_by == "city":
+            query = query.order_by(Restaurant.city.asc().nulls_last())
+        elif sort_by == "updated":
+            query = query.order_by(Restaurant.updated_at.desc())
+        else:
+            # Default to name sorting
+            query = query.order_by(Restaurant.updated_at.asc())
         
         # Add listings if requested
         if include_listings:

@@ -82,6 +82,18 @@ export const useRestaurantsPaginated = (initialParams?: PaginatedRestaurantsPara
     updateParams({ city, page: 1 }); // Reset to first page when filtering by city
   }, [updateParams]);
 
+  const setTagFilter = useCallback((tag: string) => {
+    updateParams({ tag, page: 1 }); // Reset to first page when filtering by tag
+  }, [updateParams]);
+
+  const setCuisineFilter = useCallback((cuisine: string) => {
+    updateParams({ cuisine, page: 1 }); // Reset to first page when filtering by cuisine
+  }, [updateParams]);
+
+  const setSortBy = useCallback((sort_by: string) => {
+    updateParams({ sort_by, page: 1 }); // Reset to first page when changing sort
+  }, [updateParams]);
+
   useEffect(() => {
     fetchRestaurants(params);
   }, [params, fetchRestaurants]);
@@ -96,6 +108,9 @@ export const useRestaurantsPaginated = (initialParams?: PaginatedRestaurantsPara
     goToPage,
     setSearchQuery,
     setCityFilter,
+    setTagFilter,
+    setCuisineFilter,
+    setSortBy,
     refetch: () => fetchRestaurants(params)
   };
 };

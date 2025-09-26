@@ -143,8 +143,7 @@ export function TagManagement() {
           {/* Results Summary */}
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground font-medium">
-              Showing {filteredAndSortedTags.length} of {total || 0}{" "}
-              tags
+              Showing {filteredAndSortedTags.length} of {total || 0} tags
               {searchTerm && " (filtered)"} (Page {page} of {totalPages})
             </p>
           </div>
@@ -174,86 +173,86 @@ export function TagManagement() {
               </CardContent>
             </Card>
           ) : (
-            <Card className="p-0 glass-effect backdrop-blur-xl border-orange-500/20 shadow-lg">
-              <CardContent className="p-0">
-                <div className="space-y-4">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="border-orange-500/20 hover:bg-orange-500/5">
-                          <TableHead className="font-semibold text-foreground">
-                            Name
-                          </TableHead>
-                          <TableHead className="font-semibold text-foreground">
-                            Created
-                          </TableHead>
-                          <TableHead className="text-right font-semibold text-foreground">
-                            Actions
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredAndSortedTags.map((tag) => (
-                          <TableRow
-                            key={tag.id}
-                            className="border-orange-500/20 hover:bg-orange-500/5"
-                          >
-                            <TableCell className="py-3 px-4">
-                              <Link
-                                href={`/dashboard/tags/${tag.id}`}
-                                className="font-medium text-orange-600 hover:text-orange-800 cursor-pointer"
-                              >
-                                {tag.name}
-                              </Link>
-                            </TableCell>
-                            <TableCell className="py-3 px-4 text-muted-foreground">
-                              {new Date(
-                                tag.created_at
-                              ).toLocaleDateString()}
-                            </TableCell>
-                            <TableCell className="py-3 px-4">
-                              <div className="flex justify-end gap-2">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleEdit(tag)}
-                                  className="cursor-pointer border-orange-500/20 hover:bg-orange-500/10 hover:border-orange-500/40"
-                                >
-                                  <Pencil className="h-4 w-4" />
-                                </Button>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => handleDelete(tag)}
-                                  className="cursor-pointer text-red-600 hover:text-red-800 border-red-500/20 hover:bg-red-500/10 hover:border-red-500/40"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </Button>
-                              </div>
-                            </TableCell>
+            <>
+              <Card className="p-0 glass-effect backdrop-blur-xl border-orange-500/20 shadow-lg">
+                <CardContent className="p-0">
+                  <div className="space-y-4">
+                    <div className="overflow-x-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="border-orange-500/20 hover:bg-orange-500/5">
+                            <TableHead className="font-semibold text-foreground">
+                              Name
+                            </TableHead>
+                            <TableHead className="font-semibold text-foreground">
+                              Created
+                            </TableHead>
+                            <TableHead className="text-right font-semibold text-foreground">
+                              Actions
+                            </TableHead>
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                  <div className="flex items-center justify-between pt-4">
-                    <PaginationInfo
-                      currentPage={page}
-                      itemsPerPage={limit}
-                      totalItems={total}
-                      totalPages={totalPages}
-                    />
-                    <div className="flex items-center gap-4">
-                      <PaginationControls
-                        currentPage={page}
-                        totalPages={totalPages}
-                        onPageChange={goToPage}
-                      />
+                        </TableHeader>
+                        <TableBody>
+                          {filteredAndSortedTags.map((tag) => (
+                            <TableRow
+                              key={tag.id}
+                              className="border-orange-500/20 hover:bg-orange-500/5"
+                            >
+                              <TableCell className="py-3 px-4">
+                                <Link
+                                  href={`/dashboard/tags/${tag.id}`}
+                                  className="font-medium text-orange-600 hover:text-orange-800 cursor-pointer"
+                                >
+                                  {tag.name}
+                                </Link>
+                              </TableCell>
+                              <TableCell className="py-3 px-4 text-muted-foreground">
+                                {new Date(tag.created_at).toLocaleDateString()}
+                              </TableCell>
+                              <TableCell className="py-3 px-4">
+                                <div className="flex justify-end gap-2">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleEdit(tag)}
+                                    className="cursor-pointer border-orange-500/20 hover:bg-orange-500/10 hover:border-orange-500/40"
+                                  >
+                                    <Pencil className="h-4 w-4" />
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleDelete(tag)}
+                                    className="cursor-pointer text-red-600 hover:text-red-800 border-red-500/20 hover:bg-red-500/10 hover:border-red-500/40"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+              <div className="flex items-center justify-between pt-4">
+                <PaginationInfo
+                  currentPage={page}
+                  itemsPerPage={limit}
+                  totalItems={total}
+                  totalPages={totalPages}
+                />
+                <div className="flex items-center gap-4">
+                  <PaginationControls
+                    currentPage={page}
+                    totalPages={totalPages}
+                    onPageChange={goToPage}
+                  />
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </>
           )}
         </>
       )}
@@ -265,10 +264,16 @@ export function TagManagement() {
           aria-describedby="create-tag-description"
         >
           <DialogHeader>
-            <DialogTitle id="create-tag-title" className="text-gray-900 dark:text-gray-100">
+            <DialogTitle
+              id="create-tag-title"
+              className="text-gray-900 dark:text-gray-100"
+            >
               Create New Tag
             </DialogTitle>
-            <DialogDescription id="create-tag-description" className="text-gray-600 dark:text-gray-400">
+            <DialogDescription
+              id="create-tag-description"
+              className="text-gray-600 dark:text-gray-400"
+            >
               Fill in the details below to create a new tag.
             </DialogDescription>
           </DialogHeader>
@@ -286,10 +291,16 @@ export function TagManagement() {
           aria-describedby="edit-tag-description"
         >
           <DialogHeader>
-            <DialogTitle id="edit-tag-title" className="text-gray-900 dark:text-gray-100">
+            <DialogTitle
+              id="edit-tag-title"
+              className="text-gray-900 dark:text-gray-100"
+            >
               Edit Tag
             </DialogTitle>
-            <DialogDescription id="edit-tag-description" className="text-gray-600 dark:text-gray-400">
+            <DialogDescription
+              id="edit-tag-description"
+              className="text-gray-600 dark:text-gray-400"
+            >
               Update the tag details below.
             </DialogDescription>
           </DialogHeader>
@@ -313,10 +324,16 @@ export function TagManagement() {
           aria-describedby="delete-tag-description"
         >
           <DialogHeader>
-            <DialogTitle id="delete-tag-title" className="text-gray-900 dark:text-gray-100">
+            <DialogTitle
+              id="delete-tag-title"
+              className="text-gray-900 dark:text-gray-100"
+            >
               Delete Tag
             </DialogTitle>
-            <DialogDescription id="delete-tag-description" className="text-gray-600 dark:text-gray-400">
+            <DialogDescription
+              id="delete-tag-description"
+              className="text-gray-600 dark:text-gray-400"
+            >
               Are you sure you want to delete the tag &quot;{deletingTag?.name}
               &quot;? This action cannot be undone.
             </DialogDescription>

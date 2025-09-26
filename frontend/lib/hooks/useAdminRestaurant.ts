@@ -35,13 +35,11 @@ export function useAdminRestaurant() {
 
     try {
       const response = await adminApi.post<AdminRestaurantResponse>('/restaurants', data);
-      toast.success('Restaurant created successfully');
       return response.data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.detail || err.message || 'Failed to create restaurant';
       setError(errorMessage);
-      toast.error(errorMessage);
-      return null;
+      throw err; // Re-throw to let the component handle the error display
     } finally {
       setLoading(false);
     }

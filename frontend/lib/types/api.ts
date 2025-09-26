@@ -54,6 +54,9 @@ export interface TriggerNLPResponse {
 export interface SearchParams {
   city?: string;
   name?: string;
+  tag?: string;
+  cuisine?: string;
+  sort_by?: string;
   skip?: number;
   limit?: number;
   approved_status?: string;

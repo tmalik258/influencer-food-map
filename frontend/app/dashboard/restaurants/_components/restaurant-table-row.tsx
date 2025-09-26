@@ -8,16 +8,15 @@ import { Restaurant } from "@/lib/types";
 
 interface RestaurantTableRowProps {
   restaurant: Restaurant;
-  onView: (restaurant: Restaurant) => void;
   onEdit: (restaurant: Restaurant) => void;
   onDelete: (id: string) => void;
 }
 
-export function RestaurantTableRow({ restaurant, onView, onEdit, onDelete }: RestaurantTableRowProps) {
+export function RestaurantTableRow({ restaurant, onEdit, onDelete }: RestaurantTableRowProps) {
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter' || event.key === ' ') {
       event.preventDefault();
-      onView(restaurant);
+      onEdit(restaurant);
     }
   };
 
@@ -25,11 +24,11 @@ export function RestaurantTableRow({ restaurant, onView, onEdit, onDelete }: Res
     <TableRow 
       key={restaurant.id} 
       className="cursor-pointer hover:bg-orange-500/5 focus-within:bg-orange-500/5 border-orange-500/10 transition-all duration-200 hover:shadow-md" 
-      onClick={() => onView(restaurant)}
+      onClick={() => onEdit(restaurant)}
       onKeyDown={handleKeyDown}
       tabIndex={0}
       role="button"
-      aria-label={`View details for ${restaurant.name}`}
+      aria-label={`Edit details for ${restaurant.name}`}
     >
       <TableCell className="font-medium">
         <div>

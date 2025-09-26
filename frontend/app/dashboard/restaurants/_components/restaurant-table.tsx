@@ -14,14 +14,12 @@ import { MapPin, Star } from "lucide-react";
 
 interface RestaurantTableProps {
   restaurants: Restaurant[];
-  onView: (restaurant: Restaurant) => void;
   onEdit: (restaurant: Restaurant) => void;
   onDelete: (id: string) => void;
 }
 
 export function RestaurantTable({
   restaurants,
-  onView,
   onEdit,
   onDelete,
 }: RestaurantTableProps) {
@@ -69,7 +67,6 @@ export function RestaurantTable({
               <RestaurantTableRow
                 key={restaurant.id}
                 restaurant={restaurant}
-                onView={onView}
                 onEdit={onEdit}
                 onDelete={onDelete}
               />

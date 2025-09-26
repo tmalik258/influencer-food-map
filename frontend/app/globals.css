@@ -99,6 +99,18 @@
   @apply transform -translate-y-1 shadow-xl;
 }
 
+/* Toast description styling */
+[data-sonner-toast] [data-description] {
+  color: rgb(55 65 81) !important; /* text-gray-700 */
+  opacity: 0.9 !important;
+}
+
+/* Dark mode toast description */
+.dark [data-sonner-toast] [data-description] {
+  color: rgb(209 213 219) !important; /* text-gray-300 */
+  opacity: 0.9 !important;
+}
+
 /* Floating glass effects */
 .glass-effect {
   @apply bg-background/80 backdrop-blur-xl border border-border/40 shadow-lg;

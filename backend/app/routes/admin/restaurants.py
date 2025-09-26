@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update, delete
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from typing import List, Optional
 from uuid import UUID
 
@@ -30,10 +31,26 @@ async def create_restaurant(
     db: AsyncSession = Depends(get_async_db),
     current_admin = Depends(get_current_admin)
 ):
-    """Create a new restaurant by fetching details from Google Places API using restaurant name."""
+    """Create a new restaurant by fetching details from Google Places API using restaurant name with optional city and country."""
     try:
+        # Check if restaurant already exists by name
+        result = await db.execute(
+            select(Restaurant).filter(Restaurant.name.ilike(f"%{restaurant.name}%"))
+        )
+        existing_restaurant_by_name = result.scalars().first()
+        
+        if existing_restaurant_by_name:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"A restaurant with a similar name '{existing_restaurant_by_name.name}' already exists"
+            )
+        
         # Fetch restaurant details from Google Places API
-        google_details = await fetch_restaurant_details_from_google(restaurant.name)
+        google_details = await fetch_restaurant_details_from_google(
+            restaurant_name=restaurant.name,
+            city=restaurant.city,
+            country=restaurant.country
+        )
         
         # Check if restaurant already exists by Google Place ID
         result = await db.execute(
@@ -41,12 +58,12 @@ async def create_restaurant(
                 Restaurant.google_place_id == google_details["google_place_id"]
             )
         )
-        existing_restaurant = result.scalars().first()
+        existing_restaurant_by_place_id = result.scalars().first()
         
-        if existing_restaurant:
+        if existing_restaurant_by_place_id:
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
-                detail=f"Restaurant with Google Place ID '{google_details['google_place_id']}' already exists"
+                detail=f"Restaurant '{google_details['name']}' already exists in the database"
             )
         
         # Create new restaurant with Google API data
@@ -76,13 +93,42 @@ async def create_restaurant(
             restaurant_id=new_restaurant.id
         )
     except HTTPException:
+        # Re-raise HTTP exceptions (like 409 Conflict) as-is
         raise
+    except IntegrityError as e:
+        await db.rollback()
+        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        
+        if "duplicate key value violates unique constraint" in error_msg:
+            if "ix_restaurants_name" in error_msg:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="A restaurant with this name already exists"
+                )
+            elif "restaurants_google_place_id_key" in error_msg:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This restaurant location is already registered in the system"
+                )
+        
+        logger.error(f"Database integrity error creating restaurant: {error_msg}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid restaurant data provided"
+        )
+    except ValueError as e:
+        await db.rollback()
+        logger.error(f"Validation error creating restaurant: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid input data: {str(e)}"
+        )
     except Exception as e:
         await db.rollback()
-        logger.error(f"Error creating restaurant: {e}")
+        logger.error(f"Unexpected error creating restaurant: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create restaurant: {str(e)}"
+            detail="An unexpected error occurred while creating the restaurant. Please try again later."
         )
 
 @router.get("/", response_model=List[RestaurantResponse])

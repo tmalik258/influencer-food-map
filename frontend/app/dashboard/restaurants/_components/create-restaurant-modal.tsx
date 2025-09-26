@@ -53,15 +53,46 @@ export default function CreateRestaurantModal({
     try {
       setIsSubmitting(true);
       
-      await createRestaurant(data);
+      const result = await createRestaurant(data);
       
-      toast.success('Restaurant created successfully!');
-      form.reset();
-      onClose();
-      onSuccess?.();
+      if (result) {
+        toast.success('Restaurant created successfully!', {
+          description: `${data.name} has been added to your restaurant list.`,
+          duration: 4000,
+        });
+        form.reset();
+        onClose();
+        onSuccess?.();
+      }
     } catch (error: any) {
       console.error('Error creating restaurant:', error);
-      toast.error(error.response?.data?.detail || 'Failed to create restaurant. Please try again.');
+      
+      // Extract error message from API response
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to create restaurant';
+      const statusCode = error.response?.status;
+      
+      // Display user-friendly error messages based on status code
+      if (statusCode === 409) {
+        toast.error('Restaurant Already Exists', {
+          description: errorMessage,
+          duration: 5000,
+        });
+      } else if (statusCode === 400) {
+        toast.error('Invalid Information', {
+          description: errorMessage,
+          duration: 5000,
+        });
+      } else if (statusCode >= 500) {
+        toast.error('Server Error', {
+          description: 'Something went wrong on our end. Please try again later.',
+          duration: 5000,
+        });
+      } else {
+        toast.error('Error Creating Restaurant', {
+          description: errorMessage,
+          duration: 5000,
+        });
+      }
     } finally {
       setIsSubmitting(false);
     }
@@ -88,13 +119,13 @@ export default function CreateRestaurantModal({
             Create New Restaurant
           </DialogTitle>
           <DialogDescription id="create-restaurant-description" className="text-muted-foreground mt-2">
-            Enter the restaurant name. Additional details will be fetched automatically from Google Places.
+            Enter the restaurant details. Additional information will be fetched automatically from Google Places.
           </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {/* Restaurant Name */}
+            {/* Restaurant Details */}
             <div className="space-y-6 p-6 rounded-xl bg-card/50 border border-border/30">
               <FormField
                 control={form.control}
@@ -115,6 +146,46 @@ export default function CreateRestaurantModal({
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-foreground">City</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter city" 
+                          {...field}
+                          disabled={isSubmitting}
+                          className="focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-200"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="country"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm font-medium text-foreground">Country</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter country" 
+                          {...field}
+                          disabled={isSubmitting}
+                          className="focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-200"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </div>
 
             {/* Form Actions */}

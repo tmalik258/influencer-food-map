@@ -19,55 +19,6 @@ interface RestaurantLoadingProps {
 export function RestaurantLoading({ count = 6 }: RestaurantLoadingProps) {
   return (
     <div className="space-y-6">
-      {/* Loading state for filters section */}
-      <Card className="p-0 border-none shadow-none">
-        <div className="flex flex-col lg:flex-row gap-4 justify-between p-0">
-          <div className="flex flex-col sm:flex-row sm:flex-wrap flex-1 gap-4">
-            {/* Search input skeleton with icon */}
-            <div className="relative flex-1">
-              <div className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4">
-                <Skeleton className="h-4 w-4 rounded-full" />
-              </div>
-              <Skeleton className="h-10 w-full glass-effect rounded-md border border-orange-500/20" />
-            </div>
-            
-            <div className="flex-1 flex flex-col sm:flex-row gap-4">
-              {/* Tag filter dropdown skeleton with icon */}
-              <div className="w-full relative">
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4">
-                  <Skeleton className="h-4 w-4 rounded-sm" />
-                </div>
-                <Skeleton className="h-10 w-full glass-effect rounded-md border border-orange-500/20" />
-              </div>
-              
-              {/* Cuisine filter dropdown skeleton with icon */}
-              <div className="w-full relative">
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4">
-                  <Skeleton className="h-4 w-4 rounded-sm" />
-                </div>
-                <Skeleton className="h-10 w-full glass-effect rounded-md border border-orange-500/20" />
-              </div>
-              
-              {/* Sort dropdown skeleton with icon */}
-              <div className="w-full relative">
-                <div className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4">
-                  <Skeleton className="h-4 w-4 rounded-sm" />
-                </div>
-                <Skeleton className="h-10 w-full glass-effect rounded-md border border-orange-500/20" />
-              </div>
-            </div>
-          </div>
-          
-          {/* Add button skeleton with icon */}
-          <div className="w-full sm:w-auto relative">
-            <div className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4">
-              <Skeleton className="h-4 w-4 rounded-sm" />
-            </div>
-            <Skeleton className="h-10 w-full sm:w-40 bg-orange-500/20 rounded-md shadow-lg" />
-          </div>
-        </div>
-      </Card>
-
       {/* Loading state for results summary */}
       <div className="flex items-center justify-between">
         <Skeleton className="h-5 w-48" />

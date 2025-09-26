@@ -20,6 +20,7 @@ import { Separator } from "@/components/ui/separator";
 import { Loader2, Plus, X, ChefHat, Search } from "lucide-react";
 import { Restaurant, Cuisine } from "@/lib/types";
 import { toast } from "sonner";
+import { cuisineActions } from "@/lib/actions/cuisine-actions";
 
 const cuisineSchema = z.object({
   name: z
@@ -70,36 +71,33 @@ export function CuisinesManagementTab({
     onUnsavedChanges(hasChanges);
   }, [cuisines, restaurant.cuisines, onUnsavedChanges]);
 
-  // Mock function to fetch available cuisines - replace with actual API call
+  // Fetch available cuisines from backend
   const fetchAvailableCuisines = async () => {
     setIsLoading(true);
     try {
-      // Mock data for all available cuisines in the system
-      const allSystemCuisines: Cuisine[] = [
-        { id: "1", name: "Italian", created_at: "2024-01-01T00:00:00Z" },
-        { id: "2", name: "Chinese", created_at: "2024-01-01T00:00:00Z" },
-        { id: "3", name: "Mexican", created_at: "2024-01-01T00:00:00Z" },
-        { id: "4", name: "Indian", created_at: "2024-01-01T00:00:00Z" },
-        { id: "5", name: "Japanese", created_at: "2024-01-01T00:00:00Z" },
-        { id: "6", name: "French", created_at: "2024-01-01T00:00:00Z" },
-        { id: "7", name: "Thai", created_at: "2024-01-01T00:00:00Z" },
-        { id: "8", name: "Mediterranean", created_at: "2024-01-01T00:00:00Z" },
-        { id: "9", name: "American", created_at: "2024-01-01T00:00:00Z" },
-        { id: "10", name: "Korean", created_at: "2024-01-01T00:00:00Z" },
-        { id: "11", name: "Vietnamese", created_at: "2024-01-01T00:00:00Z" },
-        { id: "12", name: "Greek", created_at: "2024-01-01T00:00:00Z" },
-        { id: "13", name: "Spanish", created_at: "2024-01-01T00:00:00Z" },
-        { id: "14", name: "Turkish", created_at: "2024-01-01T00:00:00Z" },
-        { id: "15", name: "Lebanese", created_at: "2024-01-01T00:00:00Z" },
-      ];
-
-      // Filter out cuisines already assigned to the restaurant
-      const assignedCuisineIds = new Set(cuisines.map((c) => c.id));
-      const filtered = allSystemCuisines.filter((c) => !assignedCuisineIds.has(c.id));
-
-      setAvailableCuisines(filtered);
+      const response = await cuisineActions.getAllCuisines();
+      
+      if (response.success && response.data) {
+        const allCuisines = response.data;
+        
+        // Filter out cuisines that are already assigned to the restaurant
+        const availableCuisines = allCuisines.filter(
+          (cuisine) => !restaurant.cuisines.some((rc) => rc.id === cuisine.id)
+        );
+        
+        setAvailableCuisines(availableCuisines);
+      } else {
+        toast.error("Failed to fetch cuisines", {
+          description: response.error || "Unable to load available cuisines",
+          duration: 3000,
+        });
+      }
     } catch (error) {
-      toast.error("Failed to fetch available cuisines");
+      console.error("Error fetching cuisines:", error);
+      toast.error("Failed to fetch cuisines", {
+        description: "An unexpected error occurred while loading cuisines",
+        duration: 3000,
+      });
     } finally {
       setIsLoading(false);
     }

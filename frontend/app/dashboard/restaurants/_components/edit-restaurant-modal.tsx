@@ -29,7 +29,7 @@ export function EditRestaurantModal({
   onClose,
   onSuccess,
 }: EditRestaurantModalProps) {
-  const [activeTab, setActiveTab] = useState("cuisines");
+  const [activeTab, setActiveTab] = useState("details");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
   const handleClose = () => {

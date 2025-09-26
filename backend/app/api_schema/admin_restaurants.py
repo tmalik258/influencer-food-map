@@ -6,8 +6,10 @@ from uuid import UUID
 from app.models.restaurant import BusinessStatus
 
 class RestaurantCreate(BaseModel):
-    """Schema for creating a new restaurant using only restaurant name"""
+    """Schema for creating a new restaurant using restaurant name with optional city and country"""
     name: str = Field(..., description="Restaurant name to search and create from Google Places API")
+    city: Optional[str] = Field(None, description="City to help narrow down the search")
+    country: Optional[str] = Field("USA", description="Country to help narrow down the search (defaults to USA)")
     
     model_config = ConfigDict(from_attributes=True)
 

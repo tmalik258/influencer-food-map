@@ -1,4 +1,5 @@
 import asyncio
+from typing import Optional
 from fastapi import HTTPException, status
 from googlemaps import Client as GoogleMapsClient
 from googlemaps.exceptions import ApiError
@@ -14,9 +15,9 @@ logger = setup_logger(__name__)
 gmaps = GoogleMapsClient(key=GOOGLE_MAPS_API_KEY)
 
 
-async def fetch_restaurant_details_from_google(restaurant_name: str) -> dict:
-    """Fetch restaurant details from Google Places API using restaurant name."""
-    logger.info(f"Fetching restaurant details from Google API for: {restaurant_name}")
+async def fetch_restaurant_details_from_google(restaurant_name: str, city: Optional[str] = None, country: str = "USA") -> dict:
+    """Fetch restaurant details from Google Places API using restaurant name with optional city and country."""
+    logger.info(f"Fetching restaurant details from Google API for: {restaurant_name}, city: {city}, country: {country}")
     
     if not restaurant_name or not restaurant_name.strip():
         raise HTTPException(
@@ -24,12 +25,22 @@ async def fetch_restaurant_details_from_google(restaurant_name: str) -> dict:
             detail="Restaurant name is required"
         )
 
+    # Build search query similar to transcription_nlp.py
+    query_parts = [restaurant_name.strip()]
+    if city and city.strip():
+        query_parts.append(city.strip())
+    if country and country.strip():
+        query_parts.append(country.strip())
+    
+    query = " ".join(query_parts)
+    logger.info(f"Google Places search query: {query}")
+
     loop = asyncio.get_event_loop()
     try:
         # Search for the restaurant using Google Places Text Search
         result = await loop.run_in_executor(
             None, 
-            lambda: gmaps.places(query=restaurant_name.strip())
+            lambda: gmaps.places(query=query)
         )
         
         if result["status"] != "OK" or not result["results"]:
@@ -52,11 +63,11 @@ async def fetch_restaurant_details_from_google(restaurant_name: str) -> dict:
         except Exception as photo_error:
             logger.warning(f"Could not extract photo for {place['name']}: {photo_error}")
         
+        logger.info(f"Restaurant details: {place}")
+
         # Extract address components
         address_components = place.get("address_components", [])
-        city = None
-        country = None
-        
+
         for component in address_components:
             types = component.get("types", [])
             if "locality" in types:

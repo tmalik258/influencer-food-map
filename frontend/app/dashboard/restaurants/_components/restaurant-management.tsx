@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useRestaurantsPaginated, useAdminRestaurant } from "@/lib/hooks";
+import { useTagsPaginated } from "@/lib/hooks/useTagsPaginated";
+import { useCuisinesPaginated } from "@/lib/hooks/useCuisinesPaginated";
 import { Restaurant } from "@/lib/types";
 import { RestaurantFilters } from "./restaurant-filters";
 import { RestaurantEmptyState } from "./restaurant-empty-state";
@@ -25,18 +27,17 @@ export function RestaurantManagement() {
     error,
     goToPage,
     refetch,
+    setSearchQuery,
+    setTagFilter,
+    setCuisineFilter,
+    setSortBy,
+    params,
   } = useRestaurantsPaginated({ limit: 10 });
-
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedTag, setSelectedTag] = useState<string>("all");
-  const [selectedCuisine, setSelectedCuisine] = useState<string>("all");
-  const [sortBy, setSortBy] = useState<string>("name");
-  const [filteredRestaurants, setFilteredRestaurants] = useState<Restaurant[]>(
-    []
-  );
 
   const router = useRouter();
   const { deleteRestaurant, loading: deleteLoading } = useAdminRestaurant();
+  const { tags, loading: tagsLoading } = useTagsPaginated({ limit: 100 });
+  const { cuisines, loading: cuisinesLoading } = useCuisinesPaginated({ limit: 100 });
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [restaurantToDelete, setRestaurantToDelete] = useState<string | null>(
     null
@@ -47,125 +48,115 @@ export function RestaurantManagement() {
     null
   );
 
-  const handleEdit = (restaurant: Restaurant) => {
+  // Memoized handlers to prevent unnecessary re-renders
+  const handleSearch = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, [setSearchQuery]);
+
+  const handleEdit = useCallback((restaurant: Restaurant) => {
     setRestaurantToEdit(restaurant);
     setEditModalOpen(true);
-  };
+  }, []);
 
-  const handleDelete = (id: string) => {
+  const handleDelete = useCallback((id: string) => {
     setRestaurantToDelete(id);
     setDeleteModalOpen(true);
-  };
+  }, []);
 
-  const handleDeleteConfirm = async () => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!restaurantToDelete) return;
 
     try {
       await deleteRestaurant(restaurantToDelete);
       toast.success("Restaurant deleted successfully");
-      refetch(); // Refresh the list
       setDeleteModalOpen(false);
       setRestaurantToDelete(null);
+      refetch();
     } catch (error) {
       toast.error("Failed to delete restaurant");
     }
-  };
+  }, [restaurantToDelete, deleteRestaurant, refetch]);
 
-  const handleView = (restaurant: Restaurant) => {
-    router.push(`/dashboard/restaurants/${restaurant.id}`);
-  };
-
-  const handleAddNew = () => {
+  const handleAddNew = useCallback(() => {
     setCreateModalOpen(true);
-  };
+  }, []);
 
-  const handleCreateSuccess = () => {
+  const handleCreateSuccess = useCallback(() => {
     setCreateModalOpen(false);
-    refetch(); // Refresh the restaurant list
-    toast.success("Restaurant created successfully!");
-  };
+    refetch();
+    toast.success("Restaurant created successfully");
+  }, [refetch]);
 
-  const handleEditSuccess = () => {
+  const handleEditSuccess = useCallback(() => {
     setEditModalOpen(false);
     setRestaurantToEdit(null);
-    refetch(); // Refresh the restaurant list
-    toast.success("Restaurant updated successfully!");
-  };
+    refetch();
+    toast.success("Restaurant updated successfully");
+  }, [refetch]);
 
-  const handleSearch = (value: string) => {
-    if (value.trim()) {
-      setSearchTerm(value.trim());
-    } else {
-      setSearchTerm("");
-    }
-  };
+  const handleTagChange = useCallback((tag: string) => {
+    setTagFilter(tag === "all" ? "" : tag);
+  }, [setTagFilter]);
 
-  // Client-side filtering logic
-  useEffect(() => {
-    if (restaurants && restaurants.length > 0) {
-      let filtered = [...restaurants];
+  const handleCuisineChange = useCallback((cuisine: string) => {
+    setCuisineFilter(cuisine === "all" ? "" : cuisine);
+  }, [setCuisineFilter]);
 
-      // Apply search filter
-      if (searchTerm.trim()) {
-        const query = searchTerm.toLowerCase();
-        filtered = filtered.filter((restaurant) => {
-          return (
-            restaurant.name.toLowerCase().includes(query) ||
-            restaurant.city?.toLowerCase().includes(query) ||
-            restaurant.address?.toLowerCase().includes(query) ||
-            restaurant.tags?.some((tag) =>
-              tag.name.toLowerCase().includes(query)
-            ) ||
-            restaurant.cuisines?.some((cuisine) =>
-              cuisine.name.toLowerCase().includes(query)
-            )
-          );
-        });
-      }
+  const handleSortChange = useCallback((sort: string) => {
+    setSortBy(sort);
+  }, [setSortBy]);
 
-      // Apply tag filter
-      if (selectedTag !== "all") {
-        filtered = filtered.filter((restaurant) => {
-          return restaurant.tags?.some((tag) => tag.name === selectedTag);
-        });
-      }
+  // Memoized unique tags and cuisines to prevent re-computation
+  const uniqueTags = useMemo(() => {
+    return tags?.map(tag => tag.name).sort() || [];
+  }, [tags]);
 
-      // Apply cuisine filter
-      if (selectedCuisine !== "all") {
-        filtered = filtered.filter((restaurant) => {
-          return restaurant.cuisines?.some(
-            (cuisine) => cuisine.name === selectedCuisine
-          );
-        });
-      }
+  const uniqueCuisines = useMemo(() => {
+    return cuisines?.map(cuisine => cuisine.name).sort() || [];
+  }, [cuisines]);
 
-      // Apply sorting
-      filtered.sort((a, b) => {
-        switch (sortBy) {
-          case "name":
-            return a.name.localeCompare(b.name);
-          case "rating":
-            return (b.google_rating || 0) - (a.google_rating || 0);
-          case "city":
-            return (a.city || "").localeCompare(b.city || "");
-          case "updated":
-            return (
-              new Date(b.updated_at).getTime() -
-              new Date(a.updated_at).getTime()
-            );
-          default:
-            return 0;
-        }
-      });
+  // Memoized filter props to prevent unnecessary re-renders of RestaurantFilters
+  const filterProps = useMemo(() => ({
+    searchTerm: params.name || "",
+    selectedTag: params.tag || "",
+    selectedCuisine: params.cuisine || "",
+    sortBy: params.sort_by || "name",
+    uniqueTags,
+    uniqueCuisines,
+    tagsLoading,
+    cuisinesLoading,
+    onSearchChange: handleSearch,
+    onTagChange: handleTagChange,
+    onCuisineChange: handleCuisineChange,
+    onSortChange: handleSortChange,
+    onAddNew: handleAddNew,
+  }), [
+    params.name,
+    params.tag,
+    params.cuisine,
+    params.sort_by,
+    uniqueTags,
+    uniqueCuisines,
+    tagsLoading,
+    cuisinesLoading,
+    handleSearch,
+    handleTagChange,
+    handleCuisineChange,
+    handleSortChange,
+    handleAddNew,
+  ]);
 
-      setFilteredRestaurants(filtered);
-    } else {
-      setFilteredRestaurants([]);
-    }
-  }, [restaurants, searchTerm, selectedTag, selectedCuisine, sortBy]);
-
+  // Show table loading only when restaurants are loading
   if (loading) {
-    return <RestaurantLoading count={6} />;
+    return (
+      <div className="space-y-6">
+        {/* Show filters with their own loading states */}
+        <RestaurantFilters {...filterProps} />
+        
+        {/* Show table loading */}
+        <RestaurantLoading count={6} />
+      </div>
+    );
   }
 
   if (error) {
@@ -180,62 +171,29 @@ export function RestaurantManagement() {
     );
   }
 
-  // Get unique tags for filter (from all restaurants data)
-  const allTags = restaurants?.flatMap((r) => r.tags || []) || [];
-  const uniqueTags = Array.from(
-    new Set(
-      (Array.isArray(allTags) ? allTags : []).map((tag) => tag?.name || "")
-    )
-  ).sort();
-
-  // Get unique cuisines for filter (from all restaurants data)
-  const allCuisines = restaurants?.flatMap((r) => r.cuisines || []) || [];
-  const uniqueCuisines = Array.from(
-    new Set(
-      (Array.isArray(allCuisines) ? allCuisines : []).map(
-        (cuisine) => cuisine?.name || ""
-      )
-    )
-  ).sort();
-
   return (
     <div className="space-y-6">
-      {/* Header Actions */}
-      <RestaurantFilters
-        searchTerm={searchTerm}
-        selectedTag={selectedTag}
-        selectedCuisine={selectedCuisine}
-        sortBy={sortBy}
-        uniqueTags={uniqueTags}
-        uniqueCuisines={uniqueCuisines}
-        onSearchChange={handleSearch}
-        onTagChange={setSelectedTag}
-        onCuisineChange={setSelectedCuisine}
-        onSortChange={setSortBy}
-        onAddNew={handleAddNew}
-      />
+      {/* Header Actions with separate loading states */}
+      <RestaurantFilters {...filterProps} />
 
       {/* Results Summary */}
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground font-medium">
-          Showing {filteredRestaurants.length} of {total || 0} restaurants
-          {(searchTerm || selectedTag !== "all" || selectedCuisine !== "all") &&
-            " (filtered)"}{" "}
+          Showing {restaurants?.length || 0} of {total || 0} restaurants
           (Page {page} of {totalPages})
         </p>
       </div>
 
       {/* Empty state */}
       <RestaurantEmptyState 
-        hasRestaurants={filteredRestaurants.length > 0}
-        hasActiveFilters={searchTerm !== "" || selectedTag !== "all" || selectedCuisine !== "all"}
+        hasRestaurants={(restaurants?.length || 0) > 0}
+        hasActiveFilters={false}
       />
 
       {/* Restaurant table */}
-      {filteredRestaurants.length > 0 && (
+      {restaurants && restaurants.length > 0 && (
         <RestaurantTable 
-          restaurants={filteredRestaurants}
-          onView={handleView}
+          restaurants={restaurants}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
@@ -248,7 +206,7 @@ export function RestaurantManagement() {
           totalPages={totalPages}
           totalRestaurants={total}
           onPageChange={goToPage}
-          loading={loading}
+          loading={false} // Don't show loading on pagination since we handle it separately
         />
       )}
 
@@ -262,7 +220,6 @@ export function RestaurantManagement() {
       {/* Delete Confirmation Modal */}
       <DeleteConfirmationModal
         isOpen={deleteModalOpen}
-        onClose={() => setDeleteModalOpen(false)}
         onConfirm={handleDeleteConfirm}
         title="Delete Restaurant"
         description="Are you sure you want to delete this restaurant? This action cannot be undone."
