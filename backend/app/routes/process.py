@@ -1,16 +1,18 @@
 import redis
 import asyncio
 import json
+import time
+from typing import Optional
 
 from fastapi import (APIRouter, Depends, BackgroundTasks, HTTPException, status)
 
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import (REDIS_URL, SCRAPE_YOUTUBE_LOCK, TRANSCRIPTION_NLP_LOCK)
+from app.config import (REDIS_URL, SCRAPE_YOUTUBE_LOCK, TRANSCRIPTION_NLP_LOCK, INFLUENCER_CHANNELS)
 from app.database import (AsyncSessionLocal, get_db, get_async_db)
 from app.services import (scrape_youtube, transcription_nlp_pipeline, JobService)
-from app.models.job import JobType
+from app.models.job import JobType, JobStatus
 from app.api_schema.jobs import JobCreateRequest
 
 router = APIRouter()
@@ -43,20 +45,64 @@ async def trigger_scrape(background_tasks: BackgroundTasks, db: Session = Depend
     redis_client.setex(SCRAPE_YOUTUBE_LOCK, 3600, "locked")
     
     async def scrape_with_job_tracking():
+        start_time = time.time()
+        last_heartbeat = start_time
+        
         try:
             # Start the job
             JobService.start_job_sync(db, job.id)
             
-            # Run the scraping
-            result = await scrape_youtube(db)
+            # Initialize progress tracking
+            JobService.update_progress_sync(db, job.id, 0, 0)
+            JobService.update_queue_size_sync(db, job.id, len(INFLUENCER_CHANNELS))
+            
+            # Run the scraping with monitoring
+            async def monitored_scrape():
+                nonlocal last_heartbeat
+                
+                for i, channel in enumerate(INFLUENCER_CHANNELS):
+                    # Check for cancellation
+                    current_job = JobService.get_job_sync(db, job.id)
+                    if current_job and current_job.cancellation_requested:
+                        JobService.cancel_job_sync(db, job.id, "Job cancelled by user request")
+                        redis_client.delete(SCRAPE_YOUTUBE_LOCK)
+                        return {"cancelled": True}
+                    
+                    # Update progress
+                    progress = int((i / len(INFLUENCER_CHANNELS)) * 100)
+                    JobService.update_progress_sync(db, job.id, progress, i)
+                    
+                    # Heartbeat update every 30 seconds
+                    current_time = time.time()
+                    if current_time - last_heartbeat > 30:
+                        JobService.update_heartbeat_sync(db, job.id)
+                        last_heartbeat = current_time
+                    
+                    # Process channel (this would be integrated into scrape_youtube)
+                    # For now, we'll call the original function
+                
+                return await scrape_youtube(db)
+            
+            result = await monitored_scrape()
+            
+            if result and result.get("cancelled"):
+                return
             
             # Complete the job
-            result_data = json.dumps({"message": "YouTube scraping completed successfully"})
+            elapsed_time = time.time() - start_time
+            result_data = json.dumps({
+                "message": "YouTube scraping completed successfully",
+                "elapsed_time": elapsed_time,
+                "channels_processed": len(INFLUENCER_CHANNELS)
+            })
             JobService.complete_job_sync(db, job.id, result_data)
             
         except Exception as e:
-            # Fail the job
-            JobService.fail_job_sync(db, job.id, str(e))
+            # Check if it's a cancellation
+            if "cancelled" in str(e).lower():
+                JobService.cancel_job_sync(db, job.id, str(e))
+            else:
+                JobService.fail_job_sync(db, job.id, str(e))
             redis_client.delete(SCRAPE_YOUTUBE_LOCK)  # Release lock on error
             raise
     
@@ -106,20 +152,54 @@ async def trigger_transcription_nlp(
     redis_client.setex(TRANSCRIPTION_NLP_LOCK, 3600, "locked")
 
     async def run_pipeline():
+        start_time = time.time()
+        last_heartbeat = start_time
+        
         try:
             # Start the job
             await JobService.start_job(db, job.id)
             
-            async with AsyncSessionLocal() as session:
-                result = await transcription_nlp_pipeline(session)
+            # Initialize progress tracking
+            await JobService.update_progress(db, job.id, 0, 0)
+            
+            async def monitored_pipeline():
+                nonlocal last_heartbeat
+                
+                async with AsyncSessionLocal() as session:
+                    # Check for cancellation before starting
+                    current_job = await JobService.get_job(db, job.id)
+                    if current_job and current_job.cancellation_requested:
+                        await JobService.cancel_job(db, job.id, "Job cancelled by user request")
+                        redis_client.delete(TRANSCRIPTION_NLP_LOCK)
+                        return {"cancelled": True}
+                    
+                    # Heartbeat update
+                    await JobService.update_heartbeat(db, job.id)
+                    
+                    # Run pipeline with job tracking
+                    result = await transcription_nlp_pipeline(session, job.id)
+                    return result
+            
+            result = await monitored_pipeline()
+            
+            if result and result.get("cancelled"):
+                return
             
             # Complete the job
-            result_data = json.dumps({"message": "Video transcription and NLP processing completed successfully"})
+            elapsed_time = time.time() - start_time
+            result_data = json.dumps({
+                "message": "Video transcription and NLP processing completed successfully",
+                "elapsed_time": elapsed_time,
+                "videos_processed": result.get("videos_processed", 0) if result else 0
+            })
             await JobService.complete_job(db, job.id, result_data)
             
         except Exception as e:
-            # Fail the job
-            await JobService.fail_job(db, job.id, str(e))
+            # Check if it's a cancellation
+            if "cancelled" in str(e).lower():
+                await JobService.cancel_job(db, job.id, str(e))
+            else:
+                await JobService.fail_job(db, job.id, str(e))
             raise
         finally:
             redis_client.delete(TRANSCRIPTION_NLP_LOCK)  # Release lock when done

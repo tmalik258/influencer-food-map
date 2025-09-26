@@ -5,6 +5,10 @@ import yt_dlp
 import asyncio
 import tempfile
 import subprocess
+from datetime import datetime, timedelta
+import json
+import time
+from typing import Optional
 
 from fastapi import HTTPException
 
@@ -26,6 +30,7 @@ from app.config import (
 from app.database import AsyncSessionLocal
 from app.utils.logging import setup_logger
 from app.scripts.gpt_food_place_processor import GPTFoodPlaceProcessor
+from app.services.jobs import JobService
 
 # Setup logging
 logger = setup_logger(__name__)
@@ -491,45 +496,139 @@ async def process_video(video: Video):
                 raise  # Let the transaction rollback automatically
 
 
-async def transcription_nlp_pipeline(db: AsyncSession):
-    """Main pipeline to process 10+ sample videos."""
+async def transcription_nlp_pipeline(db: AsyncSession, video_ids: list = None, job_id: Optional[uuid.UUID] = None):
+    """Main pipeline to process videos with job tracking."""
+    start_time = time.time()
+    processed_videos = 0
+    failed_videos = 0
+    
     try:
         # Limit to 4-5 concurrent downloads to avoid rate limits
         semaphore = asyncio.Semaphore(5)  # Only 5 concurrent downloads
 
-        # Select one video per influencer
-        result = await db.execute(
-            select(Video)
-            .join(Influencer)
-            .distinct(Influencer.id)
-            .order_by(
-                Influencer.id,
-                case(
-                    (Video.transcription.is_(None), 1),
-                    else_=0
-                ).asc(),  # Videos with transcriptions (non-null) come first
-                func.length(Video.transcription).asc(),  # Sort by transcription length (smallest to largest)
-                Video.published_at.desc()
+        # Select videos to process
+        if video_ids:
+            result = await db.execute(
+                select(Video)
+                .filter(Video.id.in_(video_ids))
+                .options(selectinload(Video.influencer))
             )
-            .limit(10)
-            .options(selectinload(Video.influencer))
-        )
+        else:
+            # Select one video per influencer
+            result = await db.execute(
+                select(Video)
+                .join(Influencer)
+                .distinct(Influencer.id)
+                .order_by(
+                    Influencer.id,
+                    case(
+                        (Video.transcription.is_(None), 1),
+                        else_=0
+                    ).asc(),  # Videos with transcriptions (non-null) come first
+                    func.length(Video.transcription).asc(),  # Sort by transcription length (smallest to largest)
+                    Video.published_at.desc()
+                )
+                .limit(10)
+                .options(selectinload(Video.influencer))
+            )
+        
         videos = result.scalars().all()
+        total_videos = len(videos)
 
-        logger.info(f"Selected {len(videos)} videos for processing")
+        if not videos:
+            logger.info("No videos to process")
+            if job_id:
+                result_data = {"message": "No videos to process", "total_videos": 0}
+                await JobService.update_job(db, job_id, result_data=json.dumps(result_data))
+            return
+
+        logger.info(f"Selected {total_videos} videos for processing")
+        
+        # Initialize job tracking
+        if job_id:
+            await JobService.update_tracking_stats(db, job_id,
+                queue_size=total_videos,
+                items_in_progress=0,
+                failed_items=0
+            )
+            await JobService.update_progress(db, job_id, 0, total_videos)
 
         async def process_with_semaphore(video):
+            nonlocal processed_videos, failed_videos
+            
             async with semaphore:
-                await asyncio.sleep(1)  # Add 1-second delay between downloads
-                return await process_video(video)
+                try:
+                    # Update heartbeat and check for cancellation
+                    if job_id:
+                        await JobService.update_heartbeat(db, job_id)
+                        
+                        # Check for cancellation
+                        current_job = await JobService.get_job(db, job_id)
+                        if current_job and current_job.cancellation_requested:
+                            logger.info(f"Job {job_id} cancellation requested, stopping pipeline")
+                            await JobService.cancel_job(db, job_id, "Pipeline cancelled by user request")
+                            return None
+                        
+                        # Update items in progress
+                        await JobService.update_items_in_progress(db, job_id, min(5, total_videos - processed_videos - failed_videos))
+                    
+                    await asyncio.sleep(1)  # Add 1-second delay between downloads
+                    result = await process_video(video)
+                    processed_videos += 1
+                    
+                    # Update progress and processing rate
+                    if job_id:
+                        elapsed_time = time.time() - start_time
+                        processing_rate = processed_videos / (elapsed_time / 60) if elapsed_time > 0 else 0
+                        
+                        await JobService.update_progress(db, job_id, processed_videos + failed_videos, total_videos)
+                        await JobService.update_tracking_stats(db, job_id,
+                            processing_rate=processing_rate
+                        )
+                        
+                        # Estimate completion time
+                        if processing_rate > 0:
+                            remaining_items = total_videos - processed_videos - failed_videos
+                            estimated_minutes = remaining_items / processing_rate
+                            estimated_completion = datetime.now() + timedelta(minutes=estimated_minutes)
+                            await JobService.update_job(db, job_id, estimated_completion_time=estimated_completion)
+                    
+                    return result
+                    
+                except Exception as e:
+                    failed_videos += 1
+                    if job_id:
+                        await JobService.update_tracking_stats(db, job_id, failed_items=failed_videos)
+                    logger.error(f"Error processing video {video.id}: {e}")
+                    return e
 
         # Process videos concurrently
         tasks = [process_with_semaphore(video) for video in videos]
-        await asyncio.gather(*tasks, return_exceptions=True)
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        # Log results
+        successful = sum(1 for r in results if r is not None and not isinstance(r, Exception))
+        failed = len(results) - successful
 
-        logger.info("Transcription and NLP pipeline completed")
+        logger.info(f"Transcription and NLP pipeline completed: {successful} successful, {failed} failed")
+        
+        # Final job update
+        if job_id:
+            result_data = {
+                "videos_processed": successful,
+                "total_videos": total_videos,
+                "failed_videos": failed,
+                "processing_time_minutes": (time.time() - start_time) / 60,
+                "concurrency_limit": 5
+            }
+            await JobService.update_job(db, job_id, result_data=json.dumps(result_data))
+            await JobService.update_tracking_stats(db, job_id, items_in_progress=0)
+        
     except Exception as e:
         logger.error(f"Error in pipeline: {e}")
+        if job_id:
+            await JobService.update_tracking_stats(db, job_id, items_in_progress=0)
+        raise
     finally:
         await db.close()
         redis_client.delete(TRANSCRIPTION_NLP_LOCK)  # Ensure lock is released

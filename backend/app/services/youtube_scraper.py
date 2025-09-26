@@ -1,7 +1,9 @@
 import json
 import uuid
 import redis
-from datetime import datetime
+import time
+from datetime import datetime, timedelta
+from typing import Optional
 import requests
 
 from googleapiclient.discovery import build
@@ -13,6 +15,7 @@ from sqlalchemy.orm import Session
 from app.models import Influencer, Video
 from app.config import REDIS_URL, YOUTUBE_API_KEY, INFLUENCER_CHANNELS, SCRAPE_YOUTUBE_LOCK
 from app.utils.logging import setup_logger
+from app.services.jobs import JobService
 # from app.utils.country_utils import normalize_region_to_country_info
 
 # Setup logging
@@ -249,41 +252,123 @@ def store_videos(db: Session, videos: list[dict], influencer_id: uuid.UUID):
         db.rollback()
         raise
 
-def scrape_youtube(db: Session):
-    """Main function to scrape YouTube video metadata and store in Supabase."""
+def scrape_youtube(db: Session, job_id: Optional[uuid.UUID] = None):
+    """Main function to scrape YouTube video metadata and store in Supabase with job tracking."""
+    start_time = time.time()
+    last_heartbeat = start_time
+    total_channels = len(INFLUENCER_CHANNELS)
+    processed_channels = 0
+    total_videos_processed = 0
+    failed_channels = 0
+    
     try:
-        for channel in INFLUENCER_CHANNELS:
-            logger.info(f"Processing channel: {channel['name']}")
-            channel_data: dict|None = get_channel(channel["url"])
-            if not channel_data or "id" not in channel_data:
-                logger.error(f"Could not find channel ID for {channel['url']}")
+        # Initialize job tracking
+        if job_id:
+            JobService.update_tracking_stats_sync(db, job_id, 
+                queue_size=total_channels,
+                items_in_progress=0,
+                failed_items=0
+            )
+            JobService.update_progress_sync(db, job_id, 0, total_channels)
+        
+        for i, channel in enumerate(INFLUENCER_CHANNELS):
+            try:
+                # Check for cancellation
+                if job_id:
+                    current_job = JobService.get_job_sync(db, job_id)
+                    if current_job and current_job.cancellation_requested:
+                        logger.info(f"Job {job_id} cancellation requested, stopping scraping")
+                        JobService.cancel_job_sync(db, job_id, "Scraping cancelled by user request")
+                        return {"cancelled": True, "processed_channels": processed_channels}
+                
+                logger.info(f"Processing channel {i+1}/{total_channels}: {channel['name']}")
+                
+                # Update heartbeat and progress
+                if job_id:
+                    current_time = time.time()
+                    if current_time - last_heartbeat > 30:
+                        JobService.update_heartbeat_sync(db, job_id)
+                        last_heartbeat = current_time
+                    
+                    JobService.update_tracking_stats_sync(db, job_id,
+                        items_in_progress=1,
+                        queue_size=total_channels - processed_channels - 1
+                    )
+                
+                channel_data: dict|None = get_channel(channel["url"])
+                
+                if not channel_data or "id" not in channel_data:
+                    logger.error(f"Could not find channel ID for {channel['url']}")
+                    failed_channels += 1
+                    if job_id:
+                        JobService.update_tracking_stats_sync(db, job_id, failed_items=failed_channels)
+                    continue
+
+                logger.info(f"Found channel ID: {channel_data['id']} for {channel['name']}")
+
+                # Store influencer
+                influencer = store_influencer(db, channel, channel_data)
+                
+                # Fetch and store videos
+                videos = get_videos(channel_data["id"])
+
+                if not videos:
+                    logger.warning(f"No videos found for channel {channel['name']} ({channel_data['id']})")
+                    processed_channels += 1
+                    if job_id:
+                        JobService.update_progress_sync(db, job_id, processed_channels, total_channels)
+                        JobService.update_tracking_stats_sync(db, job_id, items_in_progress=0)
+                    continue
+
+                logger.info(f"Found {len(videos)} videos for channel {channel['name']} ({channel_data['id']}): {json.dumps(videos, indent=2)[:1000]}...")  # Log first 500 chars of video data
+
+                store_videos(db, videos, influencer.id)
+                total_videos_processed += len(videos)
+                processed_channels += 1
+                
+                # Update progress and processing rate
+                if job_id:
+                    elapsed_time = time.time() - start_time
+                    processing_rate = processed_channels / (elapsed_time / 60) if elapsed_time > 0 else 0
+                    
+                    JobService.update_progress_sync(db, job_id, processed_channels, total_channels)
+                    JobService.update_tracking_stats_sync(db, job_id, 
+                        items_in_progress=0,
+                        processing_rate=processing_rate
+                    )
+                    
+                    # Estimate completion time
+                    if processing_rate > 0:
+                        remaining_items = total_channels - processed_channels
+                        estimated_minutes = remaining_items / processing_rate
+                        estimated_completion = datetime.now() + timedelta(minutes=estimated_minutes)
+                        JobService.update_job_sync(db, job_id, estimated_completion_time=estimated_completion)
+                
+            except Exception as channel_error:
+                logger.error(f"Error processing channel {channel['name']}: {channel_error}")
+                failed_channels += 1
+                if job_id:
+                    JobService.update_tracking_stats_sync(db, job_id, failed_items=failed_channels)
                 continue
 
-            logger.info(f"Found channel ID: {channel_data['id']} for {channel['name']}")
-
-            # break # Temporarily disable scraping for testing
-
-            # Store influencer
-            influencer = store_influencer(db, channel, channel_data)
-
-            # continue # Temporarily disable scraping for testing
+        logger.info(f"Scraping completed successfully. Processed {processed_channels}/{total_channels} channels, {total_videos_processed} total videos, {failed_channels} failed channels")
+        
+        # Final job update
+        if job_id:
+            result_data = {
+                "channels_processed": processed_channels,
+                "total_channels": total_channels,
+                "videos_processed": total_videos_processed,
+                "failed_channels": failed_channels,
+                "processing_time_minutes": (time.time() - start_time) / 60
+            }
+            JobService.update_job_sync(db, job_id, result_data=json.dumps(result_data))
             
-            # Fetch and store videos
-            videos = get_videos(channel_data["id"])
-
-            if not videos:
-                logger.warning(f"No videos found for channel {channel['name']} ({channel_data['id']})")
-                continue
-
-            logger.info(f"Found {len(videos)} videos for channel {channel['name']} ({channel_data['id']}): {json.dumps(videos, indent=2)[:1000]}...")  # Log first 500 chars of video data
-
-            # continue # Temporarily disable scraping for testing
-
-            store_videos(db, videos, influencer.id)
-
-        logger.info("Scraping completed successfully")
     except Exception as e:
         logger.error(f"Error in scraper: {e}")
+        if job_id:
+            JobService.update_tracking_stats_sync(db, job_id, items_in_progress=0)
+        raise
     finally:
         db.close()
         redis_client.delete(SCRAPE_YOUTUBE_LOCK)
