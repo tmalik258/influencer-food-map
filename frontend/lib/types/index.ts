@@ -60,6 +60,7 @@ export interface Video {
   transcription?: string;
   created_at: string;
   updated_at: string;
+  listings_count?: number;
 }
 
 export interface VideosResponse {

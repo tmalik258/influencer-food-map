@@ -179,6 +179,7 @@ export default function CreateRestaurantModal({
                           {...field}
                           disabled={isSubmitting}
                           className="focus:ring-orange-500/20 focus:border-orange-500 transition-all duration-200"
+                          defaultValue={"USA"}
                         />
                       </FormControl>
                       <FormMessage />

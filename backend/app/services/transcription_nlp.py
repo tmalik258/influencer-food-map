@@ -8,7 +8,8 @@ import subprocess
 from datetime import datetime, timedelta
 import json
 import time
-from typing import Optional
+import re
+from typing import Optional, Dict, Any, Tuple
 
 from fastapi import HTTPException
 
@@ -18,6 +19,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from googlemaps import Client as GoogleMapsClient
+from app.api_schema.jobs import JobUpdateRequest
 from googlemaps.exceptions import ApiError
 
 from app.models import Video, Restaurant, Listing, Influencer, Tag, RestaurantTag, Cuisine, RestaurantCuisine, BusinessStatus
@@ -26,11 +28,15 @@ from app.config import (
     REDIS_URL,
     TRANSCRIPTION_NLP_LOCK,
     AUDIO_BASE_DIR,
+    YOUTUBE_API_KEY,
 )
 from app.database import AsyncSessionLocal
 from app.utils.logging import setup_logger
 from app.scripts.gpt_food_place_processor import GPTFoodPlaceProcessor
 from app.services.jobs import JobService
+from googleapiclient.discovery import build
+from googleapiclient.errors import HttpError
+from googleapiclient.http import HttpRequest
 
 # Setup logging
 logger = setup_logger(__name__)
@@ -39,6 +45,165 @@ logger = setup_logger(__name__)
 redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
 
 gmaps = GoogleMapsClient(key=GOOGLE_MAPS_API_KEY)
+
+# Custom HTTP client to add referer header for YouTube API
+class CustomHttpRequest(HttpRequest):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.headers["referer"] = "http://localhost:8030"  # Adjust for your domain
+
+def build_youtube_client():
+    """Build YouTube API client with custom referer header."""
+    return build("youtube", "v3", developerKey=YOUTUBE_API_KEY, requestBuilder=CustomHttpRequest)
+
+youtube = build_youtube_client()
+
+async def get_channel_from_video_url(video_url: str) -> Optional[Dict[str, Any]]:
+    """Extract channel data from a YouTube video URL.
+    
+    Args:
+        video_url: The YouTube video URL
+        
+    Returns:
+        Dictionary containing channel data or None if not found
+    """
+    try:
+        # Extract video ID from URL
+        video_id_match = re.search(r'(?:v=|\/)([0-9A-Za-z_-]{11}).*', video_url)
+        if not video_id_match:
+            logger.error(f"Could not extract video ID from URL: {video_url}")
+            return None
+            
+        video_id = video_id_match.group(1)
+        
+        # Get video details to extract channel ID
+        loop = asyncio.get_event_loop()
+        response = await loop.run_in_executor(
+            None,
+            lambda: youtube.videos().list(
+                part="snippet",
+                id=video_id
+            ).execute()
+        )
+        
+        if "items" not in response or len(response["items"]) == 0:
+            logger.error(f"No video found for ID: {video_id}")
+            return None
+            
+        video_data = response["items"][0]
+        snippet = video_data["snippet"]
+        channel_id = snippet["channelId"]
+        
+        # Get channel details
+        channel_response = await loop.run_in_executor(
+            None,
+            lambda: youtube.channels().list(
+                part="id,snippet,brandingSettings,statistics",
+                id=channel_id
+            ).execute()
+        )
+        
+        if "items" not in channel_response or len(channel_response["items"]) == 0:
+            logger.error(f"No channel found for ID: {channel_id}")
+            return None
+            
+        channel = channel_response["items"][0]
+        banner_url = None
+        if "brandingSettings" in channel and "image" in channel["brandingSettings"]:
+            banner_url = channel["brandingSettings"]["image"].get("bannerExternalUrl")
+            
+        return {
+            "id": channel["id"],
+            "title": channel["snippet"]["title"],
+            "description": channel["snippet"].get("description", ""),
+            "avatar_url": channel["snippet"]["thumbnails"]["default"]["url"],
+            "banner_url": banner_url,
+            "subscriber_count": int(channel["statistics"].get("subscriberCount", 0)) if "statistics" in channel else None,
+            "youtube_channel_url": f"https://www.youtube.com/channel/{channel_id}"
+        }
+    except HttpError as e:
+        logger.error(f"Error fetching channel data for video URL {video_url}: {e}")
+        return None
+    except Exception as e:
+        logger.error(f"Unexpected error fetching channel data for video URL {video_url}: {e}")
+        return None
+
+async def store_influencer_from_video(db: AsyncSession, video: Video) -> Tuple[Influencer, bool]:
+    """Store or update influencer from video data if not already linked.
+    
+    Args:
+        db: Database session
+        video: Video object
+        
+    Returns:
+        Tuple of (Influencer object, bool indicating if it's newly created)
+    """
+    try:
+        # Check if video already has an influencer
+        if video.influencer_id is not None:
+            # Get the existing influencer
+            result = await db.execute(
+                select(Influencer).filter(Influencer.id == video.influencer_id)
+            )
+            influencer = result.scalars().first()
+            if influencer:
+                logger.info(f"Video {video.youtube_video_id} already linked to influencer {influencer.name}")
+                return influencer, False
+        
+        # Get channel data from video URL
+        channel_data = await get_channel_from_video_url(video.video_url)
+        if not channel_data:
+            logger.error(f"Could not retrieve channel data for video {video.youtube_video_id}")
+            return None, False  # type: ignore
+            
+        # Check if influencer already exists by channel ID
+        result = await db.execute(
+            select(Influencer).filter(Influencer.youtube_channel_id == channel_data["id"])
+        )
+        influencer = result.scalars().first()
+        
+        if influencer:
+            # Update existing influencer with latest data
+            logger.info(f"Updating existing influencer {influencer.name} from video {video.youtube_video_id}")
+            influencer.name = channel_data["title"]
+            influencer.bio = channel_data["description"]
+            influencer.avatar_url = channel_data["avatar_url"]
+            influencer.banner_url = channel_data.get("banner_url")
+            influencer.subscriber_count = channel_data.get("subscriber_count")
+            
+            # Link video to influencer if not already linked
+            if video.influencer_id != influencer.id:
+                video.influencer_id = influencer.id
+                db.add(video)
+                
+            await db.flush()
+            return influencer, False
+        else:
+            # Create new influencer
+            logger.info(f"Creating new influencer from video {video.youtube_video_id}")
+            new_influencer = Influencer(
+                id=uuid.uuid4(),
+                name=channel_data["title"],
+                youtube_channel_id=channel_data["id"],
+                youtube_channel_url=channel_data["youtube_channel_url"],
+                bio=channel_data["description"],
+                avatar_url=channel_data["avatar_url"],
+                banner_url=channel_data.get("banner_url"),
+                subscriber_count=channel_data.get("subscriber_count")
+            )
+            db.add(new_influencer)
+            await db.flush()
+            await db.refresh(new_influencer)
+            
+            # Link video to new influencer
+            video.influencer_id = new_influencer.id
+            db.add(video)
+            await db.flush()
+            
+            return new_influencer, True
+    except Exception as e:
+        logger.error(f"Error storing influencer from video {video.youtube_video_id}: {e}")
+        raise
 
 async def download_audio(video_url: str, video: Video) -> str:
     """Download audio from a YouTube video and explicitly convert with FFmpeg."""
@@ -440,6 +605,15 @@ async def process_video(video: Video):
 
                 # Merge the video object into the new session
                 video = await db.merge(video)
+                
+                # Retrieve influencer data if not already linked
+                if not video.influencer_id:
+                    logger.info(f"No influencer linked to video {video.youtube_video_id}, retrieving channel data...")
+                    influencer, is_new = await store_influencer_from_video(db, video)
+                    if influencer:
+                        logger.info(f"{'Created new' if is_new else 'Linked existing'} influencer {influencer.name} for video {video.youtube_video_id}")
+                    else:
+                        logger.warning(f"Could not retrieve influencer data for video {video.youtube_video_id}")
 
                 transcription = video.transcription or ""
 
@@ -491,12 +665,13 @@ async def process_video(video: Video):
                 logger.info(
                     f"Stored restaurant, tags, and listing for video {video.youtube_video_id}"
                 )
+                return True  # Return success value
             except Exception as e:
                 logger.error(f"Error processing video {video.youtube_video_id}: {e}")
                 raise  # Let the transaction rollback automatically
 
 
-async def transcription_nlp_pipeline(db: AsyncSession, video_ids: list = None, job_id: Optional[uuid.UUID] = None):
+async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list] = None, job_id: Optional[uuid.UUID] = None):
     """Main pipeline to process videos with job tracking."""
     start_time = time.time()
     processed_videos = 0
@@ -539,8 +714,9 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: list = None, j
             logger.info("No videos to process")
             if job_id:
                 result_data = {"message": "No videos to process", "total_videos": 0}
-                await JobService.update_job(db, job_id, result_data=json.dumps(result_data))
-            return
+                job_data = JobUpdateRequest(result_data=json.dumps(result_data))
+                await JobService.update_job(db, job_id, job_data)
+            return {"message": "No videos to process", "total_videos": 0}
 
         logger.info(f"Selected {total_videos} videos for processing")
         
@@ -570,7 +746,7 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: list = None, j
                             return None
                         
                         # Update items in progress
-                        await JobService.update_items_in_progress(db, job_id, min(5, total_videos - processed_videos - failed_videos))
+                        await JobService.update_progress(db, job_id, min(5, total_videos - processed_videos - failed_videos))
                     
                     await asyncio.sleep(1)  # Add 1-second delay between downloads
                     result = await process_video(video)
@@ -591,9 +767,11 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: list = None, j
                             remaining_items = total_videos - processed_videos - failed_videos
                             estimated_minutes = remaining_items / processing_rate
                             estimated_completion = datetime.now() + timedelta(minutes=estimated_minutes)
-                            await JobService.update_job(db, job_id, estimated_completion_time=estimated_completion)
+                            job_data = JobUpdateRequest(estimated_completion_time=estimated_completion)
+                            await JobService.update_job(db, job_id, job_data)
                     
-                    return result
+                    # Return True for successful processing
+                    return True
                     
                 except Exception as e:
                     failed_videos += 1
@@ -613,22 +791,31 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: list = None, j
         logger.info(f"Transcription and NLP pipeline completed: {successful} successful, {failed} failed")
         
         # Final job update
-        if job_id:
-            result_data = {
-                "videos_processed": successful,
-                "total_videos": total_videos,
-                "failed_videos": failed,
-                "processing_time_minutes": (time.time() - start_time) / 60,
-                "concurrency_limit": 5
-            }
-            await JobService.update_job(db, job_id, result_data=json.dumps(result_data))
-            await JobService.update_tracking_stats(db, job_id, items_in_progress=0)
+        result_data = {
+            "videos_processed": successful,
+            "total_videos": total_videos,
+            "failed_videos": failed,
+            "processing_time_minutes": (time.time() - start_time) / 60,
+            "concurrency_limit": 5
+        }
         
+        if job_id:
+            job_data = JobUpdateRequest(result_data=json.dumps(result_data))
+            await JobService.update_job(db, job_id, job_data)
+            await JobService.update_tracking_stats(db, job_id, items_in_progress=0)
+            
+        return result_data
     except Exception as e:
         logger.error(f"Error in pipeline: {e}")
         if job_id:
             await JobService.update_tracking_stats(db, job_id, items_in_progress=0)
-        raise
+        
+        # Return error information instead of raising
+        return {
+            "error": str(e),
+            "message": "Error in transcription pipeline",
+            "success": False
+        }
     finally:
         await db.close()
         redis_client.delete(TRANSCRIPTION_NLP_LOCK)  # Ensure lock is released

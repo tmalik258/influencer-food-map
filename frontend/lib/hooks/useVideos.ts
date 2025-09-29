@@ -5,7 +5,7 @@ import { Video } from '@/lib/types';
 import { videoActions } from '@/lib/actions';
 import { adminVideoActions } from '@/lib/actions/admin-video-actions';
 
-export const useVideos = (params?: {
+interface PaginatedVideosParams {
   title?: string;
   youtube_video_id?: string;
   video_title?: string;
@@ -13,44 +13,128 @@ export const useVideos = (params?: {
   influencer_id?: string;
   influencer_name?: string;
   has_listings?: boolean;
-  skip?: number;
+  page?: number;
   limit?: number;
-}) => {
-  const [videos, setVideos] = useState<Video[]>([]);
-  const [totalCount, setTotalCount] = useState(0);
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+}
+
+interface PaginatedVideosResponse {
+  videos: Video[];
+  totalCount: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export const useVideos = (initialParams?: PaginatedVideosParams) => {
+  const [data, setData] = useState<PaginatedVideosResponse>({
+    videos: [],
+    totalCount: 0,
+    page: 1,
+    limit: 12,
+    totalPages: 0
+  });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [params, setParams] = useState<PaginatedVideosParams>({
+    page: 1,
+    limit: 12,
+    ...initialParams
+  });
 
-  const fetchVideos = useCallback(async (searchParams?: typeof params) => {
+  const fetchVideos = useCallback(async (searchParams?: PaginatedVideosParams) => {
+    const currentParams = searchParams || params;
+    const { page = 1, limit = 12, ...otherParams } = currentParams;
+    
     setLoading(true);
     setError(null);
+    
     try {
-      const data = await videoActions.getVideos(searchParams || params);
-      setVideos(data.videos);
-      setTotalCount(data.total);
+      const response = await videoActions.getVideos({
+        ...otherParams,
+        skip: (page - 1) * limit,
+        limit
+      });
+      
+      const videos = response.videos || [];
+      const totalCount = response.total || 0;
+      const totalPages = Math.ceil(totalCount / limit);
+      
+      setData({
+        videos,
+        totalCount,
+        page,
+        limit,
+        totalPages
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch videos');
     } finally {
       setLoading(false);
     }
-  }, [
-    params?.title,
-    params?.youtube_video_id,
-    params?.video_title,
-    params?.video_url,
-    params?.influencer_id,
-    params?.influencer_name,
-    params?.has_listings,
-    params?.skip,
-    params?.limit
-  ]);
+  }, [params]);
+
+  const updateParams = useCallback((newParams: Partial<PaginatedVideosParams>) => {
+    setParams(prev => ({ ...prev, ...newParams }));
+  }, []);
+
+  const goToPage = useCallback((page: number) => {
+    updateParams({ page });
+  }, [updateParams]);
+
+  const setPage = useCallback((page: number) => {
+    updateParams({ page });
+  }, [updateParams]);
+
+  const setLimit = useCallback((limit: number) => {
+    updateParams({ limit, page: 1 }); // Reset to first page when changing limit
+  }, [updateParams]);
+
+  const setSearchTerm = useCallback((title: string) => {
+    updateParams({ title, page: 1 }); // Reset to first page when searching
+  }, [updateParams]);
+
+  const setInfluencerFilter = useCallback((influencer_name: string) => {
+    updateParams({ influencer_name, page: 1 }); // Reset to first page when filtering
+  }, [updateParams]);
+
+  const setHasListingsFilter = useCallback((has_listings?: boolean) => {
+    updateParams({ has_listings, page: 1 }); // Reset to first page when filtering
+  }, [updateParams]);
+
+  const setSortBy = useCallback((sort_by: string) => {
+    updateParams({ sort_by, page: 1 }); // Reset to first page when changing sort
+  }, [updateParams]);
+
+  const setSortOrder = useCallback((sort_order: 'asc' | 'desc') => {
+    updateParams({ sort_order, page: 1 }); // Reset to first page when changing sort order
+  }, [updateParams]);
+
+  useEffect(() => {
+    fetchVideos(params);
+  }, [params, fetchVideos]);
 
   return {
-    videos,
-    totalCount,
+    // Data properties
+    videos: data.videos,
+    totalCount: data.totalCount,
+    totalPages: data.totalPages,
     loading,
     error,
+    params,
+    
+    // Methods
     fetchVideos,
+    updateParams,
+    goToPage,
+    setPage,
+    setLimit,
+    setSearchTerm,
+    setInfluencerFilter,
+    setHasListingsFilter,
+    setSortBy,
+    setSortOrder,
     refetch: () => fetchVideos(params)
   };
 };
@@ -101,8 +185,8 @@ export const useCreateVideo = () => {
     try {
       const video = await adminVideoActions.createVideoFromUrl(data);
       return video;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || err.message || 'Failed to create video';
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to create video';
       setError(errorMessage);
       throw err;
     } finally {

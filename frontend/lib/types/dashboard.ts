@@ -143,14 +143,22 @@ export interface VideoFiltersProps {
   setSortOrder: (value: "asc" | "desc") => void;
   hasListings: boolean | undefined;
   setHasListings: (value: boolean | undefined) => void;
+  selectedInfluencer: string;
+  setSelectedInfluencer: (value: string) => void;
 }
 
 export interface VideoHeaderProps {
   onCreateClick: () => void;
+  selectedVideos?: Video[];
+  onProcessSelectedVideos?: () => void;
+  isProcessModalOpen?: boolean;
+  showSelection?: boolean;
+  onToggleSelection?: () => void;
 }
 
 export interface VideoTableProps {
   videos: Video[];
+  loading?: boolean;
   searchTerm: string;
   selectedInfluencer: string;
   hasListings: boolean | undefined;
@@ -164,6 +172,12 @@ export interface VideoTableProps {
   itemsPerPage: number;
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (value: number) => void;
+  // Selection props
+  selectedVideos?: Video[];
+  onVideoSelect?: (video: Video, selected: boolean) => void;
+  onSelectAll?: (selected: boolean) => void;
+  // Listings information
+  videoListingsCounts?: Record<string, number>;
 }
 
 // Listing management types

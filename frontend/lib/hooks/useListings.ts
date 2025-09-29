@@ -1,39 +1,51 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Listing, SearchParams } from '@/lib/types';
-import { listingActions } from '@/lib/actions';
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { Listing, SearchParams } from "@/lib/types";
+import { listingActions } from "@/lib/actions";
+import { AxiosError } from "axios";
 
 export const useListings = (params?: SearchParams) => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchListings = useCallback(async (searchParams?: SearchParams) => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await listingActions.getListings(searchParams || params);
-      setListings(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch listings');
-    } finally {
-      setLoading(false);
-    }
-  }, [params]);
+  // Memoize params to prevent infinite re-renders
+  const memoizedParams = useMemo(() => params, [params]);
+
+  const fetchListings = useCallback(
+    async (searchParams?: SearchParams) => {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await listingActions.getListings(
+          searchParams || memoizedParams
+        );
+        setListings(data);
+      } catch (err) {
+        console.log(err)
+        setError(
+          err instanceof AxiosError ? err?.response?.data?.details : "Failed to fetch listings"
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [memoizedParams]
+  );
 
   useEffect(() => {
-    if (params) {
+    if (memoizedParams) {
       fetchListings();
     }
-  }, [fetchListings, params]);
+  }, [fetchListings, memoizedParams]);
 
   return {
     listings,
     loading,
     error,
     fetchListings,
-    refetch: () => fetchListings(params)
+    refetch: () => fetchListings(memoizedParams),
   };
 };
 
@@ -44,14 +56,14 @@ export const useListing = (id: string) => {
 
   const fetchListing = useCallback(async () => {
     if (!id) return;
-    
+
     setLoading(true);
     setError(null);
     try {
       const data = await listingActions.getListing(id);
       setListing(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch listing');
+      setError(err instanceof Error ? err.message : "Failed to fetch listing");
     } finally {
       setLoading(false);
     }
@@ -65,7 +77,7 @@ export const useListing = (id: string) => {
     listing,
     loading,
     error,
-    refetch: fetchListing
+    refetch: fetchListing,
   };
 };
 
@@ -76,14 +88,18 @@ export const useRestaurantListings = (restaurantId: string) => {
 
   const fetchListings = useCallback(async () => {
     if (!restaurantId) return;
-    
+
     setLoading(true);
     setError(null);
     try {
       const data = await listingActions.getListingsByRestaurant(restaurantId);
       setListings(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch restaurant listings');
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to fetch restaurant listings"
+      );
     } finally {
       setLoading(false);
     }
@@ -97,7 +113,7 @@ export const useRestaurantListings = (restaurantId: string) => {
     listings,
     loading,
     error,
-    refetch: fetchListings
+    refetch: fetchListings,
   };
 };
 
@@ -108,14 +124,20 @@ export const useMostRecentListing = (influencerId: string) => {
 
   const fetchMostRecentListing = useCallback(async () => {
     if (!influencerId) return;
-    
+
     setLoading(true);
     setError(null);
     try {
-      const data = await listingActions.getMostRecentListingByInfluencer(influencerId);
+      const data = await listingActions.getMostRecentListingByInfluencer(
+        influencerId
+      );
       setListing(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch most recent listing');
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to fetch most recent listing"
+      );
     } finally {
       setLoading(false);
     }
@@ -129,7 +151,7 @@ export const useMostRecentListing = (influencerId: string) => {
     listing,
     loading,
     error,
-    refetch: fetchMostRecentListing
+    refetch: fetchMostRecentListing,
   };
 };
 
@@ -140,14 +162,18 @@ export const useInfluencerListings = (influencerId: string) => {
 
   const fetchListings = useCallback(async () => {
     if (!influencerId) return;
-    
+
     setLoading(true);
     setError(null);
     try {
       const data = await listingActions.getListingsByInfluencer(influencerId);
       setListings(data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch influencer listings');
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Failed to fetch influencer listings"
+      );
     } finally {
       setLoading(false);
     }
@@ -161,6 +187,6 @@ export const useInfluencerListings = (influencerId: string) => {
     listings,
     loading,
     error,
-    refetch: fetchListings
+    refetch: fetchListings,
   };
 };

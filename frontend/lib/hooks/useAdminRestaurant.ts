@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { adminApi } from '@/lib/api';
 import { Restaurant } from '@/lib/types';
 import { CreateRestaurantFormData } from '@/lib/validations/restaurant-create';
+import { AxiosError } from 'axios';
 
 interface RestaurantUpdateData {
   name?: string;
@@ -36,10 +37,11 @@ export function useAdminRestaurant() {
     try {
       const response = await adminApi.post<AdminRestaurantResponse>('/restaurants', data);
       return response.data;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || err.message || 'Failed to create restaurant';
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ detail: string }>;
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to create restaurant';
       setError(errorMessage);
-      throw err; // Re-throw to let the component handle the error display
+      throw error; // Re-throw to let the component handle the error display
     } finally {
       setLoading(false);
     }
@@ -56,8 +58,9 @@ export function useAdminRestaurant() {
       const response = await adminApi.patch<AdminRestaurantResponse>(`/restaurants/${restaurantId}`, data);
       toast.success('Restaurant updated successfully');
       return response.data;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || err.message || 'Failed to update restaurant';
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ detail: string }>;
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to update restaurant';
       setError(errorMessage);
       toast.error(errorMessage);
       return null;
@@ -74,8 +77,9 @@ export function useAdminRestaurant() {
       await adminApi.delete(`/restaurants/${restaurantId}`);
       toast.success('Restaurant deleted successfully');
       return true;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || err.message || 'Failed to delete restaurant';
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ detail: string }>;
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to delete restaurant';
       setError(errorMessage);
       toast.error(errorMessage);
       return false;
@@ -91,8 +95,9 @@ export function useAdminRestaurant() {
     try {
       const response = await adminApi.get<Restaurant>(`/restaurants/${restaurantId}`);
       return response.data;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || err.message || 'Failed to fetch restaurant';
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ detail: string }>;
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to fetch restaurant';
       setError(errorMessage);
       toast.error(errorMessage);
       return null;

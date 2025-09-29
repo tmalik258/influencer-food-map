@@ -1,9 +1,20 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { adminActions, Job, JobsSummary, JobCreateRequest, JobUpdateRequest } from '@/lib/actions/admin-actions';
+import { adminActions } from '@/lib/actions/admin-actions';
+import type { Job, JobsSummary, JobCreateRequest, JobUpdateRequest, JobAnalytics } from '@/lib/types/api';
 
-export const useJobs = () => {
+export const useJobs = (params?: {
+  status?: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  job_type?: 'scrape_youtube' | 'transcription_nlp';
+  started_by?: string;
+  sort_by?: 'created_at' | 'started_at' | 'completed_at' | 'progress' | 'status';
+  sort_order?: 'asc' | 'desc';
+  start_date?: string;
+  end_date?: string;
+  limit?: number;
+  offset?: number;
+}) => {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -12,14 +23,14 @@ export const useJobs = () => {
     setLoading(true);
     setError(null);
     try {
-      const data = await adminActions.getJobs();
+      const data = await adminActions.getJobs(params);
       setJobs(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch jobs');
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [params]);
 
   useEffect(() => {
     fetchJobs();
@@ -183,6 +194,34 @@ export const useJobActions = () => {
     }
   }, []);
 
+  const cancelJob = useCallback(async (jobId: string, reason?: string): Promise<Job | null> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const job = await adminActions.cancelJob(jobId, reason);
+      return job;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel job');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const requestJobCancellation = useCallback(async (jobId: string, reason?: string): Promise<Job | null> => {
+    setLoading(true);
+    setError(null);
+    try {
+      const job = await adminActions.requestJobCancellation(jobId, reason);
+      return job;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to request job cancellation');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     loading,
     error,
@@ -191,7 +230,95 @@ export const useJobActions = () => {
     startJob,
     completeJob,
     failJob,
-    updateJobProgress
+    updateJobProgress,
+    cancelJob,
+    requestJobCancellation
+  };
+};
+
+// New hooks for job analytics and metrics
+export const useJobAnalytics = () => {
+  const [analytics, setAnalytics] = useState<JobAnalytics | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchAnalytics = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await adminActions.getJobAnalytics();
+      setAnalytics(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch job analytics');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  return {
+    analytics,
+    loading,
+    error,
+    refetch: fetchAnalytics
+  };
+};
+
+export const useActiveJobs = () => {
+  const [activeJobs, setActiveJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchActiveJobs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await adminActions.getActiveJobs();
+      setActiveJobs(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch active jobs');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchActiveJobs();
+  }, [fetchActiveJobs]);
+
+  return {
+    activeJobs,
+    loading,
+    error,
+    refetch: fetchActiveJobs
+  };
+};
+
+export const useJobManagement = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const cleanupStaleJobs = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await adminActions.cleanupStaleJobs();
+      return result;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to cleanup stale jobs');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    loading,
+    error,
+    cleanupStaleJobs
   };
 };
 
@@ -199,11 +326,11 @@ export const useDataSync = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const triggerYouTubeScraping = useCallback(async () => {
+  const triggerYouTubeScraping = useCallback(async (videoIds?: string[]) => {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminActions.triggerYouTubeScraping();
+      const response = await adminActions.triggerYouTubeScraping(videoIds);
       return response;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to trigger YouTube scraping');
@@ -213,11 +340,11 @@ export const useDataSync = () => {
     }
   }, []);
 
-  const triggerNLPProcessing = useCallback(async () => {
+  const triggerNLPProcessing = useCallback(async (videoIds?: string[], triggerType: 'automatic' | 'manual' | 'system' = 'manual') => {
     setLoading(true);
     setError(null);
     try {
-      const response = await adminActions.triggerNLPProcessing();
+      const response = await adminActions.triggerNLPProcessing(videoIds, triggerType);
       return response;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to trigger NLP processing');

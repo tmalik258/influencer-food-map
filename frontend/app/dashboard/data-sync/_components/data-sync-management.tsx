@@ -6,13 +6,17 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Play, AlertCircle, CheckCircle, Clock } from "lucide-react";
-import { useJobs, useDataSync } from "@/lib/hooks";
+import { RefreshCw, Play, AlertCircle, CheckCircle, Clock, X, Activity, Timer, TrendingUp, BarChart3 } from "lucide-react";
+import { useJobs, useDataSync, useJobActions } from "@/lib/hooks";
 import DashboardLoadingSkeleton from "@/app/dashboard/_components/dashboard-loading-skeleton";
+import { JobAnalyticsDashboard } from "./job-analytics-dashboard";
+import JobsTable from "./jobs-table";
 
 import type { JobCardProps } from '@/lib/types';
 
-function JobCard({ job, onTrigger }: JobCardProps) {
+function JobCard({ job, onTrigger, cancelJob }: JobCardProps & { cancelJob: (jobId: string, reason?: string) => Promise<void> }) {
+  const [cancelling, setCancelling] = useState(false);
+
   const getStatusIcon = (status: string) => {
     switch (status) {
       case "completed":
@@ -41,6 +45,38 @@ function JobCard({ job, onTrigger }: JobCardProps) {
 
   const progress = job.total_items > 0 ? (job.processed_items / job.total_items) * 100 : 0;
 
+  const handleCancelJob = async () => {
+    setCancelling(true);
+    try {
+      await cancelJob(job.id, 'Cancelled by user from dashboard');
+      // Optionally trigger a refetch of jobs to update the UI
+    } catch (error) {
+      console.error('Failed to cancel job:', error);
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const formatDuration = (startTime?: string, endTime?: string) => {
+    if (!startTime) return 'Not started';
+    const start = new Date(startTime);
+    const end = endTime ? new Date(endTime) : new Date();
+    const duration = Math.floor((end.getTime() - start.getTime()) / 1000);
+    const minutes = Math.floor(duration / 60);
+    const seconds = duration % 60;
+    return `${minutes}m ${seconds}s`;
+  };
+
+  const formatEstimatedTime = (estimatedTime?: string) => {
+    if (!estimatedTime) return 'Unknown';
+    const estimated = new Date(estimatedTime);
+    const now = new Date();
+    const remaining = Math.max(0, Math.floor((estimated.getTime() - now.getTime()) / 1000));
+    const minutes = Math.floor(remaining / 60);
+    const seconds = remaining % 60;
+    return remaining > 0 ? `${minutes}m ${seconds}s remaining` : 'Completing...';
+  };
+
   return (
     <Card className="glass-effect backdrop-blur-xl bg-white/80 border border-orange-200/50 shadow-xl">
       <CardHeader className="pb-3">
@@ -67,6 +103,7 @@ function JobCard({ job, onTrigger }: JobCardProps) {
             </div>
           )}
           
+          {/* Enhanced Job Metrics */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
               <span className="text-gray-600 dark:text-gray-400">Started:</span>
@@ -75,12 +112,78 @@ function JobCard({ job, onTrigger }: JobCardProps) {
               </p>
             </div>
             <div>
-              <span className="text-gray-600 dark:text-gray-400">Completed:</span>
+              <span className="text-gray-600 dark:text-gray-400">Duration:</span>
               <p className="font-medium text-gray-900 dark:text-gray-100">
-                {job.completed_at ? new Date(job.completed_at).toLocaleString() : "Not completed"}
+                {formatDuration(job.started_at, job.completed_at)}
               </p>
             </div>
           </div>
+
+          {/* Advanced Tracking Info for Running Jobs */}
+          {job.status === "running" && (
+            <div className="space-y-3 p-3 bg-orange-50/50 border border-orange-200/50 rounded-md">
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                {job.queue_size !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-orange-600" />
+                    <span className="text-gray-600">Queue:</span>
+                    <span className="font-medium text-gray-900">{job.queue_size}</span>
+                  </div>
+                )}
+                {job.items_in_progress !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <RefreshCw className="h-4 w-4 text-orange-600" />
+                    <span className="text-gray-600">In Progress:</span>
+                    <span className="font-medium text-gray-900">{job.items_in_progress}</span>
+                  </div>
+                )}
+                {job.failed_items !== undefined && job.failed_items > 0 && (
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-red-500" />
+                    <span className="text-gray-600">Failed:</span>
+                    <span className="font-medium text-red-600">{job.failed_items}</span>
+                  </div>
+                )}
+                {job.processing_rate !== undefined && job.processing_rate !== null && (
+                  <div className="flex items-center gap-2">
+                    <TrendingUp className="h-4 w-4 text-green-600" />
+                    <span className="text-gray-600">Rate:</span>
+                    <span className="font-medium text-green-600">{typeof job.processing_rate === 'number' ? job.processing_rate.toFixed(1) : '0.0'}/min</span>
+                  </div>
+                )}
+              </div>
+              
+              {job.estimated_completion_time && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Timer className="h-4 w-4 text-blue-600" />
+                  <span className="text-gray-600">ETA:</span>
+                  <span className="font-medium text-blue-600">{formatEstimatedTime(job.estimated_completion_time)}</span>
+                </div>
+              )}
+              
+              {job.retry_count !== undefined && job.retry_count > 0 && (
+                <div className="text-sm text-amber-600">
+                  Retries: {job.retry_count}{job.max_retries ? `/${job.max_retries}` : ''}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Cancellation Status */}
+          {job.cancellation_requested && (
+            <div className="p-3 bg-red-50 border border-red-200 rounded-md">
+              <div className="flex items-center gap-2 text-sm text-red-800">
+                <X className="h-4 w-4" />
+                <span>Cancellation requested</span>
+                {job.cancelled_by && <span>by {job.cancelled_by}</span>}
+              </div>
+              {job.cancelled_at && (
+                <p className="text-xs text-red-600 mt-1">
+                  {new Date(job.cancelled_at).toLocaleString()}
+                </p>
+              )}
+            </div>
+          )}
 
           {job.error_message && (
             <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
@@ -88,15 +191,34 @@ function JobCard({ job, onTrigger }: JobCardProps) {
             </div>
           )}
 
-          {job.status !== "running" && (
-            <Button 
-              onClick={() => onTrigger(job.job_type)}
-              className="w-full bg-orange-600 hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-white"
-            >
-              <Play className="h-4 w-4 mr-2 text-white" />
-              Restart Job
-            </Button>
-          )}
+          {/* Action Buttons */}
+          <div className="flex gap-2">
+            {job.status === "running" && !job.cancellation_requested && (
+              <Button 
+                onClick={handleCancelJob}
+                disabled={cancelling}
+                variant="outline"
+                className="flex-1 border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300"
+              >
+                {cancelling ? (
+                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4 mr-2" />
+                )}
+                {cancelling ? 'Cancelling...' : 'Cancel Job'}
+              </Button>
+            )}
+            
+            {job.status !== "running" && (
+              <Button 
+                onClick={() => onTrigger(job.job_type)}
+                className="flex-1 bg-orange-600 hover:bg-orange-700 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-white"
+              >
+                <Play className="h-4 w-4 mr-2 text-white" />
+                Restart Job
+              </Button>
+            )}
+          </div>
         </div>
       </CardContent>
     </Card>
@@ -106,6 +228,7 @@ function JobCard({ job, onTrigger }: JobCardProps) {
 export function DataSyncManagement() {
   const { data: jobs, isLoading, error, refetch } = useJobs();
   const { triggerYouTubeScraping, triggerNLPProcessing } = useDataSync();
+  const { cancelJob } = useJobActions();
   const [triggering, setTriggering] = useState<string | null>(null);
 
   const handleTriggerJob = async (type: string) => {
@@ -183,17 +306,17 @@ export function DataSyncManagement() {
             <Button 
               onClick={() => handleTriggerJob("nlp_processing")}
               disabled={triggering === "nlp_processing"}
-              className="h-auto p-4 flex flex-col items-start glass-effect backdrop-blur-sm bg-white/70 border-orange-200/50 hover:bg-orange-50 focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-gray-900 dark:text-gray-100"
+              className="h-auto p-4 flex flex-col items-start shadow-lg bg-white/70 border-orange-200/50 hover:bg-orange-600 cursor-pointer focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-gray-900 hover:text-white dark:text-gray-100 group"
             >
               <div className="flex items-center gap-2 mb-2">
                 {triggering === "nlp_processing" ? (
                   <RefreshCw className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Play className="h-5 w-5 text-orange-600" />
+                  <Play className="h-5 w-5 text-orange-600 group-hover:text-white" />
                 )}
                 <span className="font-semibold">NLP Processing</span>
               </div>
-              <span className="text-sm text-gray-600 dark:text-gray-400 text-left">
+              <span className="text-sm text-gray-600 group-hover:text-orange-100 dark:text-gray-400 text-left">
                 Process video content and extract insights
               </span>
             </Button>
@@ -201,9 +324,13 @@ export function DataSyncManagement() {
         </CardContent>
       </Card>
 
-      {/* Job Status Tabs */}
-      <Tabs defaultValue="running" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3 glass-effect backdrop-blur-sm bg-white/70 border border-orange-200/50">
+      {/* Job Status and Analytics Tabs */}
+      <Tabs defaultValue="all" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5 glass-effect backdrop-blur-sm bg-white/70 border border-orange-200/50">
+          <TabsTrigger value="all" className="flex items-center gap-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white">
+            <Activity className="h-4 w-4 text-orange-600 data-[state=active]:text-white" />
+            All Jobs ({jobs?.length || 0})
+          </TabsTrigger>
           <TabsTrigger value="running" className="flex items-center gap-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white">
             <RefreshCw className="h-4 w-4 text-orange-600 data-[state=active]:text-white" />
             Running ({runningJobs.length})
@@ -216,7 +343,15 @@ export function DataSyncManagement() {
             <AlertCircle className="h-4 w-4 text-orange-600 data-[state=active]:text-white" />
             Failed ({failedJobs.length})
           </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center gap-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white">
+            <BarChart3 className="h-4 w-4 text-orange-600 data-[state=active]:text-white" />
+            Analytics
+          </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="all" className="space-y-4">
+          <JobsTable jobs={jobs || []} onRefresh={refetch} />
+        </TabsContent>
 
         <TabsContent value="running" className="space-y-4">
           {runningJobs.length === 0 ? (
@@ -227,7 +362,7 @@ export function DataSyncManagement() {
             </Card>
           ) : (
             runningJobs.map(job => (
-              <JobCard key={job.id} job={job} onTrigger={handleTriggerJob} />
+              <JobCard key={job.id} job={job} onTrigger={handleTriggerJob} cancelJob={async (jobId, reason) => { await cancelJob(jobId, reason); }} />
             ))
           )}
         </TabsContent>
@@ -241,7 +376,7 @@ export function DataSyncManagement() {
             </Card>
           ) : (
             completedJobs.map(job => (
-              <JobCard key={job.id} job={job} onTrigger={handleTriggerJob} />
+              <JobCard key={job.id} job={job} onTrigger={handleTriggerJob} cancelJob={async (jobId, reason) => { await cancelJob(jobId, reason); }} />
             ))
           )}
         </TabsContent>
@@ -255,9 +390,13 @@ export function DataSyncManagement() {
             </Card>
           ) : (
             failedJobs.map(job => (
-              <JobCard key={job.id} job={job} onTrigger={handleTriggerJob} />
+              <JobCard key={job.id} job={job} onTrigger={handleTriggerJob} cancelJob={async (jobId, reason) => { await cancelJob(jobId, reason); }} />
             ))
           )}
+        </TabsContent>
+
+        <TabsContent value="analytics" className="space-y-4">
+          <JobAnalyticsDashboard />
         </TabsContent>
       </Tabs>
     </div>

@@ -23,7 +23,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { DatePicker } from "@/components/ui/date-picker";
-import { Loader2, Video, Calendar, FileText, Link, Type } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Loader2, Video, Calendar, FileText, Link, Type, List } from "lucide-react";
 import { toast } from "sonner";
 import { Video as VideoType } from "@/lib/types";
 import {
@@ -31,8 +33,8 @@ import {
   UpdateVideoFormData,
   defaultVideoEditFormValues,
 } from "@/lib/validations/video";
-import { videoActions } from "@/lib/actions/video-actions";
 import { adminVideoActions } from "@/lib/actions/admin-video-actions";
+import { VideoListingsTab } from "./video-listings-tab";
 
 interface EditVideoModalProps {
   video: VideoType | null;
@@ -109,8 +111,8 @@ export default function EditVideoModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px] glass-effect backdrop-blur-xl bg-white/95 dark:bg-gray-900/95 border border-white/20 dark:border-gray-700/30">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-[600px] max-h-[80vh] flex flex-col glass-effect backdrop-blur-xl bg-white/95 dark:bg-gray-900/95 border border-white/20 dark:border-gray-700/30 overflow-auto">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="text-gray-900 dark:text-white">
             Edit Video
           </DialogTitle>
@@ -124,151 +126,175 @@ export default function EditVideoModal({
           </div>
         ) : (
           <>
-            <DialogDescription>
-              Update the video information. All fields are optional - only
-              modify what you need to change.
+            <DialogDescription className="flex-shrink-0">
+              Update the video information and view associated listings.
             </DialogDescription>
 
-            <Form {...form}>
-              <form
-                onSubmit={form.handleSubmit(onSubmit)}
-                className="space-y-6"
-              >
-                <div className="grid gap-4">
-                  {/* Title Field */}
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Type className="h-4 w-4" />
-                          Title
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            className="w-full bg-white shadow-md"
-                            placeholder="Enter video title"
-                            {...field}
-                            disabled={loading}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+            <Tabs defaultValue="edit" className="flex flex-col h-full">
+              <TabsList className="grid w-full grid-cols-2 mb-4">
+                <TabsTrigger value="edit" className="flex items-center gap-2">
+                  <Video className="h-4 w-4" />
+                  Video Edit Form
+                </TabsTrigger>
+                <TabsTrigger value="listings" className="flex items-center gap-2">
+                  <List className="h-4 w-4" />
+                  Listings
+                </TabsTrigger>
+              </TabsList>
 
-                  {/* Description Field */}
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          Description
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Enter video description (optional)"
-                            className="min-h-[100px] resize-none w-full bg-white shadow-md"
-                            {...field}
-                            disabled={loading}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+              <TabsContent value="edit" className="flex-1 flex flex-col">
+                <Card className="bg-white shadow-sm flex-1 flex flex-col">
+                  <CardContent className="pt-6 flex-1 flex flex-col">
+                    <Form {...form}>
+                      <form
+                        onSubmit={form.handleSubmit(onSubmit)}
+                        className="flex flex-col h-full"
+                      >
+                        <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+                          <div className="grid gap-4">
+                            {/* Title Field */}
+                            <FormField
+                              control={form.control}
+                              name="title"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    <Type className="h-4 w-4" />
+                                    Title
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      className="w-full bg-white shadow-md"
+                                      placeholder="Enter video title"
+                                      {...field}
+                                      disabled={loading}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                  {/* Video URL Field */}
-                  <FormField
-                    control={form.control}
-                    name="video_url"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Link className="h-4 w-4" />
-                          Video URL
-                        </FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="https://www.youtube.com/watch?v=..."
-                            {...field}
-                            className="w-full bg-white shadow-md"
-                            disabled={loading}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                            {/* Description Field */}
+                            <FormField
+                              control={form.control}
+                              name="description"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4" />
+                                    Description
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Textarea
+                                      placeholder="Enter video description (optional)"
+                                      className="min-h-[100px] resize-none w-full bg-white shadow-md"
+                                      {...field}
+                                      disabled={loading}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                  {/* Published Date Field */}
-                  <FormField
-                    control={form.control}
-                    name="published_at"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <Calendar className="h-4 w-4" />
-                          Published Date
-                        </FormLabel>
-                        <FormControl>
-                          <DatePicker
-                            date={field.value || undefined}
-                            onDateChange={field.onChange}
-                            placeholder="Select published date"
-                            disabled={loading}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                            {/* Video URL Field */}
+                            <FormField
+                              control={form.control}
+                              name="video_url"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    <Link className="h-4 w-4" />
+                                    Video URL
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Input
+                                      placeholder="https://www.youtube.com/watch?v=..."
+                                      {...field}
+                                      className="w-full bg-white shadow-md"
+                                      disabled={loading}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                  {/* Transcription Field */}
-                  <FormField
-                    control={form.control}
-                    name="transcription"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel className="flex items-center gap-2">
-                          <FileText className="h-4 w-4" />
-                          Transcription
-                        </FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Enter video transcription (optional)"
-                            className="min-h-[120px] resize-none w-full bg-white shadow-md"
-                            {...field}
-                            disabled={loading}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
+                            {/* Published Date Field */}
+                            <FormField
+                              control={form.control}
+                              name="published_at"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    <Calendar className="h-4 w-4" />
+                                    Published Date
+                                  </FormLabel>
+                                  <FormControl>
+                                    <DatePicker
+                                      date={field.value || undefined}
+                                      onDateChange={field.onChange}
+                                      placeholder="Select published date"
+                                      disabled={loading}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
 
-                <DialogFooter className="gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={handleCancel}
-                    disabled={loading}
-                  >
-                    Cancel
-                  </Button>
-                  <Button type="submit" disabled={loading}>
-                    {loading && (
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    )}
-                    Update Video
-                  </Button>
-                </DialogFooter>
-              </form>
-            </Form>
+                            {/* Transcription Field */}
+                            <FormField
+                              control={form.control}
+                              name="transcription"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel className="flex items-center gap-2">
+                                    <FileText className="h-4 w-4" />
+                                    Transcription
+                                  </FormLabel>
+                                  <FormControl>
+                                    <Textarea
+                                      placeholder="Enter video transcription (optional)"
+                                      className="min-h-[120px] resize-none w-full bg-white shadow-md"
+                                      {...field}
+                                      disabled={loading}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex-shrink-0 gap-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={handleCancel}
+                            disabled={loading}
+                          >
+                            Cancel
+                          </Button>
+                          <Button type="submit" disabled={loading}>
+                            {loading && (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            )}
+                            Update Video
+                          </Button>
+                        </div>
+                      </form>
+                    </Form>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="listings" className="flex-1 overflow-y-auto">
+                <VideoListingsTab videoId={video.id} />
+              </TabsContent>
+            </Tabs>
           </>
         )}
       </DialogContent>

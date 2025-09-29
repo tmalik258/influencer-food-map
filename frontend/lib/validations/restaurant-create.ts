@@ -47,7 +47,7 @@ export const createRestaurantSchema = z.object({
         message: "Country name contains invalid characters. Only letters, spaces, and common punctuation are allowed.",
       }
     )
-    .default("USA"),
+    .optional()
 });
 
 // Type inference

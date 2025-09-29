@@ -1,99 +1,94 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Video } from '@/lib/types';
-import { useVideos } from '@/lib/hooks/useVideos';
-import { Button } from '@/components/ui/button';
-import { Play } from 'lucide-react';
-import { VideoHeader } from './video-header';
-import { VideoFilters } from './video-filters';
-import { VideoTable } from './video-table';
-import { VideoCreateForm } from './video-create-form';
-import EditVideoModal from './edit-video-modal';
-import { VideoDeleteDialog } from './video-delete-dialog';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useRouter } from 'next/navigation';
+import { useState } from "react";
+import { Video } from "@/lib/types";
+import { useVideos } from "@/lib/hooks/useVideos";
+import { useDataSync } from "@/lib/hooks/useAdmin";
+import { Button } from "@/components/ui/button";
+import { Play } from "lucide-react";
+import { VideoHeader } from "./video-header";
+import { VideoFilters } from "./video-filters";
+import { VideoTable } from "./video-table";
+import { VideoCreateFormModal } from "./video-create-form";
+import EditVideoModal from "./edit-video-modal";
+import { VideoDeleteDialog } from "./video-delete-dialog";
+import { VideoProcessModal } from "./video-process-modal";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 export default function VideoManagement() {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState('created_at');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
-  const [selectedInfluencer, setSelectedInfluencer] = useState<string>('');
-  const [hasListings, setHasListings] = useState<boolean | undefined>(undefined);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedVideo, setSelectedVideo] = useState<Video | null>(null);
-  
-  // Pagination state
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
-  const [totalItems, setTotalItems] = useState(0);
-  
-  const router = useRouter();
+  const [selectedVideos, setSelectedVideos] = useState<Video[]>([]);
+  const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
+  const [processing, setProcessing] = useState(false);
 
-  const { videos, totalCount, loading, error, fetchVideos } = useVideos({
-    title: searchTerm || undefined,
-    influencer_name: selectedInfluencer || undefined,
-    has_listings: hasListings,
-    skip: (currentPage - 1) * itemsPerPage,
-    limit: itemsPerPage
+  const { triggerNLPProcessing } = useDataSync();
+
+  const {
+    videos,
+    totalCount,
+    loading,
+    error,
+    params,
+    setPage,
+    setLimit,
+    setSearchTerm,
+    setInfluencerFilter,
+    setHasListingsFilter,
+    setSortBy,
+    setSortOrder,
+    refetch,
+  } = useVideos({
+    page: 1,
+    limit: 10,
+    sort_by: "published_at",
+    sort_order: "desc",
   });
 
-  useEffect(() => {
-    fetchVideos();
-  }, [fetchVideos]);
-
-  useEffect(() => {
-    // Update total items count from the API response
-    setTotalItems(totalCount);
-  }, [totalCount]);
-
   const refreshVideos = () => {
-    fetchVideos();
+    refetch();
   };
 
   // Handle pagination changes
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
   };
 
   const handleItemsPerPageChange = (newItemsPerPage: number) => {
-    setItemsPerPage(newItemsPerPage);
-    setCurrentPage(1); // Reset to first page when changing items per page
+    setLimit(newItemsPerPage);
   };
 
-  // Filter and sort videos (now handled server-side with pagination)
-  const displayVideos = videos
-    .sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+  // Handle filter changes
+  const handleSearchChange = (searchTerm: string) => {
+    setSearchTerm(searchTerm);
+  };
 
-      switch (sortBy) {
-        case 'title':
-          aValue = a.title.toLowerCase();
-          bValue = b.title.toLowerCase();
-          break;
-        case 'published_at':
-          aValue = new Date(a.published_at || 0);
-          bValue = new Date(b.published_at || 0);
-          break;
-        case 'created_at':
-        default:
-          aValue = new Date(a.created_at);
-          bValue = new Date(b.created_at);
-          break;
-      }
+  const handleInfluencerChange = (influencer: string) => {
+    setInfluencerFilter(influencer);
+  };
 
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1;
-      } else {
-        return aValue < bValue ? 1 : -1;
-      }
-    });
+  const handleHasListingsChange = (hasListings: boolean | undefined) => {
+    setHasListingsFilter(hasListings);
+  };
+
+  const handleSortChange = (sortBy: string) => {
+    setSortBy(sortBy);
+  };
+
+  const handleSortOrderChange = (sortOrder: "asc" | "desc") => {
+    setSortOrder(sortOrder);
+  };
 
   const handleViewVideo = (video: Video) => {
-    window.open(video.video_url, '_blank');
+    window.open(video.video_url, "_blank");
   };
 
   const handleEditVideo = (video: Video) => {
@@ -106,93 +101,191 @@ export default function VideoManagement() {
     setIsDeleteDialogOpen(true);
   };
 
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-8 bg-gray-200 rounded animate-pulse" />
-        <div className="grid gap-4">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="h-32 bg-gray-200 rounded animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
+  // Handle video selection
+  const handleVideoSelect = (video: Video, selected: boolean) => {
+    setSelectedVideos((prev) => {
+      if (selected) {
+        // Add video to selection
+        return [...prev, video];
+      } else {
+        // Remove video from selection
+        return prev.filter((v) => v !== video);
+      }
+    });
+  };
+
+  const handleSelectAll = (selected: boolean) => {
+    setSelectedVideos((prev) => {
+      if (selected) {
+        // Add all videos from current page to selection
+        return [...prev, ...videos];
+      } else {
+        // Remove all videos from current page from selection
+        return prev.filter((v) => !videos.includes(v));
+      }
+    });
+  };
+
+  const handleProcessSelectedVideos = () => {
+    setIsProcessModalOpen(true);
+  };
+
+  const handleRemoveVideoFromSelection = (video: Video) => {
+    setSelectedVideos((prev) => {
+      // Remove video from selection
+      return prev.filter((v) => v !== video);
+    });
+  };
+
+  const handleAddVideoToSelection = (video: Video) => {
+    setSelectedVideos((prev) => {
+      // Add video to selection
+      return [...prev, video];
+    });
+  };
+
+  const handleProcessVideos = async () => {
+    setProcessing(true);
+    try {
+      const videoIds = selectedVideos.map((video) => video.id);
+      const response = await triggerNLPProcessing(videoIds);
+
+      if (response) {
+        setSelectedVideos([]);
+        setIsProcessModalOpen(false);
+        toast.success("Process Initiated", {
+          description: "Video processing has started successfully.",
+        });
+      } else {
+        toast.error("Processing Failed", {
+          description: "Failed to initiate video processing.",
+        });
+      }
+    } catch (error) {
+      console.error("Error processing videos:", error);
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "An unknown error occurred during processing.";
+      toast.error("Processing Error", {
+        description: errorMessage,
+      });
+    } finally {
+      setProcessing(false);
+    }
+  };
 
   if (error) {
     return (
       <div className="text-center py-12 glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 rounded-xl">
         <div className="text-orange-600 mb-4">
           <Play className="w-12 h-12 mx-auto mb-2" />
-          <p className="text-lg font-semibold text-gray-900 dark:text-white">Error loading videos</p>
+          <p className="text-lg font-semibold text-gray-900 dark:text-white">
+            Error loading videos
+          </p>
           <p className="text-sm text-gray-600 dark:text-gray-300">{error}</p>
         </div>
-        <Button onClick={() => fetchVideos()} variant="outline" className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-200">
+        <Button
+          onClick={() => refetch()}
+          variant="outline"
+          className="border-orange-500 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-200"
+        >
           Try Again
         </Button>
       </div>
     );
   }
 
+  // Get selected videos for the process modal
+  const selectedVideosArray = Array.from(selectedVideos);
+
   const clearFilters = () => {
-    setSearchTerm('');
-    setSelectedInfluencer('');
-    setHasListings(undefined);
-    setCurrentPage(1); // Reset to first page when clearing filters
+    setSearchTerm("");
+    setInfluencerFilter("");
+    setHasListingsFilter(undefined);
+    setPage(1); // Reset to first page when clearing filters
   };
 
   return (
     <div className="space-y-6 dark:bg-black rounded-lg p-6">
-      <VideoHeader onCreateClick={() => setIsCreateModalOpen(true)} />
-      
-      <VideoFilters
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        sortBy={sortBy}
-        setSortBy={setSortBy}
-        sortOrder={sortOrder}
-        setSortOrder={setSortOrder}
-        hasListings={hasListings}
-        setHasListings={setHasListings}
+      <VideoHeader
+        onCreateClick={() => setIsCreateModalOpen(true)}
+        selectedVideos={selectedVideosArray}
+        onProcessSelectedVideos={handleProcessSelectedVideos}
+        isProcessModalOpen={isProcessModalOpen}
+        showSelection={selectedVideosArray.length > 0}
       />
-      
+
+      <VideoFilters
+        searchTerm={params.title || ""}
+        setSearchTerm={handleSearchChange}
+        sortBy={params.sort_by || "created_at"}
+        setSortBy={handleSortChange}
+        sortOrder={params.sort_order || "desc"}
+        setSortOrder={handleSortOrderChange}
+        selectedInfluencer={params.influencer_name || ""}
+        setSelectedInfluencer={handleInfluencerChange}
+        hasListings={params.has_listings}
+        setHasListings={handleHasListingsChange}
+      />
+
       <VideoTable
-        videos={displayVideos}
-        searchTerm={searchTerm}
-        selectedInfluencer={selectedInfluencer}
-        hasListings={hasListings}
+        videos={videos}
+        loading={loading}
+        searchTerm={params.title || ""}
+        selectedInfluencer={params.influencer_name || ""}
+        hasListings={params.has_listings}
         onViewVideo={handleViewVideo}
         onEditVideo={handleEditVideo}
         onDeleteVideo={handleDeleteVideo}
         onClearFilters={clearFilters}
-        currentPage={currentPage}
-        totalItems={totalItems}
-        itemsPerPage={itemsPerPage}
+        currentPage={params.page || 1}
+        totalItems={totalCount}
+        itemsPerPage={params.limit || 10}
         onPageChange={handlePageChange}
         onItemsPerPageChange={handleItemsPerPageChange}
+        selectedVideos={selectedVideosArray}
+        onVideoSelect={handleVideoSelect}
+        onSelectAll={handleSelectAll}
       />
 
-      <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-        <DialogContent className="sm:max-w-[600px] glass-effect backdrop-blur-xl bg-white/95 dark:bg-gray-900/95 border border-white/20 dark:border-gray-700/30">
-          <DialogHeader>
-            <DialogTitle className="text-gray-900 dark:text-white">Create New Video</DialogTitle>
-          </DialogHeader>
-          <VideoCreateForm onSuccess={() => { refreshVideos(); setIsCreateModalOpen(false); }} />
-        </DialogContent>
-      </Dialog>
+      <VideoCreateFormModal
+        isCreateModalOpen={isCreateModalOpen}
+        setIsCreateModalOpen={setIsCreateModalOpen}
+        onSuccess={() => {
+          refreshVideos();
+          setIsCreateModalOpen(false);
+        }}
+      />
 
       <EditVideoModal
         isOpen={isEditModalOpen}
         onClose={() => setIsEditModalOpen(false)}
         video={selectedVideo}
-        onSuccess={() => { refreshVideos(); setIsEditModalOpen(false); }}
+        onSuccess={() => {
+          refreshVideos();
+          setIsEditModalOpen(false);
+        }}
       />
 
       <VideoDeleteDialog
         isOpen={isDeleteDialogOpen}
         onClose={() => setIsDeleteDialogOpen(false)}
         video={selectedVideo}
-        onSuccess={() => { refreshVideos(); setIsDeleteDialogOpen(false); }}
+        onSuccess={() => {
+          refreshVideos();
+          setIsDeleteDialogOpen(false);
+        }}
+      />
+
+      <VideoProcessModal
+        isOpen={isProcessModalOpen}
+        onClose={() => setIsProcessModalOpen(false)}
+        selectedVideos={selectedVideosArray}
+        onRemoveVideo={handleRemoveVideoFromSelection}
+        onAddVideo={handleAddVideoToSelection}
+        onProcessVideos={handleProcessVideos}
+        processing={processing}
       />
     </div>
   );

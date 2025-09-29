@@ -12,10 +12,11 @@ from googleapiclient.http import HttpRequest
 
 from sqlalchemy.orm import Session
 
-from app.models import Influencer, Video
+from app.models import Influencer, Video, JobStatus
 from app.config import REDIS_URL, YOUTUBE_API_KEY, INFLUENCER_CHANNELS, SCRAPE_YOUTUBE_LOCK
 from app.utils.logging import setup_logger
 from app.services.jobs import JobService
+from app.api_schema.jobs import JobUpdateRequest
 # from app.utils.country_utils import normalize_region_to_country_info
 
 # Setup logging
@@ -342,7 +343,7 @@ def scrape_youtube(db: Session, job_id: Optional[uuid.UUID] = None):
                         remaining_items = total_channels - processed_channels
                         estimated_minutes = remaining_items / processing_rate
                         estimated_completion = datetime.now() + timedelta(minutes=estimated_minutes)
-                        JobService.update_job_sync(db, job_id, estimated_completion_time=estimated_completion)
+                        JobService.update_job_sync(db, job_id, job_data=JobUpdateRequest(estimated_completion_time=estimated_completion))
                 
             except Exception as channel_error:
                 logger.error(f"Error processing channel {channel['name']}: {channel_error}")
@@ -362,7 +363,12 @@ def scrape_youtube(db: Session, job_id: Optional[uuid.UUID] = None):
                 "failed_channels": failed_channels,
                 "processing_time_minutes": (time.time() - start_time) / 60
             }
-            JobService.update_job_sync(db, job_id, result_data=json.dumps(result_data))
+            job_data = JobUpdateRequest(
+                result_data=json.dumps(result_data),
+                status=JobStatus.COMPLETED,
+                completed_at=datetime.now()
+            )
+            JobService.update_job_sync(db, job_id, job_data)
             
     except Exception as e:
         logger.error(f"Error in scraper: {e}")

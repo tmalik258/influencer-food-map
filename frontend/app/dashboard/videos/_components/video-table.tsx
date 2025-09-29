@@ -1,17 +1,19 @@
 'use client';
 
-import { Video } from '@/lib/types';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Calendar, User, Eye, Edit, Trash2, Clock, Play } from 'lucide-react';
 
 import type { VideoTableProps } from '@/lib/types';
-import { VideoPagination } from './video-pagination';
+import { CustomPagination } from '@/components/custom-pagination';
 
 export function VideoTable({
   videos,
+  loading = false,
   searchTerm,
   selectedInfluencer,
   hasListings,
@@ -24,8 +26,97 @@ export function VideoTable({
   totalItems,
   itemsPerPage,
   onPageChange,
-  onItemsPerPageChange
+  onItemsPerPageChange,
+  // Selection props
+  selectedVideos = [],
+  onVideoSelect,
+  onSelectAll,
 }: VideoTableProps) {
+  // Determine if selection mode is active based on whether any videos are selected
+  const isSelectionActive = selectedVideos.length > 0;
+  // Loading skeleton for table content
+  const renderLoadingSkeleton = () => (
+    <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 p-0">
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {isSelectionActive && <TableHead className="w-12">Select</TableHead>}
+              <TableHead>Video</TableHead>
+              <TableHead>Title & Description</TableHead>
+              <TableHead>Influencer</TableHead>
+              <TableHead>Published</TableHead>
+              <TableHead>Created</TableHead>
+              <TableHead>Total Listings</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {Array.from({ length: itemsPerPage || 10 }).map((_, index) => (
+              <TableRow key={index} className="border-b border-white/10 dark:border-gray-700/30">
+                {isSelectionActive && (
+                  <TableCell>
+                    <Skeleton className="w-4 h-4" />
+                  </TableCell>
+                )}
+                <TableCell>
+                  <Skeleton className="w-32 h-18 rounded-lg" />
+                </TableCell>
+                <TableCell className="max-w-[300px]">
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                    <div className="flex gap-2">
+                      <Skeleton className="h-5 w-16" />
+                      <Skeleton className="h-5 w-20" />
+                    </div>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-24" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-20" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-20" />
+                </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-20" />
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex items-center justify-end gap-2">
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                    <Skeleton className="h-8 w-8" />
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+
+  // Show loading state
+  if (loading) {
+    return (
+      <>
+        {renderLoadingSkeleton()}
+        <CustomPagination
+          currentPage={currentPage || 1}
+          totalItems={totalItems || 0}
+          itemsPerPage={itemsPerPage || 10}
+          onPageChange={onPageChange || (() => {})}
+          onItemsPerPageChange={onItemsPerPageChange || (() => {})}
+          loading={true}
+        />
+      </>
+    );
+  }
+
+  // Show empty state
   if (videos.length === 0) {
     return (
       <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30">
@@ -50,6 +141,7 @@ export function VideoTable({
     );
   }
 
+  // Show videos table
   return (
     <>
       <Card className="glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30 p-0">
@@ -57,17 +149,43 @@ export function VideoTable({
           <Table>
             <TableHeader>
               <TableRow>
+                {isSelectionActive && (
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={videos.length > 0 && videos.every(video => selectedVideos.includes(video))}
+                      onCheckedChange={(checked) => onSelectAll?.(!!checked)}
+                      aria-label="Select all videos"
+                    />
+                  </TableHead>
+                )}
                 <TableHead>Video</TableHead>
                 <TableHead>Title & Description</TableHead>
                 <TableHead>Influencer</TableHead>
                 <TableHead>Published</TableHead>
                 <TableHead>Created</TableHead>
+                <TableHead>Total Listings</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {videos.map((video) => (
-                <TableRow key={video.id} className="cursor-pointer hover:bg-orange-50/50 dark:hover:bg-orange-900/20 border-b border-white/10 dark:border-gray-700/30 transition-all duration-200">
+                <TableRow 
+                  key={video.id} 
+                  className="hover:bg-orange-50/50 dark:hover:bg-orange-900/20 border-b border-white/10 dark:border-gray-700/30 transition-all duration-200 cursor-pointer"
+                  onClick={(e) => {
+                    // Toggle the selection state
+                    onVideoSelect?.(video, !selectedVideos.includes(video));
+                  }}
+                >
+                  {isSelectionActive && (
+                    <TableCell onClick={(e) => e.stopPropagation()}>
+                      <Checkbox
+                        checked={selectedVideos.includes(video)}
+                        onCheckedChange={(checked) => onVideoSelect?.(video, !!checked)}
+                        aria-label={`Select video ${video.title}`}
+                      />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <div className="w-32 h-18 bg-gray-100 rounded-lg overflow-hidden">
                       <iframe
@@ -120,7 +238,14 @@ export function VideoTable({
                       <span>{new Date(video.created_at).toLocaleDateString()}</span>
                     </div>
                   </TableCell>
-                  <TableCell className="text-right">
+                  <TableCell>
+                    <div className="flex items-center gap-1 text-sm">
+                      <span className="text-gray-900 dark:text-white font-medium">
+                        {video.listings_count || 0}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                     <div className="flex items-center justify-end gap-2">
                       <Button
                         variant="ghost"
@@ -161,14 +286,15 @@ export function VideoTable({
         </CardContent>
       </Card>
 
-      {/* Pagination */}
+      {/* Pagination - show when has items */}
       {totalItems && totalItems > 0 && (
-        <VideoPagination
+        <CustomPagination
           currentPage={currentPage || 1}
           totalItems={totalItems}
           itemsPerPage={itemsPerPage || 10}
           onPageChange={onPageChange || (() => {})}
           onItemsPerPageChange={onItemsPerPageChange || (() => {})}
+          loading={false}
         />
       )}
     </>

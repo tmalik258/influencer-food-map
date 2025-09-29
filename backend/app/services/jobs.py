@@ -21,6 +21,7 @@ class JobService:
             total_items=job_data.total_items,
             started_by=job_data.started_by,
             redis_lock_key=job_data.redis_lock_key,
+            trigger_type=job_data.trigger_type,
             status=JobStatus.PENDING
         )
         db.add(job)
@@ -38,6 +39,7 @@ class JobService:
             total_items=job_data.total_items,
             started_by=job_data.started_by,
             redis_lock_key=job_data.redis_lock_key,
+            trigger_type=job_data.trigger_type,
             status=JobStatus.PENDING
         )
         db.add(job)

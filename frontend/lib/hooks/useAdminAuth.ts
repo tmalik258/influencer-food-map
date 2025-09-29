@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 
@@ -31,7 +31,7 @@ export function useAdminAuth(): UseAdminAuthReturn {
     return localStorage.getItem("admin_token") || localStorage.getItem("token");
   };
 
-  const checkAuth = async () => {
+  const checkAuth = useCallback(async () => {
     setIsLoading(true);
     try {
       const token = getAuthToken();
@@ -60,20 +60,20 @@ export function useAdminAuth(): UseAdminAuthReturn {
         localStorage.removeItem("token");
         localStorage.removeItem("admin_token");
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Auth check failed:", error);
       setIsAuthenticated(false);
       setUser(null);
       
       // Clear invalid token
-      if (error.response?.status === 401) {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
         localStorage.removeItem("token");
         localStorage.removeItem("admin_token");
       }
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
 
   const logout = () => {
     localStorage.removeItem("token");
@@ -85,7 +85,7 @@ export function useAdminAuth(): UseAdminAuthReturn {
 
   useEffect(() => {
     checkAuth();
-  }, []);
+  }, [checkAuth]);
 
   // Redirect to login if not authenticated (only after loading is complete)
   useEffect(() => {

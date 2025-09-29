@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 
 from app.models.job import JobStatus, JobType
 from app.database import get_async_db, get_db
@@ -15,40 +14,13 @@ from app.api_schema.jobs import (
     JobResponse,
     JobListResponse,
     JobCreateRequest,
-    JobUpdateRequest
+    JobUpdateRequest,
+    CancelJobRequest,
+    TrackingStatsRequest,
+    JobAnalyticsResponse,
+    ActiveJobsResponse,
+    CleanupStaleJobsResponse
 )
-
-class CancelJobRequest(BaseModel):
-    reason: Optional[str] = None
-
-class TrackingStatsRequest(BaseModel):
-    queue_size: Optional[int] = None
-    items_in_progress: Optional[int] = None
-    failed_items: Optional[int] = None
-    processing_rate: Optional[float] = None
-    estimated_completion_time: Optional[datetime] = None
-
-class JobAnalyticsResponse(BaseModel):
-    completion_rates_by_type: dict
-    average_processing_times: dict
-    success_failure_ratios: dict
-    processing_rate_statistics: dict
-    queue_metrics: dict
-    total_jobs: int
-    period_analyzed: str
-
-class ActiveJobsResponse(BaseModel):
-    active_jobs: List[JobResponse]
-    total_active: int
-    jobs_with_cancellation_requests: int
-    average_progress: float
-    total_queue_size: int
-    total_items_in_progress: int
-
-class CleanupStaleJobsResponse(BaseModel):
-    cleaned_jobs: List[JobResponse]
-    total_cleaned: int
-    threshold_minutes: int
 
 router = APIRouter()
 
@@ -153,7 +125,7 @@ async def get_jobs(
     
     return jobs
 
-@router.get("/{job_id}", response_model=JobResponse)
+@router.get("/{job_id}/", response_model=JobResponse)
 async def get_job(
     job_id: UUID,
     db: AsyncSession = Depends(get_async_db),
@@ -178,7 +150,7 @@ async def create_job(
     job = await JobService.create_job(db, job_data)
     return job
 
-@router.put("/{job_id}", response_model=JobResponse)
+@router.put("/{job_id}/", response_model=JobResponse)
 async def update_job(
     job_id: UUID,
     job_data: JobUpdateRequest,
@@ -191,7 +163,7 @@ async def update_job(
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
-@router.post("/{job_id}/start", response_model=JobResponse)
+@router.post("/{job_id}/start/", response_model=JobResponse)
 async def start_job(
     job_id: UUID,
     db: AsyncSession = Depends(get_async_db),
@@ -203,7 +175,7 @@ async def start_job(
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
-@router.post("/{job_id}/complete", response_model=JobResponse)
+@router.post("/{job_id}/complete/", response_model=JobResponse)
 async def complete_job(
     job_id: UUID,
     result_data: Optional[str] = None,
@@ -216,7 +188,7 @@ async def complete_job(
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
-@router.post("/{job_id}/fail", response_model=JobResponse)
+@router.post("/{job_id}/fail/", response_model=JobResponse)
 async def fail_job(
     job_id: UUID,
     error_message: str,
@@ -229,7 +201,7 @@ async def fail_job(
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
-@router.put("/{job_id}/progress", response_model=JobResponse)
+@router.put("/{job_id}/progress/", response_model=JobResponse)
 async def update_job_progress(
     job_id: UUID,
     progress: int = Query(..., ge=0, le=100),
@@ -243,7 +215,7 @@ async def update_job_progress(
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
-@router.post("/{job_id}/cancel", response_model=JobResponse)
+@router.post("/{job_id}/cancel/", response_model=JobResponse)
 async def cancel_job(
     job_id: UUID,
     cancel_request: CancelJobRequest = Body(...),
@@ -257,7 +229,7 @@ async def cancel_job(
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
-@router.post("/{job_id}/request-cancellation", response_model=JobResponse)
+@router.post("/{job_id}/request-cancellation/", response_model=JobResponse)
 async def request_job_cancellation(
     job_id: UUID,
     cancel_request: CancelJobRequest = Body(...),
@@ -271,7 +243,7 @@ async def request_job_cancellation(
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
-@router.put("/{job_id}/tracking-stats", response_model=JobResponse)
+@router.put("/{job_id}/tracking-stats/", response_model=JobResponse)
 async def update_tracking_stats(
     job_id: UUID,
     stats: TrackingStatsRequest,
@@ -292,7 +264,7 @@ async def update_tracking_stats(
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
-@router.post("/{job_id}/heartbeat", response_model=JobResponse)
+@router.post("/{job_id}/heartbeat/", response_model=JobResponse)
 async def update_heartbeat(
     job_id: UUID,
     db: AsyncSession = Depends(get_async_db),
@@ -304,7 +276,7 @@ async def update_heartbeat(
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
-@router.get("/analytics", response_model=JobAnalyticsResponse)
+@router.get("/analytics/", response_model=JobAnalyticsResponse)
 async def get_job_analytics(
     days: int = Query(7, ge=1, le=90, description="Number of days to analyze"),
     db: AsyncSession = Depends(get_async_db),
@@ -396,7 +368,7 @@ async def get_job_analytics(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve job analytics: {str(e)}")
 
-@router.get("/active", response_model=ActiveJobsResponse)
+@router.get("/active/", response_model=ActiveJobsResponse)
 async def get_active_jobs(
     db: AsyncSession = Depends(get_async_db),
     admin_user = Depends(get_current_admin)
@@ -426,7 +398,7 @@ async def get_active_jobs(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to retrieve active jobs: {str(e)}")
 
-@router.post("/cleanup-stale", response_model=CleanupStaleJobsResponse)
+@router.post("/cleanup-stale/", response_model=CleanupStaleJobsResponse)
 async def cleanup_stale_jobs(
     threshold_minutes: int = Query(30, ge=5, le=1440, description="Minutes without heartbeat to consider job stale"),
     db: AsyncSession = Depends(get_async_db),
@@ -444,7 +416,7 @@ async def cleanup_stale_jobs(
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to cleanup stale jobs: {str(e)}")
 
-@router.get("/status/summary")
+@router.get("/status/summary/")
 async def get_jobs_summary(
     db: AsyncSession = Depends(get_async_db),
     admin_user = Depends(get_current_admin)
@@ -493,7 +465,7 @@ async def get_jobs_summary(
         "cancellation_requested_jobs": cancellation_requested_jobs[:5]  # Show first 5
     }
 
-@router.get("/analytics/performance")
+@router.get("/analytics/performance/")
 async def get_performance_analytics(
     days: int = Query(7, ge=1, le=30, description="Number of days to analyze"),
     db: AsyncSession = Depends(get_async_db),

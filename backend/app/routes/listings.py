@@ -77,6 +77,7 @@ async def get_listings(
         listings = result.scalars().unique().all()
 
         if not listings:
+            logger.error(f"Failed to fetch listings with filters")
             raise HTTPException(status_code=404, detail="No listings found")
 
         # Manually construct response objects to avoid circular dependencies

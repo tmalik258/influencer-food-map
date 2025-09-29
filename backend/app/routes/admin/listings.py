@@ -41,7 +41,7 @@ async def create_listing(
     return new_listing
 
 @admin_listings_router.put(
-    "/{listing_id}", response_model=ListingResponse
+    "/{listing_id}/", response_model=ListingResponse
 )
 async def update_listing(
     listing_id: UUID,
@@ -63,7 +63,7 @@ async def update_listing(
     await db.refresh(existing_listing)
     return existing_listing
 
-@admin_listings_router.put("/approve-all", response_model=dict)
+@admin_listings_router.put("/approve-all/", response_model=dict)
 async def approve_all_listings(
     db: AsyncSession = Depends(get_async_db),
     current_admin=Depends(get_current_admin)
@@ -82,7 +82,7 @@ async def approve_all_listings(
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to approve all listings: {str(e)}")
 
-@admin_listings_router.put("/approve/{listing_id}", response_model=dict)
+@admin_listings_router.put("/approve/{listing_id}/", response_model=dict)
 async def approve_listing(
     listing_id: UUID,
     db: AsyncSession = Depends(get_async_db),
@@ -111,7 +111,7 @@ async def approve_listing(
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to approve listing: {str(e)}")
 
-@admin_listings_router.put("/disapprove/{listing_id}", response_model=dict)
+@admin_listings_router.put("/disapprove/{listing_id}/", response_model=dict)
 async def disapprove_listing(
     listing_id: UUID,
     db: AsyncSession = Depends(get_async_db),
@@ -140,7 +140,7 @@ async def disapprove_listing(
         await db.rollback()
         raise HTTPException(status_code=500, detail=f"Failed to disapprove listing: {str(e)}")
 
-@admin_listings_router.delete("/{listing_id}", status_code=status.HTTP_204_NO_CONTENT)
+@admin_listings_router.delete("/{listing_id}/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_listing(
     listing_id: UUID,
     delete_restaurant: bool = False,

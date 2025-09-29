@@ -10,7 +10,7 @@ logger = setup_logger(__name__)
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
-@router.get("/overview", response_model=DashboardStatsResponse)
+@router.get("/overview/", response_model=DashboardStatsResponse)
 async def get_dashboard_overview(
     db: AsyncSession = Depends(get_async_db)
 ) -> DashboardStatsResponse:
@@ -37,7 +37,7 @@ async def get_dashboard_overview(
             detail=f"Failed to fetch dashboard overview: {str(e)}"
         )
 
-@router.get("/overview/simple")
+@router.get("/overview/simple/")
 async def get_dashboard_overview_simple(
     db: AsyncSession = Depends(get_async_db)
 ):

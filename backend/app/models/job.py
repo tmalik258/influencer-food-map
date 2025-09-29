@@ -1,7 +1,7 @@
 import uuid
 from enum import Enum
 
-from sqlalchemy import (Column, UUID, String, Text, DateTime, Boolean, Integer, Float, Enum as SQLEnum)
+from sqlalchemy import (Column, UUID, String, Text, DateTime, Boolean, Integer, Float, Enum as SQLEnum, text)
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -16,6 +16,15 @@ class JobStatus(str, Enum):
 class JobType(str, Enum):
     SCRAPE_YOUTUBE = "scrape_youtube"
     TRANSCRIPTION_NLP = "transcription_nlp"
+
+class LockType(str, Enum):
+    """Enum for different types of processing locks."""
+    AUTOMATIC = "automatic"  # For scheduled/automatic processing
+    MANUAL = "manual"       # For user-triggered processing
+    SYSTEM = "system"       # For system maintenance operations
+    
+    def __str__(self) -> str:
+        return self.value
 
 class Job(Base):
     __tablename__ = "jobs"
@@ -33,6 +42,7 @@ class Job(Base):
     logs = Column(Text, nullable=True)  # Detailed logs
     started_by = Column(String(255), nullable=True)  # User who started the job
     redis_lock_key = Column(String(255), nullable=True)  # Redis lock key if applicable
+    trigger_type = Column(SQLEnum(LockType), default=LockType.AUTOMATIC, nullable=False)  # Type of trigger (manual/automatic)
     
     # Advanced tracking fields
     queue_size = Column(Integer, default=0, nullable=True)  # Number of items queued for processing
@@ -43,7 +53,7 @@ class Job(Base):
     estimated_completion_time = Column(DateTime(timezone=True), nullable=True)  # Estimated completion time
     processing_rate = Column(Float, nullable=True)  # Items processed per minute
     last_heartbeat = Column(DateTime(timezone=True), nullable=True)  # Last activity timestamp for monitoring
-    cancellation_requested = Column(Boolean, default=False, nullable=False)  # Flag to indicate if cancellation was requested
+    cancellation_requested = Column(Boolean, default=False, nullable=False, server_default=text('false'))  # Flag to indicate if cancellation was requested
     cancelled_by = Column(String(255), nullable=True)  # User who requested cancellation
     cancelled_at = Column(DateTime(timezone=True), nullable=True)  # When cancellation was requested
     

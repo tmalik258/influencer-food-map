@@ -15,6 +15,18 @@ export interface Job {
   completed_at?: string;
   error_message?: string;
   started_by: string;
+  // New job tracking fields
+  queue_size?: number;
+  items_in_progress?: number;
+  failed_items?: number;
+  retry_count?: number;
+  max_retries?: number;
+  estimated_completion_time?: string;
+  processing_rate?: number;
+  last_heartbeat?: string;
+  cancellation_requested?: boolean;
+  cancelled_by?: string;
+  cancelled_at?: string;
 }
 
 export interface JobCreateRequest {
@@ -50,15 +62,48 @@ export interface TriggerNLPResponse {
   job_id: string;
 }
 
+// Job cancellation and analytics interfaces
+export interface JobCancellationRequest {
+  job_id: string;
+  reason?: string;
+  cancelled_by: string;
+}
+
+export interface JobAnalytics {
+  total_jobs: number;
+  jobs_by_status: {
+    pending: number;
+    running: number;
+    completed: number;
+    failed: number;
+    cancelled: number;
+  };
+  jobs_by_type: {
+    scrape_youtube: number;
+    transcription_nlp: number;
+  };
+  average_completion_time: number;
+  success_rate: number;
+  failure_rate: number;
+  cancellation_rate: number;
+  completed_jobs: number;
+  failed_jobs: number;
+  running_jobs: number;
+}
+
 // Search and pagination types
 export interface SearchParams {
   city?: string;
   name?: string;
+  video_id?: string;
+  restaurant_id?: string;
+  influencer_id?: string;
   tag?: string;
   cuisine?: string;
   sort_by?: string;
   skip?: number;
   limit?: number;
+  offset?: number;
   approved_status?: string;
   include_listings?: boolean;
   include_video_details?: boolean;

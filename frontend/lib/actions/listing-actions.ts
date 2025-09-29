@@ -4,31 +4,31 @@ import api, { adminApi } from '../api';
 
 export const listingActions = {
   getListings: async (params?: SearchParams): Promise<Listing[]> => {
-    const response = await api.get('/listings', { params });
+    const response = await api.get('/listings/', { params });
     return response.data;
   },
   
   getListing: async (id: string): Promise<Listing> => {
-    const response = await api.get(`/listings/${id}`);
+    const response = await api.get(`/listings/${id}/`);
     return response.data;
   },
   
   getListingsByRestaurant: async (restaurantId: string): Promise<Listing[]> => {
-    const response = await api.get('/listings', { 
+    const response = await api.get('/listings/', { 
       params: { restaurant_id: restaurantId, approved_status: 'Approved' } 
     });
     return response.data;
   },
   
   getListingsByInfluencer: async (influencerId: string): Promise<Listing[]> => {
-    const response = await api.get('/listings', { 
+    const response = await api.get('/listings/', { 
       params: { influencer_id: influencerId, approved_status: 'Approved' } 
     });
     return response.data;
   },
   
   getMostRecentListingByInfluencer: async (influencerId: string): Promise<Listing | null> => {
-    const response = await api.get('/listings', { 
+    const response = await api.get('/listings/', { 
       params: { 
         influencer_id: influencerId, 
         approved: true,
@@ -59,7 +59,7 @@ export const listingActions = {
       context: data.context.join("\n"),
     };
     
-    const response = await adminApi.put(`/listings/${id}`, payload);
+    const response = await adminApi.put(`/listings/${id}/`, payload);
     return response.data;
   }
 };

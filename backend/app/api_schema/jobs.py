@@ -5,7 +5,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 from pydantic.config import ConfigDict
 
-from app.models.job import JobStatus, JobType
+from app.models.job import JobStatus, JobType, LockType
 
 class JobResponse(BaseModel):
     id: UUID
@@ -206,6 +206,7 @@ class JobCreateRequest(BaseModel):
     total_items: Optional[int] = None
     started_by: Optional[str] = None
     redis_lock_key: Optional[str] = None
+    trigger_type: Optional[LockType] = LockType.AUTOMATIC
 
 class JobUpdateRequest(BaseModel):
     status: Optional[JobStatus] = None
@@ -255,3 +256,40 @@ class JobListResponse(BaseModel):
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class CancelJobRequest(BaseModel):
+    reason: Optional[str] = None
+
+
+class TrackingStatsRequest(BaseModel):
+    queue_size: Optional[int] = None
+    items_in_progress: Optional[int] = None
+    failed_items: Optional[int] = None
+    processing_rate: Optional[float] = None
+    estimated_completion_time: Optional[datetime] = None
+
+
+class JobAnalyticsResponse(BaseModel):
+    completion_rates_by_type: dict
+    average_processing_times: dict
+    success_failure_ratios: dict
+    processing_rate_statistics: dict
+    queue_metrics: dict
+    total_jobs: int
+    period_analyzed: str
+
+
+class ActiveJobsResponse(BaseModel):
+    active_jobs: List[JobResponse]
+    total_active: int
+    jobs_with_cancellation_requests: int
+    average_progress: float
+    total_queue_size: int
+    total_items_in_progress: int
+
+
+class CleanupStaleJobsResponse(BaseModel):
+    cleaned_jobs: List[JobResponse]
+    total_cleaned: int
+    threshold_minutes: int

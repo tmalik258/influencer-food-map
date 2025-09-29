@@ -14,7 +14,7 @@ from app.routes.tags import router as tags_router
 from app.routes.cuisines import router as cuisines_router
 from app.routes.videos import router as videos_router
 from app.routes.pexels_images import router as pexels_images_router
-from app.routes.process import router as process_router
+from app.routes.admin.process import router as admin_process_router
 from app.routes.listings import router as listings_router
 from app.routes.influencers import router as influencers_router
 from app.routes.restaurants import router as restaurants_router
@@ -42,6 +42,7 @@ app.add_middleware(
         "http://localhost:3000",  # For local development
         "http://localhost",  # For local development
         "http://frontend:3000",  # For local development
+        "https://caribou-equipped-turtle.ngrok-free.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
@@ -51,7 +52,7 @@ app.add_middleware(
 # Register routes
 # app.prefix = "/api"
 app.include_router(user_router, prefix="/user", tags=["user"])
-app.include_router(process_router, prefix="/process", tags=["process"])
+app.include_router(admin_process_router, prefix="/admin/process", tags=["admin"])
 app.include_router(influencers_router, prefix="/influencers", tags=["influencers"])
 app.include_router(videos_router, prefix="/videos", tags=["videos"])
 app.include_router(pexels_images_router, prefix="/pexels-images", tags=["pexels-images"])

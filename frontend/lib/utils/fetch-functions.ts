@@ -18,13 +18,13 @@ export enum EntityType {
 export const fetchFunctions = {
   [EntityType.RESTAURANT]: async (searchQuery: string): Promise<SelectOption[]> => {
     try {
-      const response = await restaurantActions.getRestaurants({
+      const {restaurants} = await restaurantActions.getRestaurants({
         name: searchQuery,
         limit: 20,
         include_listings: false
       });
       
-      return response.restaurants.map(restaurant => ({
+      return restaurants.map(restaurant => ({
         id: restaurant.id,
         value: restaurant.id,
         label: restaurant.name
@@ -37,12 +37,12 @@ export const fetchFunctions = {
 
   [EntityType.VIDEO]: async (searchQuery: string): Promise<SelectOption[]> => {
     try {
-      const response = await videoActions.getVideos({
+      const {videos} = await videoActions.getVideos({
         title: searchQuery,
         limit: 20
       });
       
-      return response.map(video => ({
+      return videos.map(video => ({
         id: video.id,
         value: video.id,
         label: video.title
@@ -55,14 +55,14 @@ export const fetchFunctions = {
 
   [EntityType.INFLUENCER]: async (searchQuery: string): Promise<SelectOption[]> => {
     try {
-      const response = await influencerActions.getInfluencers({
+      const {influencers} = await influencerActions.getInfluencers({
         name: searchQuery,
         limit: 20,
         include_listings: false,
         include_video_details: false
       });
       
-      return response.influencers.map((influencer: Influencer) => ({
+      return influencers.map((influencer: Influencer) => ({
         id: influencer.id,
         value: influencer.id,
         label: influencer.name

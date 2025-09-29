@@ -8,5 +8,5 @@ export { useApiWithRetry, usePaginatedApiWithRetry } from './useApiWithRetry';
 export { useVideos, useInfluencerVideos } from './useVideos';
 export { useTags, useTag } from './useTags';
 export { useCuisines, useCuisine } from './useCuisines';
-export { useJobs, useJob, useJobsSummary, useJobActions, useDataSync, useSystemStats } from './useAdmin';
+export { useJobs, useJob, useJobsSummary, useJobActions, useDataSync, useSystemStats, useJobAnalytics, useActiveJobs, useJobManagement, useJobMetrics } from './useAdmin';
 export { useAdminRestaurant } from './useAdminRestaurant';

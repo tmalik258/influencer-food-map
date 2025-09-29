@@ -18,6 +18,7 @@ class VideoResponse(BaseModel):
     transcription: Optional[str] = None
     created_at: datetime
     updated_at: datetime
+    listings_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

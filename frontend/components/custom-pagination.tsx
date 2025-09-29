@@ -2,26 +2,54 @@
 
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 
-interface VideoPaginationProps {
+interface CustomPaginationProps {
   currentPage: number;
   totalItems: number;
   itemsPerPage: number;
   onPageChange: (page: number) => void;
   onItemsPerPageChange: (itemsPerPage: number) => void;
+  loading?: boolean;
 }
 
-export function VideoPagination({
+export function CustomPagination({
   currentPage,
   totalItems,
   itemsPerPage,
   onPageChange,
   onItemsPerPageChange,
-}: VideoPaginationProps) {
+  loading = false,
+}: CustomPaginationProps) {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   const startItem = (currentPage - 1) * itemsPerPage + 1;
   const endItem = Math.min(currentPage * itemsPerPage, totalItems);
+
+  // Show loading skeleton when loading
+  if (loading) {
+    return (
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
+        <div className="flex items-center gap-4">
+          <Skeleton className="h-5 w-32" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-5 w-12" />
+            <Skeleton className="h-8 w-20" />
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-8 w-20" />
+          <div className="flex items-center gap-1">
+            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-8 w-8" />
+            <Skeleton className="h-8 w-8" />
+          </div>
+          <Skeleton className="h-8 w-16" />
+        </div>
+      </div>
+    );
+  }
 
   if (totalPages <= 1 && totalItems <= 10) return null;
 

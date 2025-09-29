@@ -28,6 +28,7 @@ import { Tag } from "@/lib/types";
 import { tagActions } from "@/lib/actions/tag-actions";
 import DashboardLoadingSkeleton from "../../_components/dashboard-loading-skeleton";
 import Link from "next/link";
+import { CustomPagination } from "@/components/custom-pagination";
 
 export function TagManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -237,6 +238,18 @@ export function TagManagement() {
                   </div>
                 </CardContent>
               </Card>
+              {/* <div className="flex items-center justify-end pt-4">
+                <CustomPagination
+                  currentPage={page}
+                  itemsPerPage={limit}
+                  totalItems={total}
+                  onPageChange={goToPage}
+                  onItemsPerPageChange={(newLimit) => {
+                    setLimit(newLimit);
+                    goToPage(1);
+                  }}
+                />
+              </div> */}
               <div className="flex items-center justify-between pt-4">
                 <PaginationInfo
                   currentPage={page}

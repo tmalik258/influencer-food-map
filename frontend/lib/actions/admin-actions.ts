@@ -7,13 +7,25 @@ import type {
   JobUpdateRequest,
   JobsSummary,
   TriggerScrapeResponse,
-  TriggerNLPResponse
+  TriggerNLPResponse,
+  JobCancellationRequest,
+  JobAnalytics,
 } from '../types';
 
 export const adminActions = {
   // Job Management
-  getJobs: async (): Promise<Job[]> => {
-    const response = await adminApi.get('/jobs');
+  getJobs: async (params?: {
+    status?: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+    job_type?: 'scrape_youtube' | 'transcription_nlp';
+    started_by?: string;
+    sort_by?: 'created_at' | 'started_at' | 'completed_at' | 'progress' | 'status';
+    sort_order?: 'asc' | 'desc';
+    start_date?: string;
+    end_date?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<Job[]> => {
+    const response = await adminApi.get('/jobs', { params });
     return response.data;
   },
 
@@ -55,19 +67,57 @@ export const adminActions = {
     return response.data;
   },
 
+  cancelJob: async (jobId: string, reason?: string): Promise<Job> => {
+    const response = await adminApi.post(`/jobs/${jobId}/cancel`, {
+      reason: reason || 'Cancelled by user'
+    });
+    return response.data;
+  },
+
+  requestJobCancellation: async (jobId: string, reason?: string): Promise<Job> => {
+    const response = await adminApi.post(`/jobs/${jobId}/request-cancellation`, {
+      reason: reason || 'Cancellation requested by user'
+    });
+    return response.data;
+  },
+
   getJobsSummary: async (): Promise<JobsSummary> => {
     const response = await adminApi.get('/jobs/summary');
     return response.data;
   },
 
-  // Data Synchronization
-  triggerYouTubeScraping: async (): Promise<TriggerScrapeResponse> => {
-    const response = await adminApi.post('/process/scrape-youtube');
+  // Job Analytics and Metrics
+  getJobAnalytics: async (): Promise<JobAnalytics> => {
+    const response = await adminApi.get('/jobs/analytics');
     return response.data;
   },
 
-  triggerNLPProcessing: async (): Promise<TriggerNLPResponse> => {
-    const response = await adminApi.post('/process/scrape-listings');
+  getActiveJobs: async (): Promise<Job[]> => {
+    const response = await adminApi.get('/jobs/active');
+    return response.data;
+  },
+
+  cleanupStaleJobs: async (): Promise<{ message: string; cleaned_jobs: number }> => {
+    const response = await adminApi.post('/jobs/cleanup-stale');
+    return response.data;
+  },
+
+  // Data Synchronization
+  triggerYouTubeScraping: async (videoIds?: string[], triggerType: 'automatic' | 'manual' | 'system' = 'automatic'): Promise<TriggerScrapeResponse> => {
+    const requestBody = {
+      ...(videoIds ? { video_ids: videoIds } : {}),
+      trigger_type: triggerType
+    };
+    const response = await adminApi.post('/process/scrape-youtube', requestBody);
+    return response.data;
+  },
+
+  triggerNLPProcessing: async (videoIds?: string[], triggerType: 'automatic' | 'manual' | 'system' = 'automatic'): Promise<TriggerNLPResponse> => {
+    const requestBody = {
+      ...(videoIds ? { video_ids: videoIds } : {}),
+      trigger_type: triggerType
+    };
+    const response = await adminApi.post('/process/transcription-nlp', requestBody);
     return response.data;
   },
 

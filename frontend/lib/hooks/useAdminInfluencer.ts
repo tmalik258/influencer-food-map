@@ -42,8 +42,8 @@ export function useAdminInfluencer() {
       }
 
       return null
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || err.message || 'Failed to create influencer';
+    } catch (err) {
+      const errorMessage = (err as any).response?.data?.detail || (err as any).message || 'Failed to create influencer';
       setError(errorMessage);
       toast.error(errorMessage);
       return null;
@@ -63,8 +63,8 @@ export function useAdminInfluencer() {
       const response = await adminInfluencerActions.updateInfluencer(influencerId, data);
       toast.success('Influencer updated successfully');
       return response;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || err.message || 'Failed to update influencer';
+    } catch (err) {
+      const errorMessage = (err as any).response?.data?.detail || (err as any).message || 'Failed to update influencer';
       setError(errorMessage);
       toast.error(errorMessage);
       return null;
@@ -81,8 +81,8 @@ export function useAdminInfluencer() {
       await adminInfluencerActions.deleteInfluencer(influencerId);
       toast.success('Influencer deleted successfully');
       return true;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || err.message || 'Failed to delete influencer';
+    } catch (err) {
+      const errorMessage = (err as any).response?.data?.detail || (err as any).message || 'Failed to delete influencer';
       setError(errorMessage);
       toast.error(errorMessage);
       return false;
@@ -98,8 +98,8 @@ export function useAdminInfluencer() {
     try {
       const response = await adminInfluencerActions.getInfluencer(influencerId);
       return response;
-    } catch (err: any) {
-      const errorMessage = err.response?.data?.detail || err.message || 'Failed to fetch influencer';
+    } catch (err) {
+      const errorMessage = (err as any).response?.data?.detail || (err as any).message || 'Failed to fetch influencer';
       setError(errorMessage);
       toast.error(errorMessage);
       return null;
