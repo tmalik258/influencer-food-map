@@ -3,7 +3,7 @@ services:
     build:
       context: ./backend
       dockerfile: Dockerfile.prod
-    container_name: food_backend_prod
+    container_name: nomtok_backend_prod
     ports:
       - "8030:8000"
     environment:
@@ -13,7 +13,7 @@ services:
     depends_on:
       - redis
     networks:
-      - food-network
+      - nomtok-network
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
@@ -26,7 +26,7 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile.prod
-    container_name: food_frontend_prod
+    container_name: nomtok_frontend_prod
     ports:
       - "3000:3000"
     environment:
@@ -37,7 +37,7 @@ services:
     depends_on:
       - backend
     networks:
-      - food-network
+      - nomtok-network
     restart: always
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:3000/api/health"]
@@ -48,17 +48,17 @@ services:
 
   redis:
     image: redis:alpine
-    container_name: food_redis_prod
+    container_name: nomtok_redis_prod
     ports:
       - "6382:6379"
     volumes:
       - redis_data:/data
     networks:
-      - food-network
+      - nomtok-network
     restart: always
 
 networks:
-  food-network:
+  nomtok-network:
     driver: bridge
 
 volumes:

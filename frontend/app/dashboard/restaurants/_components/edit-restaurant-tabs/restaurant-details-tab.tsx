@@ -21,6 +21,7 @@ import { Loader2, MapPin, Building, Globe, Star } from "lucide-react";
 import { Restaurant } from "@/lib/types";
 import { toast } from "sonner";
 import { useGeocoding } from "@/lib/hooks/useGeocoding";
+import { useRestaurantUpdate } from "@/lib/hooks/useRestaurantUpdate";
 
 const restaurantDetailsSchema = z.object({
   name: z.string().min(1, "Restaurant name is required").max(100, "Name too long"),
@@ -47,8 +48,10 @@ export function RestaurantDetailsTab({
   onSuccess,
   onUnsavedChanges,
 }: RestaurantDetailsTabProps) {
-  const [isSaving, setIsSaving] = useState(false);
   const { geocodeAddress, loading: isLoadingLocation, error: geocodingError } = useGeocoding();
+  const { updateRestaurant, isUpdating } = useRestaurantUpdate({
+    onSuccess,
+  });
 
   const form = useForm<RestaurantDetailsFormData>({
     resolver: zodResolver(restaurantDetailsSchema),
@@ -73,18 +76,17 @@ export function RestaurantDetailsTab({
   }, [isDirty, onUnsavedChanges]);
 
   const handleSave = async (data: RestaurantDetailsFormData) => {
-    setIsSaving(true);
-    try {
-      // This would be replaced with actual API call to update restaurant
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Mock delay
-      
-      toast.success("Restaurant details updated successfully");
-      onSuccess();
-    } catch (error) {
-      toast.error("Failed to update restaurant details");
-    } finally {
-      setIsSaving(false);
-    }
+    await updateRestaurant(restaurant.id, {
+      name: data.name,
+      address: data.address,
+      city: data.city,
+      country: data.country,
+      latitude: data.latitude,
+      longitude: data.longitude,
+      google_place_id: data.google_place_id,
+      photo_url: data.photo_url,
+      is_active: data.is_active,
+    });
   };
 
   const handleCancel = () => {
@@ -400,17 +402,17 @@ export function RestaurantDetailsTab({
               type="button"
               variant="outline"
               onClick={handleCancel}
-              disabled={isSaving}
+              disabled={isUpdating}
               className="hover:bg-muted/50"
             >
               Cancel
             </Button>
             <Button
               type="submit"
-              disabled={isSaving || !isDirty}
+              disabled={isUpdating || !isDirty}
               className="bg-orange-500 hover:bg-orange-600 text-white"
             >
-              {isSaving ? (
+              {isUpdating ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                   Saving...

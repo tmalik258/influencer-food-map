@@ -66,4 +66,9 @@ export const restaurantActions = {
     });
     return response.data;
   },
+
+  updateRestaurant: async (id: string, data: Partial<Restaurant>): Promise<Restaurant> => {
+    const response = await api.put(`/restaurants/${id}/`, data);
+    return response.data;
+  },
 };
