@@ -7,7 +7,8 @@ import { AlertCircle } from 'lucide-react';
 import { useListings } from '@/lib/hooks/useListings';
 import { ListingHeader } from './listing-header';
 import { ListingForm } from './listing-form';
-import type { Listing } from '@/lib/types/dashboard';
+import type { Listing } from '@/lib/types';
+import type { Listing as ListingDashboard } from '@/lib/types/dashboard';
 
 import { ListingDeleteDialog } from './listing-delete-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -79,13 +80,13 @@ export function ListingManagement() {
   // Handle edit listing
   const handleEdit = (listingId: string) => {
     // Open modal instead of navigation
-    const foundListing = transformedListings.find(listing => listing.id === listingId);
+    const foundListing = listings.find(listing => listing.id === listingId);
     setSelectedListing(foundListing || null);
     setIsEditFormOpen(true);
   };
 
   // Transform listings to dashboard format and filter
-  const transformedListings: Listing[] = listings.map(listing => ({
+  const transformedListings: ListingDashboard[] = listings.map(listing => ({
     id: listing.id,
     restaurant_id: listing.restaurant?.id,
     restaurant: {
@@ -105,12 +106,13 @@ export function ListingManagement() {
     approved: listing.approved,
     visit_date: listing.visit_date,
     status: listing.approved === true ? 'approved' : listing.approved === false ? 'rejected' : 'pending',
-    created_at: listing.created_at
+    created_at: listing.created_at,
+    updated_at: listing.updated_at
   }));
 
   // Handle delete listing
   const handleDelete = (listingId: string) => {
-    const foundListing = transformedListings.find(listing => listing.id === listingId);
+    const foundListing = listings.find(listing => listing.id === listingId);
     setSelectedListing(foundListing || null);
     setIsDeleteDialogOpen(true);
   };
