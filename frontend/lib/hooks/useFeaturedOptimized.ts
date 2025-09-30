@@ -14,7 +14,7 @@ export const useFeaturedOptimized = () => {
     setError(null);
     try {
       const response = await restaurantActions.getFeaturedOptimized();
-      setData(response[0] || null);
+      setData(response || null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch featured data');
     } finally {

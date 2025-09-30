@@ -46,7 +46,7 @@ export const restaurantActions = {
     return response.data;
   },
 
-  getFeaturedOptimized: async (): Promise<OptimizedFeaturedResponse[]> => {
+  getFeaturedOptimized: async (): Promise<OptimizedFeaturedResponse> => {
     const response = await api.get('/restaurants/featured-optimized/');
     return response.data;
   },
