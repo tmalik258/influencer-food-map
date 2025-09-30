@@ -74,6 +74,7 @@ export interface Listing {
   restaurant?: Restaurant;
   video_id?: string;
   video?: Video;
+  influencer_id?: string;
   influencer?: Influencer;
   visit_date?: string;
   quotes?: string[];

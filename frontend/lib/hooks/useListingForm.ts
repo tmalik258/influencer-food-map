@@ -12,7 +12,7 @@ import {
   CreateListingFormData,
   EditListingFormData,
 } from "@/lib/validations/listing-create";
-import { Listing } from "@/lib/types/dashboard";
+import { Listing } from "@/lib/types";
 
 interface UseListingFormProps {
   mode: 'create' | 'edit';
@@ -58,9 +58,9 @@ export function useListingForm({
         : [];
 
       form.reset({
-        restaurant_id: listingData.restaurant_id,
-        video_id: listingData.video_id,
-        influencer_id: listingData.influencer_id,
+        restaurant_id: listingData.restaurant_id || listingData.restaurant?.id || "",
+        video_id: listingData.video_id || listingData.video?.id || "",
+        influencer_id: listingData.influencer_id || listingData.influencer?.id || "",
         visit_date: listingData.visit_date ? new Date(listingData.visit_date) : undefined,
         quotes: quotesArray,
         context: contextArray,

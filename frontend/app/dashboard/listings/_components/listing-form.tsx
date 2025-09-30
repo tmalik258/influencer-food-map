@@ -19,7 +19,7 @@ import {
   EntityType,
 } from "@/lib/utils/fetch-functions";
 import { useListingForm } from "@/lib/hooks/useListingForm";
-import { Listing } from "@/lib/types/dashboard";
+import { Listing } from "@/lib/types";
 
 interface ListingFormProps {
   mode: 'create' | 'edit';
