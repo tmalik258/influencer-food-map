@@ -62,13 +62,6 @@ export interface TriggerNLPResponse {
   job_id: string;
 }
 
-// Job cancellation and analytics interfaces
-export interface JobCancellationRequest {
-  job_id: string;
-  reason?: string;
-  cancelled_by: string;
-}
-
 export interface JobAnalytics {
   total_jobs: number;
   jobs_by_status: {

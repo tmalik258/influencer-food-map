@@ -84,7 +84,7 @@ export function EditInfluencerModal({
       const filteredData: Partial<UpdateInfluencerFormData> = {};
       Object.entries(data).forEach(([key, value]) => {
         if (value !== '' && value !== undefined && value !== null) {
-          (filteredData as Record<string, any>)[key] = value;
+          (filteredData as Record<string, string | number | boolean | undefined>)[key] = value;
         }
       });
 

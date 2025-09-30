@@ -75,23 +75,14 @@ export function CuisinesManagementTab({
   const fetchAvailableCuisines = async () => {
     setIsLoading(true);
     try {
-      const response = await cuisineActions.getAllCuisines();
+      const allCuisines = await cuisineActions.getAllCuisines();
       
-      if (response.success && response.data) {
-        const allCuisines = response.data;
-        
-        // Filter out cuisines that are already assigned to the restaurant
-        const availableCuisines = allCuisines.filter(
-          (cuisine) => !restaurant.cuisines.some((rc) => rc.id === cuisine.id)
-        );
-        
-        setAvailableCuisines(availableCuisines);
-      } else {
-        toast.error("Failed to fetch cuisines", {
-          description: response.error || "Unable to load available cuisines",
-          duration: 3000,
-        });
-      }
+      // Filter out cuisines that are already assigned to the restaurant
+      const availableCuisines = allCuisines.filter(
+        (cuisine) => !restaurant.cuisines?.some((rc) => rc.id === cuisine.id)
+      );
+      
+      setAvailableCuisines(availableCuisines);
     } catch (error) {
       console.error("Error fetching cuisines:", error);
       toast.error("Failed to fetch cuisines", {

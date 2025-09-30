@@ -1,5 +1,5 @@
 import api from '../api';
-import { Restaurant, SearchParams, OptimizedFeaturedResponse, PaginatedRestaurantsResponse } from '@/lib/types';
+import { Restaurant, SearchParams, PaginatedRestaurantsResponse, OptimizedFeaturedResponse } from '@/lib/types';
 
 export const restaurantActions = {
   getRestaurants: async (params?: SearchParams): Promise<PaginatedRestaurantsResponse> => {
@@ -46,7 +46,7 @@ export const restaurantActions = {
     return response.data;
   },
 
-  getFeaturedOptimized: async (): Promise<Restaurant[]> => {
+  getFeaturedOptimized: async (): Promise<OptimizedFeaturedResponse[]> => {
     const response = await api.get('/restaurants/featured-optimized/');
     return response.data;
   },

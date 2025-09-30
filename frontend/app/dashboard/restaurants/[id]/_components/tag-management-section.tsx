@@ -60,10 +60,11 @@ export function TagManagementSection({
       toast.success("Tags updated successfully");
       setIsEditing(false);
       onTagsUpdated();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating tags:", error);
+      const apiError = error as { response?: { data?: { detail?: string } } };
       toast.error(
-        error.response?.data?.detail || "Failed to update tags"
+        apiError.response?.data?.detail || "Failed to update tags"
       );
     } finally {
       setIsLoading(false);

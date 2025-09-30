@@ -5,7 +5,6 @@ import { cn } from '@/lib/utils';
 
 interface PaginationInfoProps {
   currentPage: number;
-  totalPages: number;
   totalItems: number;
   itemsPerPage: number;
   className?: string;
@@ -14,7 +13,6 @@ interface PaginationInfoProps {
 
 export function PaginationInfo({
   currentPage,
-  totalPages,
   totalItems,
   itemsPerPage,
   className,

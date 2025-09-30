@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import { useRestaurantsPaginated, useAdminRestaurant } from "@/lib/hooks";
 import { useTagsPaginated } from "@/lib/hooks/useTagsPaginated";
 import { useCuisinesPaginated } from "@/lib/hooks/useCuisinesPaginated";
@@ -34,7 +33,6 @@ export function RestaurantManagement() {
     params,
   } = useRestaurantsPaginated({ limit: 10 });
 
-  const router = useRouter();
   const { deleteRestaurant, loading: deleteLoading } = useAdminRestaurant();
   const { tags, loading: tagsLoading } = useTagsPaginated({ limit: 100 });
   const { cuisines, loading: cuisinesLoading } = useCuisinesPaginated({ limit: 100 });
@@ -73,6 +71,7 @@ export function RestaurantManagement() {
       setRestaurantToDelete(null);
       refetch();
     } catch (error) {
+      console.log("Failed to delete restaurant:", error);
       toast.error("Failed to delete restaurant");
     }
   }, [restaurantToDelete, deleteRestaurant, refetch]);

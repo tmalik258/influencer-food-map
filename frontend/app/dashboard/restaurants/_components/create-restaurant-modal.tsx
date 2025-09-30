@@ -64,12 +64,13 @@ export default function CreateRestaurantModal({
         onClose();
         onSuccess?.();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Error creating restaurant:', error);
       
       // Extract error message from API response
-      const errorMessage = error.response?.data?.detail || error.message || 'Failed to create restaurant';
-      const statusCode = error.response?.status;
+      const apiError = error as { response?: { data?: { detail?: string }; status?: number }; message?: string };
+      const errorMessage = apiError.response?.data?.detail || apiError.message || 'Failed to create restaurant';
+      const statusCode = apiError.response?.status;
       
       // Display user-friendly error messages based on status code
       if (statusCode === 409) {
@@ -82,7 +83,7 @@ export default function CreateRestaurantModal({
           description: errorMessage,
           duration: 5000,
         });
-      } else if (statusCode >= 500) {
+      } else if (statusCode && statusCode >= 500) {
         toast.error('Server Error', {
           description: 'Something went wrong on our end. Please try again later.',
           duration: 5000,

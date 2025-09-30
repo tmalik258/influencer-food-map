@@ -56,7 +56,6 @@ export const HeroSection: React.FC<HeroSectionProps> = ({ influencer }) => {
             } - Food Influencer ${influencer.subscriber_count && `with ${formatNumberAbbreviated(
               influencer.subscriber_count
             )} subscribers`}`}
-            description={`Discover amazing restaurants recommended by ${influencer.name}, a top food influencer. Explore their food reviews and recommendations!`}
             variant="inline"
             className="bg-white backdrop-blur-sm border-white/20 px-4 py-1 rounded-lg"
           />

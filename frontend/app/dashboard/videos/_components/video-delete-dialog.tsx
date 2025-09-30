@@ -39,7 +39,7 @@ export function VideoDeleteDialog({ isOpen, onClose, video, onSuccess }: VideoDe
         <DialogHeader>
           <DialogTitle className="text-gray-900 dark:text-white">Confirm Deletion</DialogTitle>
           <DialogDescription className="text-gray-600 dark:text-gray-300">
-            Are you sure you want to delete the video "{video?.title}"? This action cannot be undone.
+            Are you sure you want to delete the video &quot;{video?.title}&quot;? This action cannot be undone.
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

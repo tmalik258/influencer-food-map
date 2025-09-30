@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, Plus, Filter, Tag, HandPlatter, ArrowDownUp, Loader2 } from "lucide-react";
+import { Search, Plus, Tag, HandPlatter, ArrowDownUp, Loader2 } from "lucide-react";
 
 interface RestaurantFiltersProps {
   searchTerm: string;

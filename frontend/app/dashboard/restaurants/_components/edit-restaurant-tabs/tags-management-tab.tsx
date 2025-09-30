@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,7 +9,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -53,65 +52,94 @@ export function TagsManagementTab({
 
   // Check for unsaved changes
   useEffect(() => {
-    const originalTagIds = new Set(restaurant.tags?.map(t => t.id) || []);
-    const currentTagIds = new Set(tags.map(t => t.id));
-    
-    const hasChanges = 
+    const originalTagIds = new Set(restaurant.tags?.map((t) => t.id) || []);
+    const currentTagIds = new Set(tags.map((t) => t.id));
+
+    const hasChanges =
       originalTagIds.size !== currentTagIds.size ||
-      [...originalTagIds].some(id => !currentTagIds.has(id));
-    
+      [...originalTagIds].some((id) => !currentTagIds.has(id));
+
     onUnsavedChanges(hasChanges);
   }, [tags, restaurant.tags, onUnsavedChanges]);
 
   // Mock function to fetch available tags - replace with actual API call
-  const fetchAvailableTags = async () => {
+  const fetchAvailableTags = useCallback(async () => {
     setIsLoading(true);
     try {
       // This would be replaced with actual API call
       const mockTags: TagType[] = [
         { id: "1", name: "Fine Dining", created_at: new Date().toISOString() },
         { id: "2", name: "Casual", created_at: new Date().toISOString() },
-        { id: "3", name: "Family Friendly", created_at: new Date().toISOString() },
+        {
+          id: "3",
+          name: "Family Friendly",
+          created_at: new Date().toISOString(),
+        },
         { id: "4", name: "Romantic", created_at: new Date().toISOString() },
-        { id: "5", name: "Business Lunch", created_at: new Date().toISOString() },
-        { id: "6", name: "Outdoor Seating", created_at: new Date().toISOString() },
-        { id: "7", name: "Vegetarian Options", created_at: new Date().toISOString() },
-        { id: "8", name: "Vegan Friendly", created_at: new Date().toISOString() },
+        {
+          id: "5",
+          name: "Business Lunch",
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: "6",
+          name: "Outdoor Seating",
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: "7",
+          name: "Vegetarian Options",
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: "8",
+          name: "Vegan Friendly",
+          created_at: new Date().toISOString(),
+        },
         { id: "9", name: "Gluten Free", created_at: new Date().toISOString() },
-        { id: "10", name: "Pet Friendly", created_at: new Date().toISOString() },
-        { id: "11", name: "Delivery Available", created_at: new Date().toISOString() },
+        {
+          id: "10",
+          name: "Pet Friendly",
+          created_at: new Date().toISOString(),
+        },
+        {
+          id: "11",
+          name: "Delivery Available",
+          created_at: new Date().toISOString(),
+        },
         { id: "12", name: "Takeout", created_at: new Date().toISOString() },
         { id: "13", name: "Late Night", created_at: new Date().toISOString() },
         { id: "14", name: "Happy Hour", created_at: new Date().toISOString() },
         { id: "15", name: "Live Music", created_at: new Date().toISOString() },
       ];
-      
+
       // Filter out tags already assigned to the restaurant
-      const assignedTagIds = new Set(tags.map(t => t.id));
-      const filtered = mockTags.filter(t => !assignedTagIds.has(t.id));
-      
+      const assignedTagIds = new Set(tags.map((t) => t.id));
+      const filtered = mockTags.filter((t) => !assignedTagIds.has(t.id));
+
       setAvailableTags(filtered);
     } catch (error) {
+      console.log("Failed to fetch available tags:", error);
       toast.error("Failed to fetch available tags");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [tags]);
 
   useEffect(() => {
     fetchAvailableTags();
-  }, [tags]);
+  }, [tags, fetchAvailableTags]);
 
   const handleAddTag = (tag: TagType) => {
-    setTags(prev => [...prev, tag]);
-    setAvailableTags(prev => prev.filter(t => t.id !== tag.id));
+    setTags((prev) => [...prev, tag]);
+    setAvailableTags((prev) => prev.filter((t) => t.id !== tag.id));
   };
 
   const handleRemoveTag = (tagId: string) => {
-    const removedTag = tags.find(t => t.id === tagId);
+    const removedTag = tags.find((t) => t.id === tagId);
     if (removedTag) {
-      setTags(prev => prev.filter(t => t.id !== tagId));
-      setAvailableTags(prev => [...prev, removedTag]);
+      setTags((prev) => prev.filter((t) => t.id !== tagId));
+      setAvailableTags((prev) => [...prev, removedTag]);
     }
   };
 
@@ -123,11 +151,12 @@ export function TagsManagementTab({
         name: data.name,
         created_at: new Date().toISOString(),
       };
-      
-      setTags(prev => [...prev, newTag]);
+
+      setTags((prev) => [...prev, newTag]);
       form.reset();
       toast.success(`Tag "${data.name}" created and added`);
     } catch (error) {
+      console.log("Failed to create tag:", error);
       toast.error("Failed to create tag");
     }
   };
@@ -136,11 +165,12 @@ export function TagsManagementTab({
     setIsSaving(true);
     try {
       // This would be replaced with actual API call to update restaurant tags
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Mock delay
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // Mock delay
+
       toast.success("Tags updated successfully");
       onSuccess();
     } catch (error) {
+      console.log("Failed to update tags:", error);
       toast.error("Failed to update tags");
     } finally {
       setIsSaving(false);
@@ -152,19 +182,28 @@ export function TagsManagementTab({
     onUnsavedChanges(false);
   };
 
-  const filteredAvailableTags = availableTags.filter(tag =>
+  const filteredAvailableTags = availableTags.filter((tag) =>
     tag.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   // Group tags by category for better organization
   const getTagColor = (tagName: string) => {
     const lowerName = tagName.toLowerCase();
-    if (lowerName.includes('dining') || lowerName.includes('fine')) return 'bg-purple-600 hover:bg-purple-700';
-    if (lowerName.includes('family') || lowerName.includes('friendly')) return 'bg-green-600 hover:bg-green-700';
-    if (lowerName.includes('vegetarian') || lowerName.includes('vegan') || lowerName.includes('gluten')) return 'bg-emerald-600 hover:bg-emerald-700';
-    if (lowerName.includes('delivery') || lowerName.includes('takeout')) return 'bg-blue-600 hover:bg-blue-700';
-    if (lowerName.includes('music') || lowerName.includes('happy')) return 'bg-pink-600 hover:bg-pink-700';
-    return 'bg-orange-600 hover:bg-orange-700';
+    if (lowerName.includes("dining") || lowerName.includes("fine"))
+      return "bg-purple-600 hover:bg-purple-700";
+    if (lowerName.includes("family") || lowerName.includes("friendly"))
+      return "bg-green-600 hover:bg-green-700";
+    if (
+      lowerName.includes("vegetarian") ||
+      lowerName.includes("vegan") ||
+      lowerName.includes("gluten")
+    )
+      return "bg-emerald-600 hover:bg-emerald-700";
+    if (lowerName.includes("delivery") || lowerName.includes("takeout"))
+      return "bg-blue-600 hover:bg-blue-700";
+    if (lowerName.includes("music") || lowerName.includes("happy"))
+      return "bg-pink-600 hover:bg-pink-700";
+    return "bg-orange-600 hover:bg-orange-700";
   };
 
   return (
@@ -183,7 +222,9 @@ export function TagsManagementTab({
               {tags.map((tag) => (
                 <Badge
                   key={tag.id}
-                  className={`${getTagColor(tag.name)} text-white px-3 py-1 text-sm flex items-center gap-2`}
+                  className={`${getTagColor(
+                    tag.name
+                  )} text-white px-3 py-1 text-sm flex items-center gap-2`}
                 >
                   <Hash className="h-3 w-3" />
                   {tag.name}
@@ -200,7 +241,8 @@ export function TagsManagementTab({
             </div>
           ) : (
             <p className="text-muted-foreground text-sm">
-              No tags assigned. Add tags from the available options below to help categorize this restaurant.
+              No tags assigned. Add tags from the available options below to
+              help categorize this restaurant.
             </p>
           )}
         </CardContent>
@@ -226,7 +268,9 @@ export function TagsManagementTab({
           {isLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
-              <span className="ml-2 text-muted-foreground">Loading tags...</span>
+              <span className="ml-2 text-muted-foreground">
+                Loading tags...
+              </span>
             </div>
           ) : filteredAvailableTags.length > 0 ? (
             <div className="flex flex-wrap gap-2">
@@ -245,7 +289,9 @@ export function TagsManagementTab({
             </div>
           ) : (
             <p className="text-muted-foreground text-sm">
-              {searchTerm ? "No tags found matching your search." : "No available tags to add."}
+              {searchTerm
+                ? "No tags found matching your search."
+                : "No available tags to add."}
             </p>
           )}
         </CardContent>
@@ -258,7 +304,10 @@ export function TagsManagementTab({
         </CardHeader>
         <CardContent>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleCreateTag)} className="flex gap-3">
+            <form
+              onSubmit={form.handleSubmit(handleCreateTag)}
+              className="flex gap-3"
+            >
               <FormField
                 control={form.control}
                 name="name"
@@ -286,7 +335,8 @@ export function TagsManagementTab({
             </form>
           </Form>
           <p className="text-xs text-muted-foreground mt-2">
-            Tags help categorize restaurants and make them easier to discover. Keep them short and descriptive.
+            Tags help categorize restaurants and make them easier to discover.
+            Keep them short and descriptive.
           </p>
         </CardContent>
       </Card>

@@ -6,6 +6,15 @@ import { adminInfluencerActions } from '@/lib/actions';
 import { Influencer } from '@/lib/types';
 import { CreateInfluencerByUrlFormData } from '@/lib/validations/influencer';
 
+interface ApiError {
+  response?: {
+    data?: {
+      detail?: string;
+    };
+  };
+  message?: string;
+}
+
 interface InfluencerFormData {
   name: string;
   bio?: string;
@@ -43,7 +52,8 @@ export function useAdminInfluencer() {
 
       return null
     } catch (err) {
-      const errorMessage = (err as any).response?.data?.detail || (err as any).message || 'Failed to create influencer';
+      const error = err as ApiError;
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to create influencer';
       setError(errorMessage);
       toast.error(errorMessage);
       return null;
@@ -64,7 +74,8 @@ export function useAdminInfluencer() {
       toast.success('Influencer updated successfully');
       return response;
     } catch (err) {
-      const errorMessage = (err as any).response?.data?.detail || (err as any).message || 'Failed to update influencer';
+      const error = err as ApiError;
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to update influencer';
       setError(errorMessage);
       toast.error(errorMessage);
       return null;
@@ -82,7 +93,8 @@ export function useAdminInfluencer() {
       toast.success('Influencer deleted successfully');
       return true;
     } catch (err) {
-      const errorMessage = (err as any).response?.data?.detail || (err as any).message || 'Failed to delete influencer';
+      const error = err as ApiError;
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to delete influencer';
       setError(errorMessage);
       toast.error(errorMessage);
       return false;
@@ -99,7 +111,8 @@ export function useAdminInfluencer() {
       const response = await adminInfluencerActions.getInfluencer(influencerId);
       return response;
     } catch (err) {
-      const errorMessage = (err as any).response?.data?.detail || (err as any).message || 'Failed to fetch influencer';
+      const error = err as ApiError;
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to fetch influencer';
       setError(errorMessage);
       toast.error(errorMessage);
       return null;

@@ -8,7 +8,6 @@ import type {
   JobsSummary,
   TriggerScrapeResponse,
   TriggerNLPResponse,
-  JobCancellationRequest,
   JobAnalytics,
 } from '../types';
 

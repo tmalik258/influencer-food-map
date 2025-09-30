@@ -28,7 +28,6 @@ import { Tag } from "@/lib/types";
 import { tagActions } from "@/lib/actions/tag-actions";
 import DashboardLoadingSkeleton from "../../_components/dashboard-loading-skeleton";
 import Link from "next/link";
-import { CustomPagination } from "@/components/custom-pagination";
 
 export function TagManagement() {
   const [searchTerm, setSearchTerm] = useState("");
@@ -255,7 +254,6 @@ export function TagManagement() {
                   currentPage={page}
                   itemsPerPage={limit}
                   totalItems={total}
-                  totalPages={totalPages}
                 />
                 <div className="flex items-center gap-4">
                   <PaginationControls

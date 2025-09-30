@@ -15,6 +15,7 @@ import { Button } from '@/components/ui/button';
 
 interface DeleteConfirmationModalProps {
   isOpen: boolean;
+  onClose?: () => void;
   onConfirm: () => void;
   title: string;
   description: string;
@@ -25,6 +26,7 @@ interface DeleteConfirmationModalProps {
 
 export function DeleteConfirmationModal({
   isOpen,
+  onClose,
   onConfirm,
   title,
   description,
@@ -33,7 +35,7 @@ export function DeleteConfirmationModal({
   cancelText = 'Cancel',
 }: DeleteConfirmationModalProps) {
   return (
-    <AlertDialog open={isOpen}>
+    <AlertDialog open={isOpen} onOpenChange={onClose}>
       <AlertDialogContent className="sm:max-w-[425px] w-[95vw] max-h-[90vh] overflow-y-auto">
         <AlertDialogHeader>
           <div className="flex items-center gap-3">

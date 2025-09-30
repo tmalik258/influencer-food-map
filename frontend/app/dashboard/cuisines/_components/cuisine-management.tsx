@@ -239,7 +239,6 @@ export function CuisineManagement() {
                       currentPage={page}
                       itemsPerPage={limit}
                       totalItems={total}
-                      totalPages={totalPages}
                     />
                     <div className="flex items-center gap-4">
                       <PaginationControls

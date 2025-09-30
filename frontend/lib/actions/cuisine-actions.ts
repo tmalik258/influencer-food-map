@@ -1,4 +1,4 @@
-import { Cuisine } from '@/lib/types';
+import { Cuisine, Restaurant } from '@/lib/types';
 import api, { adminApi } from '../api';
 
 interface PaginatedCuisinesResponse {
@@ -153,7 +153,7 @@ export const cuisineActions = {
       include_listings?: boolean;
       include_video_details?: boolean;
     }
-  ): Promise<{ restaurants: any[]; total: number }> {
+  ): Promise<{ restaurants: Restaurant[]; total: number }> {
     try {
       const response = await api.get(`/cuisines/${cuisineId}/restaurants/`, { params });
       return response.data;

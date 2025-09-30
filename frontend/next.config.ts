@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // output: 'standalone', // Temporarily disabled due to Windows symlink issues
   images: {
     remotePatterns: [
       {

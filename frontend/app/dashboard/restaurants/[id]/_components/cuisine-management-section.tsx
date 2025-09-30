@@ -60,10 +60,11 @@ export function CuisineManagementSection({
       toast.success("Cuisines updated successfully");
       setIsEditing(false);
       onCuisinesUpdated();
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error updating cuisines:", error);
+      const apiError = error as { response?: { data?: { detail?: string } } };
       toast.error(
-        error.response?.data?.detail || "Failed to update cuisines"
+        apiError.response?.data?.detail || "Failed to update cuisines"
       );
     } finally {
       setIsLoading(false);

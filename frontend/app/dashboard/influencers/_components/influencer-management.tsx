@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
 import {
   Select,
   SelectContent,
@@ -16,32 +15,14 @@ import {
 import {
   Search,
   Plus,
-  Edit,
-  Trash2,
-  Eye,
-  Youtube,
-  Users,
-  Calendar,
-  ChevronLeft,
-  ChevronRight,
 } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Influencer } from "@/lib/types";
 import { useInfluencers } from "@/lib/hooks/useInfluencers";
 import { useAdminInfluencer } from "@/lib/hooks/useAdminInfluencer";
 import DashboardLoadingSkeleton from "@/app/dashboard/_components/dashboard-loading-skeleton";
-import { formatNumberAbbreviated } from "@/lib/utils/number-formatter";
 import { CreateInfluencerModal } from "./create-influencer-modal";
 import { EditInfluencerModal } from "./edit-influencer-modal";
 import { InfluencersTable } from "./influencers-table";
-import Image from "next/image";
 
 export default function InfluencerManagement() {
   const router = useRouter();
@@ -92,8 +73,8 @@ export default function InfluencerManagement() {
 
     // Apply sorting
     filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: string | number;
+      let bValue: string | number;
 
       switch (sortBy) {
         case "name":

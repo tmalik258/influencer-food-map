@@ -172,7 +172,8 @@ export function VideoTable({
                 <TableRow 
                   key={video.id} 
                   className="hover:bg-orange-50/50 dark:hover:bg-orange-900/20 border-b border-white/10 dark:border-gray-700/30 transition-all duration-200 cursor-pointer"
-                  onClick={(e) => {
+
+                  onClick={() => {
                     // Toggle the selection state
                     onVideoSelect?.(video, !selectedVideos.includes(video));
                   }}

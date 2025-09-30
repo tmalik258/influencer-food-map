@@ -603,7 +603,6 @@ export function Sidebar({ className, isMobileOpen = false, onMobileToggle }: Sid
         )}
         role="navigation"
         aria-label="Main navigation"
-        aria-expanded={!isDesktopCollapsed}
         aria-hidden={isDesktopCollapsed}
         tabIndex={isDesktopCollapsed ? -1 : 0}
         onClick={(e) => {

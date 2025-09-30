@@ -1,16 +1,6 @@
 import { adminApi } from '../api';
 import { Influencer } from '@/lib/types';
 
-interface InfluencerCreateData {
-  name: string;
-  bio?: string;
-  avatar_url?: string;
-  banner_url?: string;
-  youtube_channel_id: string;
-  youtube_channel_url?: string;
-  subscriber_count?: number;
-}
-
 interface InfluencerCreateByUrlData {
   youtube_channel_url: string;
 }

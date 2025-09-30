@@ -17,7 +17,7 @@ export const useRestaurants = (params?: SearchParams) => {
         const data = await restaurantActions.getRestaurants(
           searchParams || params
         );
-        setRestaurants(data);
+        setRestaurants(data.restaurants);
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to fetch restaurants"
@@ -49,7 +49,7 @@ export const useRestaurants = (params?: SearchParams) => {
     setError(null);
     try {
       const data = await restaurantActions.getRestaurantsWithListings(searchParams, includeVideoDetails);
-      setRestaurants(data);
+      setRestaurants(data.restaurants);
     } catch (err) {
       setError(
         err instanceof Error ? err.message : "Failed to fetch restaurants with listings"

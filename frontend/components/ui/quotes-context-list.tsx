@@ -91,11 +91,13 @@ export function QuotesContextList({
   };
 
   const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
     if (disabled) return;
     dragCounter.current++;
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
     if (disabled) return;
     dragCounter.current--;
     if (dragCounter.current === 0) {

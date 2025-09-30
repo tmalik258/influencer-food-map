@@ -1,14 +1,13 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
+import { useEffect } from "react";
 import { useDashboardData } from "@/lib/hooks/useDashboardData";
 import { MetricCard } from "./metric-card";
 import { QuickActionsCard } from "./quick-actions-card";
 import { RealTimeJobsCard } from "./real-time-jobs-card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
-import { AlertCircle, RefreshCw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import ErrorCard from "@/components/error-card";
 
 const DashboardContent = () => {

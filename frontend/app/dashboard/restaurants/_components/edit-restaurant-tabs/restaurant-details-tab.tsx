@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, MapPin, Building, Globe, Star, Camera } from "lucide-react";
+import { Loader2, MapPin, Building, Globe, Star } from "lucide-react";
 import { Restaurant } from "@/lib/types";
 import { toast } from "sonner";
 import { useGeocoding } from "@/lib/hooks/useGeocoding";
@@ -375,14 +375,6 @@ export function RestaurantDetailsTab({
                           {...field}
                           className="focus:ring-orange-500/20 focus:border-orange-500"
                         />
-                        {/* <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          className="border-orange-500/30 text-orange-600 hover:bg-orange-500/10"
-                        >
-                          <Camera className="h-4 w-4" />
-                        </Button> */}
                       </div>
                     </FormControl>
                     <FormMessage />

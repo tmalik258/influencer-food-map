@@ -91,7 +91,6 @@ export function RestaurantDetailCard({
               <SocialShareButtons
                 url={typeof window !== 'undefined' ? `${window.location.origin}/restaurants/${restaurant.id}` : ''}
                 title={`Check out ${restaurant.name} - Amazing restaurant in ${restaurant.city || 'the city'}`}
-                description={`Discover ${restaurant.name} located at ${restaurant.address}. Highly rated restaurant featured by food influencers!`}
                 variant="inline"
                 className="pt-2 border-t border-gray-100"
               />

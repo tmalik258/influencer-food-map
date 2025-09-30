@@ -95,8 +95,8 @@ function JobsTable({ jobs, onRefresh }: JobsTableProps) {
 
   const sortedJobs = useMemo(() => {
     return [...jobs].sort((a, b) => {
-      let aValue: any = a[sortField];
-      let bValue: any = b[sortField];
+      let aValue: string | number | undefined = a[sortField];
+      let bValue: string | number | undefined = b[sortField];
 
       // Handle date fields
       if (sortField.includes('_at')) {
@@ -109,6 +109,11 @@ function JobsTable({ jobs, onRefresh }: JobsTableProps) {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
       }
+
+      // Handle undefined values
+      if (aValue === undefined && bValue === undefined) return 0;
+      if (aValue === undefined) return sortDirection === 'asc' ? 1 : -1;
+      if (bValue === undefined) return sortDirection === 'asc' ? -1 : 1;
 
       if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;

@@ -108,7 +108,6 @@ export default function RestaurantDetailPage() {
             <SocialShareButtons
               url={typeof window !== 'undefined' ? window.location.href : ''}
               title={`Check out ${restaurant.name} - Amazing restaurant in ${restaurant.city}`}
-              description={`Discover ${restaurant.name} located at ${restaurant.address}. Featured by top food influencers!`}
               variant="inline"
               className="bg-white backdrop-blur-sm border-white/20 px-4 py-1 rounded-lg"
             />

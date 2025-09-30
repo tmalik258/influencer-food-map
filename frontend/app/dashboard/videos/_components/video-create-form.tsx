@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -108,7 +107,7 @@ export function VideoCreateFormModal({
         form.reset();
         onSuccess();
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Failed to create video:", error);
     }
   };

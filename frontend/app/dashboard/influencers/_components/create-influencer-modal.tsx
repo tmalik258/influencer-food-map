@@ -58,9 +58,10 @@ export const CreateInfluencerModal = ({
       form.reset();
       onOpenChange(false);
       onSuccess?.();
-    } catch (error: any) {
-      const errorMessage = error?.response?.data?.detail || 
-                          error?.message || 
+    } catch (error: unknown) {
+      const apiError = error as { response?: { data?: { detail?: string } }; message?: string };
+      const errorMessage = apiError?.response?.data?.detail || 
+                          apiError?.message || 
                           "Failed to create influencer. Please try again.";
       toast.error(errorMessage);
     } finally {

@@ -15,7 +15,6 @@ import { WhatsAppIcon } from "./whatsapp-icon";
 interface SocialShareButtonsProps {
   url: string;
   title: string;
-  description?: string;
   className?: string;
   variant?: "default" | "compact" | "inline";
 }
@@ -23,7 +22,6 @@ interface SocialShareButtonsProps {
 export function SocialShareButtons({
   url,
   title,
-  description = "",
   className,
   variant = "default"
 }: SocialShareButtonsProps) {
