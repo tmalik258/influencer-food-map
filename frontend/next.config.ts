@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // output: 'standalone', // Temporarily disabled due to Windows symlink issues
+  output: 'standalone', // Enable for Docker production builds
   images: {
     remotePatterns: [
       {
