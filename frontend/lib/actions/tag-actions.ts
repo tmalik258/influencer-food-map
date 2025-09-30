@@ -122,7 +122,7 @@ export const tagActions = {
    */
   async updateTag(tagId: string, tagData: { name?: string; description?: string }): Promise<Tag> {
     try {
-      const response = await adminApi.put(`/tags/${tagId}`, tagData);
+      const response = await adminApi.put(`/tags/${tagId}/`, tagData);
       return response.data;
     } catch (error) {
       console.error(`Error updating tag ${tagId}:`, error);
@@ -135,7 +135,7 @@ export const tagActions = {
    */
   async deleteTag(tagId: string): Promise<void> {
     try {
-      await adminApi.delete(`/tags/${tagId}`);
+      await adminApi.delete(`/tags/${tagId}/`);
     } catch (error) {
       console.error(`Error deleting tag ${tagId}:`, error);
       throw error;

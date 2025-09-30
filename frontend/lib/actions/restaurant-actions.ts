@@ -3,12 +3,12 @@ import { Restaurant, SearchParams, PaginatedRestaurantsResponse, OptimizedFeatur
 
 export const restaurantActions = {
   getRestaurants: async (params?: SearchParams): Promise<PaginatedRestaurantsResponse> => {
-    const response = await api.get('/restaurants', { params });
+    const response = await api.get('/restaurants/', { params });
     return response.data;
   },
   
   getRestaurant: async (id: string, includeListings = false, includeVideoDetails = true): Promise<Restaurant> => {
-    const response = await api.get(`/restaurants/${id}`, {
+    const response = await api.get(`/restaurants/${id}/`, {
       params: {
         include_listings: includeListings,
         include_video_details: includeVideoDetails
@@ -19,7 +19,7 @@ export const restaurantActions = {
   
   // New method to get restaurants with listings (optimized for performance)
   getRestaurantsWithListings: async (params?: Omit<SearchParams, 'include_listings'>, includeVideoDetails = false): Promise<PaginatedRestaurantsResponse> => {
-    const response = await api.get('/restaurants', {
+    const response = await api.get('/restaurants/', {
       params: {
         ...params,
         include_listings: true,
@@ -30,7 +30,7 @@ export const restaurantActions = {
   },
   
   searchRestaurantsByCity: async (city: string, includeListings = false, includeVideoDetails = false): Promise<Restaurant[]> => {
-    const response = await api.get('/restaurants', {
+    const response = await api.get('/restaurants/', {
       params: { 
         city, 
         limit: 50,

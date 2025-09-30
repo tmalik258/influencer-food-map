@@ -26,7 +26,7 @@ export const adminInfluencerActions = {
    * Create a new influencer using YouTube URL
    */
   createInfluencerByUrl: async (data: InfluencerCreateByUrlData): Promise<AdminInfluencerResponse> => {
-    const response = await adminApi.post('/influencers', data);
+    const response = await adminApi.post('/influencers/', data);
     return response.data;
   },
 
@@ -37,7 +37,7 @@ export const adminInfluencerActions = {
     influencerId: string,
     data: InfluencerUpdateData
   ): Promise<AdminInfluencerResponse> => {
-    const response = await adminApi.patch(`/influencers/${influencerId}`, data);
+    const response = await adminApi.patch(`/influencers/${influencerId}/`, data);
     return response.data;
   },
 
@@ -45,7 +45,7 @@ export const adminInfluencerActions = {
    * Delete an influencer
    */
   deleteInfluencer: async (influencerId: string): Promise<{ message: string }> => {
-    const response = await adminApi.delete(`/influencers/${influencerId}`);
+    const response = await adminApi.delete(`/influencers/${influencerId}/`);
     return response.data;
   },
 
@@ -53,7 +53,7 @@ export const adminInfluencerActions = {
    * Get a single influencer by ID (admin view)
    */
   getInfluencer: async (influencerId: string): Promise<Influencer> => {
-    const response = await adminApi.get(`/influencers/${influencerId}`);
+    const response = await adminApi.get(`/influencers/${influencerId}/`);
     return response.data;
   },
 

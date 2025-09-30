@@ -24,42 +24,42 @@ export const adminActions = {
     limit?: number;
     offset?: number;
   }): Promise<Job[]> => {
-    const response = await adminApi.get('/jobs', { params });
+    const response = await adminApi.get('/jobs/', { params });
     return response.data;
   },
 
   getJob: async (jobId: string): Promise<Job> => {
-    const response = await adminApi.get(`/jobs/${jobId}`);
+    const response = await adminApi.get(`/jobs/${jobId}/`);
     return response.data;
   },
 
   createJob: async (jobData: JobCreateRequest): Promise<Job> => {
-    const response = await adminApi.post('/jobs', jobData);
+    const response = await adminApi.post('/jobs/', jobData);
     return response.data;
   },
 
   updateJob: async (jobId: string, jobData: JobUpdateRequest): Promise<Job> => {
-    const response = await adminApi.put(`/jobs/${jobId}`, jobData);
+    const response = await adminApi.put(`/jobs/${jobId}/`, jobData);
     return response.data;
   },
 
   startJob: async (jobId: string): Promise<Job> => {
-    const response = await adminApi.post(`/jobs/${jobId}/start`);
+    const response = await adminApi.post(`/jobs/${jobId}/start/`);
     return response.data;
   },
 
   completeJob: async (jobId: string): Promise<Job> => {
-    const response = await adminApi.post(`/jobs/${jobId}/complete`);
+    const response = await adminApi.post(`/jobs/${jobId}/complete/`);
     return response.data;
   },
 
   failJob: async (jobId: string, errorMessage: string): Promise<Job> => {
-    const response = await adminApi.post(`/jobs/${jobId}/fail`, { error_message: errorMessage });
+    const response = await adminApi.post(`/jobs/${jobId}/fail/`, { error_message: errorMessage });
     return response.data;
   },
 
   updateJobProgress: async (jobId: string, progress: number, processedItems?: number): Promise<Job> => {
-    const response = await adminApi.post(`/jobs/${jobId}/progress`, {
+    const response = await adminApi.post(`/jobs/${jobId}/progress/`, {
       progress,
       processed_items: processedItems
     });
@@ -67,37 +67,37 @@ export const adminActions = {
   },
 
   cancelJob: async (jobId: string, reason?: string): Promise<Job> => {
-    const response = await adminApi.post(`/jobs/${jobId}/cancel`, {
+    const response = await adminApi.post(`/jobs/${jobId}/cancel/`, {
       reason: reason || 'Cancelled by user'
     });
     return response.data;
   },
 
   requestJobCancellation: async (jobId: string, reason?: string): Promise<Job> => {
-    const response = await adminApi.post(`/jobs/${jobId}/request-cancellation`, {
+    const response = await adminApi.post(`/jobs/${jobId}/request-cancellation/`, {
       reason: reason || 'Cancellation requested by user'
     });
     return response.data;
   },
 
   getJobsSummary: async (): Promise<JobsSummary> => {
-    const response = await adminApi.get('/jobs/summary');
+    const response = await adminApi.get('/jobs/summary/');
     return response.data;
   },
 
   // Job Analytics and Metrics
   getJobAnalytics: async (): Promise<JobAnalytics> => {
-    const response = await adminApi.get('/jobs/analytics');
+    const response = await adminApi.get('/jobs/analytics/');
     return response.data;
   },
 
   getActiveJobs: async (): Promise<Job[]> => {
-    const response = await adminApi.get('/jobs/active');
+    const response = await adminApi.get('/jobs/active/');
     return response.data;
   },
 
   cleanupStaleJobs: async (): Promise<{ message: string; cleaned_jobs: number }> => {
-    const response = await adminApi.post('/jobs/cleanup-stale');
+    const response = await adminApi.post('/jobs/cleanup-stale/');
     return response.data;
   },
 
@@ -107,7 +107,7 @@ export const adminActions = {
       ...(videoIds ? { video_ids: videoIds } : {}),
       trigger_type: triggerType
     };
-    const response = await adminApi.post('/process/scrape-youtube', requestBody);
+    const response = await adminApi.post('/process/scrape-youtube/', requestBody);
     return response.data;
   },
 
@@ -116,7 +116,7 @@ export const adminActions = {
       ...(videoIds ? { video_ids: videoIds } : {}),
       trigger_type: triggerType
     };
-    const response = await adminApi.post('/process/transcription-nlp', requestBody);
+    const response = await adminApi.post('/process/transcription-nlp/', requestBody);
     return response.data;
   },
 
@@ -128,26 +128,26 @@ export const adminActions = {
     limit?: number;
     offset?: number;
   }) => {
-    const response = await adminApi.get('/listings', { params });
+    const response = await adminApi.get('/listings/', { params });
     return response.data;
   },
 
   approveListing: async (listingId: string) => {
-    const response = await adminApi.put(`/listings/${listingId}`, {
+    const response = await adminApi.put(`/listings/${listingId}/`, {
       approved_status: 'Approved'
     });
     return response.data;
   },
 
   rejectListing: async (listingId: string) => {
-    const response = await adminApi.put(`/listings/${listingId}`, {
+    const response = await adminApi.put(`/listings/${listingId}/`, {
       approved_status: 'Rejected'
     });
     return response.data;
   },
 
   deleteListing: async (listingId: string) => {
-    const response = await adminApi.delete(`/listings/${listingId}`);
+    const response = await adminApi.delete(`/listings/${listingId}/`);
     return response.data;
   },
 

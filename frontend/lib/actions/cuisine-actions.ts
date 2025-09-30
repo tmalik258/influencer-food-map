@@ -122,7 +122,7 @@ export const cuisineActions = {
    */
   async updateCuisine(cuisineId: string, cuisineData: { name?: string; description?: string }): Promise<Cuisine> {
     try {
-      const response = await adminApi.put(`/cuisines/${cuisineId}`, cuisineData);
+      const response = await adminApi.put(`/cuisines/${cuisineId}/`, cuisineData);
       return response.data;
     } catch (error) {
       console.error(`Error updating cuisine ${cuisineId}:`, error);
@@ -135,7 +135,7 @@ export const cuisineActions = {
    */
   async deleteCuisine(cuisineId: string): Promise<void> {
     try {
-      await adminApi.delete(`/cuisines/${cuisineId}`);
+      await adminApi.delete(`/cuisines/${cuisineId}/`);
     } catch (error) {
       console.error(`Error deleting cuisine ${cuisineId}:`, error);
       throw error;

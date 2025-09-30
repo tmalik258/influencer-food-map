@@ -29,7 +29,7 @@ export const adminVideoActions = {
    * Create a new video from YouTube URL
    */
   createVideoFromUrl: async (data: VideoCreateFromUrlData): Promise<Video> => {
-    const response = await adminApi.post('/videos', data);
+    const response = await adminApi.post('/videos/', data);
     return response.data;
   },
 
@@ -37,7 +37,7 @@ export const adminVideoActions = {
    * Create a new video with manual data
    */
   createVideo: async (data: VideoCreateData): Promise<Video> => {
-    const response = await adminApi.post('/videos', data);
+    const response = await adminApi.post('/videos/', data);
     return response.data;
   },
 
@@ -45,7 +45,7 @@ export const adminVideoActions = {
    * Update an existing video
    */
   updateVideo: async (videoId: string, data: VideoUpdateData): Promise<Video> => {
-    const response = await adminApi.put(`/videos/${videoId}`, data);
+    const response = await adminApi.put(`/videos/${videoId}/`, data);
     return response.data;
   },
 
@@ -53,7 +53,7 @@ export const adminVideoActions = {
    * Delete a video
    */
   deleteVideo: async (videoId: string): Promise<{ message: string }> => {
-    const response = await adminApi.delete(`/videos/${videoId}`);
+    const response = await adminApi.delete(`/videos/${videoId}/`);
     return response.data;
   },
 
@@ -61,7 +61,7 @@ export const adminVideoActions = {
    * Get a single video by ID (admin view)
    */
   getVideo: async (videoId: string): Promise<Video> => {
-    const response = await adminApi.get(`/videos/${videoId}`);
+    const response = await adminApi.get(`/videos/${videoId}/`);
     return response.data;
   },
 

@@ -14,12 +14,12 @@ export interface GeocodeResponse {
 
 export const geocodingActions = {
   geocodeAddress: async (request: GeocodeRequest): Promise<GeocodeResponse> => {
-    const response = await api.post('/geocoding', request);
+    const response = await api.post('/geocoding/', request);
     return response.data;
   },
   
   geocodeAddressGet: async (address: string, city: string, country: string): Promise<GeocodeResponse> => {
-    const response = await api.get('/geocoding', {
+    const response = await api.get('/geocoding/', {
       params: {
         address,
         city,

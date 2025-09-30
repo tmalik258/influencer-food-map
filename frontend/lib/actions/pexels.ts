@@ -2,7 +2,11 @@ import api from "../api";
 
 export async function getPexelsImageAction(query: string): Promise<{ image_url: string } | null> {
   try {
-        const response = await api.get(`/pexels-images?query=${encodeURIComponent(query)}`);
+        const response = await api.get(`/pexels-images/`, {
+          params: {
+            query: encodeURIComponent(query)
+          }
+        });
     if (response.status === 200) {
       const data = response.data;
       return data;
