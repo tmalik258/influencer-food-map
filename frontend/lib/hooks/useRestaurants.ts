@@ -110,3 +110,43 @@ export const useRestaurant = (id: string, includeListings = false, includeVideoD
 export const useRestaurantWithListings = (id: string, includeVideoDetails = false) => {
   return useRestaurant(id, true, includeVideoDetails);
 };
+
+// Slug-based restaurant hooks
+export const useRestaurantBySlug = (slug: string, includeListings = false, includeVideoDetails = true) => {
+  const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchRestaurant = useCallback(async () => {
+    if (!slug) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await restaurantActions.getRestaurantBySlug(slug, includeListings, includeVideoDetails);
+      setRestaurant(data);
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Failed to fetch restaurant"
+      );
+    } finally {
+      setLoading(false);
+    }
+  }, [slug, includeListings, includeVideoDetails]);
+
+  useEffect(() => {
+    fetchRestaurant();
+  }, [slug, fetchRestaurant]);
+
+  return {
+    restaurant,
+    loading,
+    error,
+    refetch: fetchRestaurant,
+  };
+};
+
+// Hook for fetching restaurant with listings by slug
+export const useRestaurantWithListingsBySlug = (slug: string, includeVideoDetails = false) => {
+  return useRestaurantBySlug(slug, true, includeVideoDetails);
+};

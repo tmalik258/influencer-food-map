@@ -2,17 +2,18 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Influencer, Listing, Video
+from app.models import Influencer, Listing, Video, Restaurant
 from app.database import get_async_db
 from app.utils.logging import setup_logger
 from app.api_schema.influencers import InfluencerLightResponse, InfluencerResponse, PaginatedInfluencersResponse, rebuild_models
 from app.api_schema.listings import ListingLightResponse
 from app.api_schema.restaurants import RestaurantResponse
 from app.api_schema.videos import VideoResponse
+from app.utils.slug_utils import get_influencer_by_slug as get_influencer_by_slug_util
 
 # Rebuild models to resolve forward references
 rebuild_models()
@@ -109,6 +110,7 @@ async def get_influencers(
             influencer_data = InfluencerResponse(
                 id=influencer.id,
                 name=influencer.name,
+                slug=influencer.slug,
                 bio=influencer.bio,
                 avatar_url=influencer.avatar_url,
                 banner_url=influencer.banner_url,
@@ -324,6 +326,7 @@ async def get_influencer(
         influencer_data = InfluencerResponse(
             id=influencer.id,
             name=influencer.name,
+            slug=influencer.slug,
             bio=influencer.bio,
             avatar_url=influencer.avatar_url,
             banner_url=influencer.banner_url,
@@ -446,4 +449,165 @@ async def get_influencer(
         raise
     except Exception as e:
         logger.error(f"Error fetching influencer {influencer_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching influencer")
+
+@router.get("/slug/{influencer_slug}/", response_model=InfluencerResponse)
+async def get_influencer_by_slug(
+    influencer_slug: str,
+    db: AsyncSession = Depends(get_async_db),
+    include_listings: Optional[bool] = Query(False, description="Include listings with influencer"),
+    include_video_details: Optional[bool] = Query(True, description="Include full video details (description, transcription, summary)")
+):
+    """Get a single influencer by slug."""
+    try:
+        # Get influencer by slug using the utility function
+        influencer = await get_influencer_by_slug_util(db, influencer_slug)
+        if not influencer:
+            raise HTTPException(status_code=404, detail="Influencer not found")
+
+        # Get video count for this influencer
+        video_count_query = select(func.count(Video.id)).filter(Video.influencer_id == influencer.id)
+        video_count_result = await db.execute(video_count_query)
+        video_count = video_count_result.scalar() or 0
+
+        # Convert to response format - manually construct to avoid lazy loading issues
+        influencer_data = InfluencerResponse(
+            id=influencer.id,
+            name=influencer.name,
+            slug=influencer.slug,
+            bio=influencer.bio,
+            avatar_url=influencer.avatar_url,
+            banner_url=influencer.banner_url,
+            # region=influencer.region,
+            # country=influencer.country,
+            youtube_channel_id=influencer.youtube_channel_id,
+            youtube_channel_url=influencer.youtube_channel_url,
+            subscriber_count=influencer.subscriber_count,
+            total_videos=video_count,
+            created_at=influencer.created_at,
+            updated_at=influencer.updated_at,
+            listings=None  # Explicitly set to None to avoid lazy loading
+        )
+        
+        if include_listings and influencer.listings:
+            # Add listings if requested
+            query = select(Influencer).options(
+                joinedload(Influencer.listings)
+                .joinedload(Listing.video),
+                joinedload(Influencer.listings)
+                .joinedload(Listing.restaurant)
+            ).filter(Influencer.id == influencer.id)
+            
+            result = await db.execute(query)
+            influencer_with_listings = result.unique().scalars().first()
+            
+            if influencer_with_listings and influencer_with_listings.listings:
+                listings_data = []
+                for listing in influencer_with_listings.listings:
+                    if include_video_details:
+                        # Manually construct RestaurantResponse to avoid lazy loading issues
+                        restaurant_response = RestaurantResponse(
+                            id=listing.restaurant.id,
+                            name=listing.restaurant.name,
+                            slug=listing.restaurant.slug,
+                            address=listing.restaurant.address,
+                            latitude=listing.restaurant.latitude,
+                            longitude=listing.restaurant.longitude,
+                            city=listing.restaurant.city,
+                            country=listing.restaurant.country,
+                            google_place_id=listing.restaurant.google_place_id,
+                            google_rating=listing.restaurant.google_rating,
+                            business_status=listing.restaurant.business_status,
+                            photo_url=listing.restaurant.photo_url,
+                            is_active=listing.restaurant.is_active,
+                            created_at=listing.restaurant.created_at,
+                            updated_at=listing.restaurant.updated_at,
+                            tags=None,  # Avoid lazy loading
+                            listings=None  # Avoid lazy loading
+                        )
+                        
+                        # Manually construct VideoResponse to avoid lazy loading issues
+                        video_influencer_response = None
+                        if listing.video.influencer:
+                            video_influencer_response = InfluencerLightResponse(
+                                id=listing.video.influencer.id,
+                                name=listing.video.influencer.name,
+                                bio=listing.video.influencer.bio,
+                                avatar_url=listing.video.influencer.avatar_url,
+                                banner_url=listing.video.influencer.banner_url,
+                                youtube_channel_id=listing.video.influencer.youtube_channel_id,
+                                youtube_channel_url=listing.video.influencer.youtube_channel_url,
+                                subscriber_count=listing.video.influencer.subscriber_count,
+                                created_at=listing.video.influencer.created_at,
+                                updated_at=listing.video.influencer.updated_at
+                            )
+                        
+                        video_response = VideoResponse(
+                            id=listing.video.id,
+                            influencer=video_influencer_response,
+                            youtube_video_id=listing.video.youtube_video_id,
+                            title=listing.video.title,
+                            description=listing.video.description,
+                            video_url=listing.video.video_url,
+                            published_at=listing.video.published_at,
+                            transcription=listing.video.transcription,
+                            created_at=listing.video.created_at,
+                            updated_at=listing.video.updated_at
+                        )
+                        
+                        listing_response = ListingLightResponse(
+                            id=listing.id,
+                            restaurant=restaurant_response,
+                            video=video_response,
+                            influencer_id=listing.influencer.id,
+                            visit_date=listing.visit_date,
+                            quotes=listing.quotes,
+                            context=listing.context,
+                            confidence_score=listing.confidence_score,
+                            approved=listing.approved,
+                            created_at=listing.created_at,
+                            updated_at=listing.updated_at
+                        )
+                    else:
+                        # Manually construct RestaurantResponse to avoid lazy loading issues
+                        restaurant_response = RestaurantResponse(
+                            id=listing.restaurant.id,
+                            name=listing.restaurant.name,
+                            address=listing.restaurant.address,
+                            latitude=listing.restaurant.latitude,
+                            longitude=listing.restaurant.longitude,
+                            city=listing.restaurant.city,
+                            country=listing.restaurant.country,
+                            google_place_id=listing.restaurant.google_place_id,
+                            google_rating=listing.restaurant.google_rating,
+                            business_status=listing.restaurant.business_status,
+                            photo_url=listing.restaurant.photo_url,
+                            is_active=listing.restaurant.is_active,
+                            created_at=listing.restaurant.created_at,
+                            updated_at=listing.restaurant.updated_at,
+                            tags=None,  # Avoid lazy loading
+                            listings=None  # Avoid lazy loading
+                        )
+                        
+                        listing_response = ListingLightResponse(
+                            id=listing.id,
+                            restaurant=restaurant_response,
+                            influencer_id=listing.influencer.id,
+                            video=listing.video.id,
+                            visit_date=listing.visit_date,
+                            quotes=listing.quotes,
+                            context=listing.context,
+                            confidence_score=listing.confidence_score,
+                            approved=listing.approved,
+                            created_at=listing.created_at,
+                            updated_at=listing.updated_at
+                        )
+                    listings_data.append(listing_response)
+                influencer_data.listings = listings_data
+        
+        return influencer_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching influencer by slug {influencer_slug}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching influencer")

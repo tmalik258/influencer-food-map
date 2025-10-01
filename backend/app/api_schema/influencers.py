@@ -72,6 +72,7 @@ class InfluencerLightResponse(BaseModel):
 class InfluencerResponse(BaseModel):
     id: UUID
     name: str
+    slug: str
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
     banner_url: Optional[str] = None

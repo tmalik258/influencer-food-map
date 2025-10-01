@@ -1,7 +1,7 @@
 import uuid
 from enum import Enum
 
-from sqlalchemy import (Column, String, Text, Float, Boolean, DateTime)
+from sqlalchemy import (Column, String, Text, Float, Boolean, DateTime, Index)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -20,6 +20,7 @@ class Restaurant(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False, unique=True, index=True)
+    slug = Column(String(255), nullable=False, unique=True, index=True)
     address = Column(Text, nullable=False) # Raw address from Google Places
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
@@ -51,3 +52,7 @@ class Restaurant(Base):
     def cuisines(self):
         """Return the actual Cuisine objects for serialization"""
         return [rc.cuisine for rc in self.restaurant_cuisines] if self.restaurant_cuisines else []
+
+    __table_args__ = (
+        Index('idx_restaurant_slug_active', 'slug', 'is_active'),
+    )

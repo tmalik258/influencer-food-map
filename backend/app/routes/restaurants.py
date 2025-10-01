@@ -17,6 +17,7 @@ from app.api_schema.listings import ListingLightResponse
 from app.api_schema.influencers import InfluencerResponse, InfluencerLightResponse
 from app.api_schema.restaurants import RestaurantResponse, OptimizedFeaturedResponse, CityRestaurantsResponse, PaginatedRestaurantsResponse, rebuild_models
 from app.services.google_places_service import refetch_photo_by_place_id
+from app.utils.slug_utils import get_restaurant_by_slug
 
 # Rebuild models to resolve forward references
 rebuild_models()
@@ -159,6 +160,7 @@ async def get_restaurants(
             restaurant_data = RestaurantResponse(
                 id=restaurant.id,
                 name=restaurant.name,
+                slug=restaurant.slug,
                 address=restaurant.address,
                 latitude=restaurant.latitude,
                 longitude=restaurant.longitude,
@@ -346,6 +348,7 @@ async def get_featured_optimized(db: AsyncSession = Depends(get_async_db)):
                 restaurant_dict = {
                     'id': restaurant.id,
                     'name': restaurant.name,
+                    'slug': restaurant.slug,
                     'address': restaurant.address,
                     'latitude': restaurant.latitude,
                     'longitude': restaurant.longitude,
@@ -464,6 +467,7 @@ async def get_restaurant(
         restaurant_data = RestaurantResponse(
             id=restaurant.id,
             name=restaurant.name,
+            slug=restaurant.slug,
             address=restaurant.address,
             latitude=restaurant.latitude,
             longitude=restaurant.longitude,
@@ -561,6 +565,146 @@ async def get_restaurant(
         raise
     except Exception as e:
         logger.error(f"Error fetching restaurant {restaurant_id}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to fetch restaurant. Please try again later.")
+
+@router.get("/slug/{restaurant_slug}/", response_model=RestaurantResponse)
+async def get_restaurant_by_slug(
+    restaurant_slug: str, 
+    db: AsyncSession = Depends(get_async_db),
+    include_listings: Optional[bool] = Query(False, description="Include listings with restaurant"),
+    include_video_details: Optional[bool] = Query(True, description="Include full video details (description, transcription, summary)")
+):
+    """Get a single restaurant by slug."""
+    try:
+        # Get restaurant by slug with proper relationships loaded
+        query = select(Restaurant).options(
+            joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
+            joinedload(Restaurant.restaurant_cuisines).joinedload(RestaurantCuisine.cuisine)
+        ).filter(Restaurant.slug == restaurant_slug, Restaurant.is_active == True)
+        
+        result = await db.execute(query)
+        restaurant = result.unique().scalar_one_or_none()
+        
+        if not restaurant:
+            raise HTTPException(status_code=404, detail="Restaurant not found")
+
+        # Convert to response format - manually construct to avoid lazy loading issues
+        restaurant_data = RestaurantResponse(
+            id=restaurant.id,
+            name=restaurant.name,
+            slug=restaurant.slug,
+            address=restaurant.address,
+            latitude=restaurant.latitude,
+            longitude=restaurant.longitude,
+            city=restaurant.city,
+            country=restaurant.country,
+            google_place_id=restaurant.google_place_id,
+            google_rating=restaurant.google_rating,
+            business_status=restaurant.business_status,
+            photo_url=restaurant.photo_url,
+            is_active=restaurant.is_active,
+            created_at=restaurant.created_at,
+            updated_at=restaurant.updated_at,
+            tags=None,  # Will be set separately if needed
+            cuisines=None,  # Will be set separately if needed
+            listings=None  # Will be set separately if needed
+        )
+        
+        # Add tags if available
+        if restaurant.restaurant_tags:
+            tags_data = []
+            for rt in restaurant.restaurant_tags:
+                if rt.tag:
+                    tags_data.append(TagResponse.model_validate(rt.tag))
+            restaurant_data.tags = tags_data
+        
+        # Add cuisines if available
+        if restaurant.restaurant_cuisines:
+            cuisines_data = []
+            for rc in restaurant.restaurant_cuisines:
+                if rc.cuisine:
+                    cuisines_data.append(CuisineResponse.model_validate(rc.cuisine))
+            restaurant_data.cuisines = cuisines_data
+        
+        if include_listings and restaurant.listings:
+            listings_data = []
+            for listing in restaurant.listings:
+                # Create InfluencerResponse manually to avoid lazy loading issues
+                influencer_response = InfluencerResponse(
+                    id=listing.influencer.id,
+                    name=listing.influencer.name,
+                    bio=listing.influencer.bio,
+                    avatar_url=listing.influencer.avatar_url,
+                    banner_url=listing.influencer.banner_url,
+                    # region=listing.influencer.region,
+                    # country=listing.influencer.country,
+                    youtube_channel_id=listing.influencer.youtube_channel_id,
+                    youtube_channel_url=listing.influencer.youtube_channel_url,
+                    subscriber_count=listing.influencer.subscriber_count,
+                    created_at=listing.influencer.created_at,
+                    updated_at=listing.influencer.updated_at,
+                    listings=None  # Explicitly set to None to avoid lazy loading
+                )
+                
+                if include_video_details:
+                    # Manually construct VideoResponse to avoid validation issues
+                    video_influencer_response = None
+                    if listing.video.influencer:
+                        video_influencer_response = InfluencerLightResponse(
+                            id=listing.video.influencer.id,
+                            name=listing.video.influencer.name,
+                            bio=listing.video.influencer.bio,
+                            avatar_url=listing.video.influencer.avatar_url,
+                            banner_url=listing.video.influencer.banner_url,
+                            youtube_channel_id=listing.video.influencer.youtube_channel_id,
+                            youtube_channel_url=listing.video.influencer.youtube_channel_url,
+                            subscriber_count=listing.video.influencer.subscriber_count,
+                            created_at=listing.video.influencer.created_at,
+                            updated_at=listing.video.influencer.updated_at
+                        )
+                    
+                    video_response = VideoResponse(
+                        id=listing.video.id,
+                        influencer=video_influencer_response,
+                        youtube_video_id=listing.video.youtube_video_id,
+                        title=listing.video.title,
+                        description=listing.video.description,
+                        video_url=listing.video.video_url,
+                        published_at=listing.video.published_at,
+                        transcription=listing.video.transcription,
+                        created_at=listing.video.created_at,
+                        updated_at=listing.video.updated_at
+                    )
+                    
+                    listing_response = ListingLightResponse(
+                        id=listing.id,
+                        restaurant=listing.restaurant.id,
+                        video=video_response,
+                        influencer=influencer_response,
+                        visit_date=listing.visit_date,
+                        quotes=listing.quotes,
+                        created_at=listing.created_at,
+                        updated_at=listing.updated_at
+                    )
+                else:
+                    listing_response = ListingLightResponse(
+                        id=listing.id,
+                        restaurant=listing.restaurant.id,
+                        video=listing.video.id,
+                        influencer=influencer_response,
+                        visit_date=listing.visit_date,
+                        quotes=listing.quotes,
+                        created_at=listing.created_at,
+                        updated_at=listing.updated_at
+                    )
+                listings_data.append(listing_response)
+            restaurant_data.listings = listings_data
+        
+        return restaurant_data
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching restaurant by slug {restaurant_slug}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch restaurant. Please try again later.")
 
 @router.post("/{restaurant_id}/refetch-photo/")

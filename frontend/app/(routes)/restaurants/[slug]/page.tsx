@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useRestaurantWithListings } from "@/lib/hooks";
+import { useRestaurantWithListingsBySlug } from "@/lib/hooks";
 import { MapPin, Users } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -17,14 +17,14 @@ import ListingCard from "./_components/listing-card";
 
 export default function RestaurantDetailPage() {
   const params = useParams();
-  const restaurantId = params.id as string;
+  const restaurantSlug = params.slug as string;
 
   const {
     restaurant,
     loading,
     error: restaurantError,
     refetch: refetchRestaurant,
-  } = useRestaurantWithListings(restaurantId, true); // Include video details for restaurant page
+  } = useRestaurantWithListingsBySlug(restaurantSlug, true); // Include video details for restaurant page
   
   // Extract listings from restaurant data
   const listings = restaurant?.listings || [];

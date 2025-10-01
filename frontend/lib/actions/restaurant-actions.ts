@@ -71,4 +71,26 @@ export const restaurantActions = {
     const response = await api.put(`/restaurants/${id}/`, data);
     return response.data;
   },
+
+  // Slug-based API functions
+  getRestaurantBySlug: async (slug: string, includeListings = false, includeVideoDetails = true): Promise<Restaurant> => {
+    const response = await api.get(`/restaurants/slug/${slug}/`, {
+      params: {
+        include_listings: includeListings,
+        include_video_details: includeVideoDetails
+      }
+    });
+    return response.data;
+  },
+
+  // Get restaurant by either ID or slug (universal method)
+  getRestaurantByIdOrSlug: async (idOrSlug: string, includeListings = false, includeVideoDetails = true): Promise<Restaurant> => {
+    // Try to get by ID first
+    try {
+      return await this.getRestaurant(idOrSlug, includeListings, includeVideoDetails);
+    } catch (error) {
+      // If ID lookup fails, try slug
+      return await this.getRestaurantBySlug(idOrSlug, includeListings, includeVideoDetails);
+    }
+  },
 };

@@ -19,6 +19,7 @@ from app.api_schema.admin_restaurants import (
 )
 from app.services.google_places_service import fetch_restaurant_details_from_google
 from app.utils.logging import setup_logger
+from app.utils.slug_utils import generate_unique_slug
 
 # Setup logging
 logger = setup_logger(__name__)
@@ -66,9 +67,13 @@ async def create_restaurant(
                 detail=f"Restaurant '{google_details['name']}' already exists in the database"
             )
         
+        # Generate unique slug
+        slug = await generate_unique_slug(db, google_details["name"], Restaurant)
+        
         # Create new restaurant with Google API data
         new_restaurant = Restaurant(
             name=google_details["name"],
+            slug=slug,
             address=google_details["address"],
             latitude=google_details["latitude"],
             longitude=google_details["longitude"],
@@ -226,6 +231,11 @@ async def update_restaurant(
         update_data = restaurant_update.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(db_restaurant, field, value)
+        
+        # Generate new slug if name was updated
+        if "name" in update_data and update_data["name"]:
+            new_slug = await generate_unique_slug(db, update_data["name"], Restaurant, db_restaurant.id)
+            db_restaurant.slug = new_slug
         
         # Commit changes
         await db.commit()

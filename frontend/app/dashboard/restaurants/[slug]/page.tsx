@@ -26,20 +26,20 @@ export default function RestaurantDetailsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const restaurantId = params.id as string;
+  const restaurantSlug = params.slug as string;
 
   useEffect(() => {
-    if (restaurantId) {
+    if (restaurantSlug) {
       loadRestaurant();
     }
     // Check if edit mode is enabled via URL parameter
     if (searchParams.get('edit') === 'true') {
       setIsEditing(true);
     }
-  }, [restaurantId, searchParams]);
+  }, [restaurantSlug, searchParams]);
 
   const loadRestaurant = async () => {
-    const data = await getRestaurant(restaurantId);
+    const data = await getRestaurantBySlug(restaurantSlug);
     if (data) {
       setRestaurant(data);
     }
@@ -74,7 +74,7 @@ export default function RestaurantDetailsPage() {
 
   const handleDelete = async () => {
     setIsDeleting(true);
-    const success = await deleteRestaurant(restaurantId);
+    const success = await deleteRestaurant(restaurant?.id || restaurantSlug);
     if (success) {
       router.push("/dashboard/restaurants");
     }

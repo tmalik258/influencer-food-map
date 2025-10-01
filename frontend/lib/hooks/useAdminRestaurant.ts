@@ -106,11 +106,30 @@ export function useAdminRestaurant() {
     }
   };
 
+  const getRestaurantBySlug = async (restaurantSlug: string): Promise<Restaurant | null> => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      const response = await adminApi.get<Restaurant>(`/restaurants/slug/${restaurantSlug}`);
+      return response.data;
+    } catch (err: unknown) {
+      const error = err as AxiosError<{ detail: string }>;
+      const errorMessage = error.response?.data?.detail || error.message || 'Failed to fetch restaurant';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return {
     createRestaurant,
     updateRestaurant,
     deleteRestaurant,
     getRestaurant,
+    getRestaurantBySlug,
     loading,
     error,
   };

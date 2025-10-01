@@ -57,6 +57,42 @@ export const useInfluencer = (id: string, params?: {
   };
 };
 
+// Slug-based influencer hooks
+export const useInfluencerBySlug = (slug: string, params?: {
+  include_listings?: boolean;
+  include_video_details?: boolean;
+}) => {
+  const [influencer, setInfluencer] = useState<Influencer | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchInfluencer = useCallback(async () => {
+    if (!slug) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await influencerActions.getInfluencerBySlug(slug, params);
+      setInfluencer(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch influencer');
+    } finally {
+      setLoading(false);
+    }
+  }, [slug, params]);
+
+  useEffect(() => {
+    fetchInfluencer();
+  }, [fetchInfluencer]);
+
+  return {
+    influencer,
+    loading,
+    error,
+    refetch: fetchInfluencer
+  };
+};
+
 export const useInfluencers = (initialParams?: InfluencersParams) => {
   const [data, setData] = useState<InfluencersResponse>({
     influencers: [],

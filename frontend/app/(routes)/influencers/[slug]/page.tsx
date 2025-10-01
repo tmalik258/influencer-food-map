@@ -12,6 +12,7 @@ import {
   useInfluencerListings,
   useInfluencerVideos,
   useMostRecentListing,
+  useInfluencerBySlug,
 } from "@/lib/hooks";
 import { Play } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,8 +36,8 @@ import RestaurantMap from "@/components/restaurant-map-wrapper";
 import { InfluencerSearchFilter } from "../_components/influencer-search-filter";
 
 export default function InfluencerDetailPage() {
-  const params = useParams() as { id: string };
-  const influencerId = params?.id;
+  const params = useParams() as { slug: string };
+  const influencerSlug = params?.slug;
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -58,28 +59,28 @@ export default function InfluencerDetailPage() {
     loading: influencerLoading,
     error: influencerError,
     refetch: refetchInfluencer,
-  } = useInfluencer(influencerId);
+  } = useInfluencerBySlug(influencerSlug);
 
   const {
     listings,
     loading: listingsLoading,
     error: listingsError,
     refetch: refetchListings,
-  } = useInfluencerListings(influencerId);
+  } = useInfluencerListings(influencer?.id);
 
   const {
     videos,
     loading: videosLoading,
     error: videosError,
     refetch: refetchVideos,
-  } = useInfluencerVideos(influencerId, 10);
+  } = useInfluencerVideos(influencer?.id, 10);
 
   const {
     listing: mostRecentListing,
     loading: mostRecentLoading,
     error: mostRecentError,
     refetch: refetchMostRecent,
-  } = useMostRecentListing(influencerId);
+  } = useMostRecentListing(influencer?.id);
 
   // Sync local state with URL parameters
   useEffect(() => {

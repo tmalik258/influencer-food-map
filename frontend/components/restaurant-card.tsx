@@ -94,7 +94,7 @@ export function RestaurantCard({
             asChild
             className="w-full mt-auto bg-orange-500 text-white hover:bg-orange-600 transition-colors duration-200"
           >
-            <Link href={`/restaurants/${restaurant.id}`}>View Details</Link>
+            <Link href={`/restaurants/${restaurant.slug || restaurant.id}`}>View Details</Link>
           </Button>
         )}
       </CardContent>

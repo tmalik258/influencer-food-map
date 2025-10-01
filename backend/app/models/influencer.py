@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import (Column, String, Text, DateTime, Integer)
+from sqlalchemy import (Column, String, Text, DateTime, Integer, Index)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
@@ -11,7 +11,8 @@ class Influencer(Base):
     __tablename__ = "influencers"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=False, unique=True, index=True)
+    slug = Column(String(255), nullable=False, unique=True, index=True)
     bio = Column(Text)
     avatar_url = Column(String(255), nullable=True)
     banner_url = Column(String(255), nullable=True)
@@ -28,3 +29,7 @@ class Influencer(Base):
 
     videos = relationship("Video", back_populates="influencer")
     listings = relationship("Listing", back_populates="influencer")
+
+    __table_args__ = (
+        Index('idx_influencer_slug_active', 'slug', 'created_at'),
+    )

@@ -40,6 +40,29 @@ const influencerActions = {
     });
     return response.data;
   },
+
+  // Slug-based API functions
+  getInfluencerBySlug: async (slug: string, params?: {
+    include_listings?: boolean;
+    include_video_details?: boolean;
+  }) => {
+    const response = await api.get(`/influencers/slug/${slug}/`, { params });
+    return response.data;
+  },
+
+  // Get influencer by either ID or slug (universal method)
+  getInfluencerByIdOrSlug: async (idOrSlug: string, params?: {
+    include_listings?: boolean;
+    include_video_details?: boolean;
+  }) => {
+    // Try to get by ID first
+    try {
+      return await this.getInfluencer(idOrSlug, params);
+    } catch (error) {
+      // If ID lookup fails, try slug
+      return await this.getInfluencerBySlug(idOrSlug, params);
+    }
+  },
 };
 
 export { influencerActions };

@@ -12,6 +12,7 @@ from app.services.youtube_scraper import get_channel
 from app.database import get_async_db
 from app.dependencies import get_current_admin
 from app.models.influencer import Influencer
+from app.utils.slug_utils import generate_unique_slug
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -47,8 +48,12 @@ async def create_influencer(
                 detail="Failed to scrape channel data from YouTube URL"
             )
 
+        # Generate unique slug
+        slug = await generate_unique_slug(db, channel.get('name', ''), Influencer)
+        
         influencer = Influencer(
             name=channel.get('name', ''),
+            slug=slug,
             bio=channel.get('bio', ''),
             avatar_url=channel.get('avatar_url', ''),
             banner_url=channel.get('banner_url', ''),
@@ -161,6 +166,11 @@ async def update_influencer(
         # Update fields
         for field, value in update_data.items():
             setattr(existing_influencer, field, value)
+        
+        # Generate new slug if name was updated
+        if "name" in update_data and update_data["name"]:
+            new_slug = await generate_unique_slug(db, update_data["name"], Influencer, existing_influencer.id)
+            existing_influencer.slug = new_slug
         
         await db.commit()
         await db.refresh(existing_influencer)
