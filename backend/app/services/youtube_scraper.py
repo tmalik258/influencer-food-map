@@ -3,7 +3,7 @@ import uuid
 import redis
 import time
 from datetime import datetime, timedelta
-from typing import Optional
+from typing import Optional, Set
 import requests
 
 from googleapiclient.discovery import build
@@ -136,8 +136,8 @@ def get_video_metadata(video_id: str) -> dict | None:
         logger.error(f"Unexpected error fetching video metadata for {video_id}: {e}")
         return None
 
-def get_videos(channel_id: str) -> list[dict]:
-    """Fetch videos from a channel's upload playlist."""
+def get_videos(channel_id: str, exclude_ids: Optional[Set[str]] = None) -> list[dict]:
+    """Fetch videos from a channel's upload playlist, optionally excluding known IDs."""
     try:
         # Get the upload playlist ID
         response = youtube.channels().list(part="contentDetails,snippet", id=channel_id).execute()
@@ -160,11 +160,15 @@ def get_videos(channel_id: str) -> list[dict]:
             
             for item in playlist_response["items"]:
                 video = item["snippet"]
+                video_id = video["resourceId"]["videoId"]
+                # Skip if in exclude list
+                if exclude_ids and video_id in exclude_ids:
+                    continue
                 videos.append({
-                    "youtube_video_id": video["resourceId"]["videoId"],
+                    "youtube_video_id": video_id,
                     "title": video["title"],
                     "description": video.get("description", ""),
-                    "video_url": f"https://www.youtube.com/watch?v={video['resourceId']['videoId']}",
+                    "video_url": f"https://www.youtube.com/watch?v={video_id}",
                     "published_at": video["publishedAt"],
                 })
             
@@ -254,7 +258,9 @@ def store_videos(db: Session, videos: list[dict], influencer_id: uuid.UUID):
         raise
 
 def scrape_youtube(db: Session, job_id: Optional[uuid.UUID] = None):
-    """Main function to scrape YouTube video metadata and store in Supabase with job tracking."""
+    """Main function to scrape YouTube video metadata and store in Supabase with job tracking.
+    Only new videos (not already in DB) are stored; if no videos exist yet, fetch all.
+    """
     start_time = time.time()
     last_heartbeat = start_time
     total_channels = len(INFLUENCER_CHANNELS)
@@ -310,18 +316,23 @@ def scrape_youtube(db: Session, job_id: Optional[uuid.UUID] = None):
                 # Store influencer
                 influencer = store_influencer(db, channel, channel_data)
                 
-                # Fetch and store videos
-                videos = get_videos(channel_data["id"])
+                # Determine existing video IDs for this influencer
+                existing_ids_rows = db.query(Video.youtube_video_id).filter(Video.influencer_id == influencer.id).all()
+                existing_ids = {row[0] for row in existing_ids_rows}
+                logger.info(f"Existing videos for influencer {influencer.id}: {len(existing_ids)}")
+                
+                # Fetch videos excluding existing ones (if any)
+                videos = get_videos(channel_data["id"], exclude_ids=existing_ids if existing_ids else None)
 
                 if not videos:
-                    logger.warning(f"No videos found for channel {channel['name']} ({channel_data['id']})")
+                    logger.info(f"No new videos found for channel {channel['name']} ({channel_data['id']})")
                     processed_channels += 1
                     if job_id:
                         JobService.update_progress_sync(db, job_id, processed_channels, total_channels)
                         JobService.update_tracking_stats_sync(db, job_id, items_in_progress=0)
                     continue
 
-                logger.info(f"Found {len(videos)} videos for channel {channel['name']} ({channel_data['id']}): {json.dumps(videos, indent=2)[:1000]}...")  # Log first 500 chars of video data
+                logger.info(f"Found {len(videos)} NEW videos for channel {channel['name']} ({channel_data['id']})")
 
                 store_videos(db, videos, influencer.id)
                 total_videos_processed += len(videos)
@@ -352,7 +363,7 @@ def scrape_youtube(db: Session, job_id: Optional[uuid.UUID] = None):
                     JobService.update_tracking_stats_sync(db, job_id, failed_items=failed_channels)
                 continue
 
-        logger.info(f"Scraping completed successfully. Processed {processed_channels}/{total_channels} channels, {total_videos_processed} total videos, {failed_channels} failed channels")
+        logger.info(f"Scraping completed successfully. Processed {processed_channels}/{total_channels} channels, {total_videos_processed} total NEW videos, {failed_channels} failed channels")
         
         # Final job update
         if job_id:

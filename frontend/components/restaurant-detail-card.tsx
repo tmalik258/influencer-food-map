@@ -7,6 +7,7 @@ import RatingStars from "@/components/rating-stars";
 import { Restaurant, Listing, Cuisine } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import SocialShareButtons from "@/components/social-share-buttons";
+import RestaurantImage from "@/components/restaurant-image";
 
 interface RestaurantDetailCardProps {
   restaurant: Restaurant;
@@ -30,21 +31,12 @@ export function RestaurantDetailCard({
       <CardContent className="p-6 h-full">
         <div className="flex flex-col md:flex-row items-stretch gap-4">
           <div className="w-full md:w-80 rounded-xl overflow-hidden relative flex-grow md:flex-shrink-0 min-h-[200px]">
-            {restaurant.photo_url ? (
-              <Image
-                fill
-                src={restaurant.photo_url}
-                alt={restaurant.name}
-                className="object-cover"
-                sizes="(max-width: 768px) 100vw, (max-width: 1024px) 320px, 320px"
-              />
-            ) : (
-              <div className="w-full h-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">
-                <span className="text-white font-bold text-2xl">
-                  {restaurant?.name?.charAt(0) || '?'}
-                </span>
-              </div>
-            )}
+            <RestaurantImage
+              src={restaurant.photo_url || undefined}
+              alt={restaurant.name}
+              restaurantId={String(restaurant.id)}
+              sizes="(max-width: 768px) 100vw, (max-width: 1024px) 320px, 320px"
+            />
           </div>
           <div className="flex-grow">
             <h3 className="text-2xl font-bold text-gray-900 mb-1">

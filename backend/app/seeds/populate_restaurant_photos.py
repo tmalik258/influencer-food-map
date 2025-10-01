@@ -27,7 +27,7 @@ async def get_google_place_photo_url(google_place_id: str) -> str | None:
         # Get place details with photos using googlemaps library
         place_details = await loop.run_in_executor(
             None, 
-            lambda: gmaps.place(place_id=google_place_id, fields=['photos'])
+            lambda: gmaps.place(place_id=google_place_id, fields=['photo'])
         )
         
         if place_details["status"] != "OK":

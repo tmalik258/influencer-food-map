@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Restaurant, Listing } from "@/lib/types";
 import { Star } from "lucide-react";
+import RestaurantImage from "@/components/restaurant-image";
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
@@ -23,21 +24,13 @@ export function RestaurantCard({
       className="overflow-hidden border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 group p-4"
     >
       <div className="relative h-48 rounded-lg overflow-hidden">
-        {restaurant.photo_url ? (
-          <Image
-            src={restaurant.photo_url}
-            alt={restaurant.name}
-            fill
-            className="object-cover group-hover:scale-105 transition-transform duration-300"
-            sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-orange-400 to-red-500 flex items-center justify-center">
-            <span className="text-white font-bold text-4xl">
-              {restaurant?.name?.charAt(0) || '?'}
-            </span>
-          </div>
-        )}
+        {/* Use fallback-aware image component */}
+        <RestaurantImage
+          src={restaurant.photo_url || undefined}
+          alt={restaurant.name}
+          restaurantId={String(restaurant.id)}
+          className="group-hover:scale-105 transition-transform duration-300"
+        />
         {restaurant.google_rating && (
           <div className="absolute top-4 right-4">
             <Badge className="bg-black/70 text-white px-2 py-1 flex items-center">

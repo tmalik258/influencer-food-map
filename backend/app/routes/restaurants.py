@@ -16,6 +16,7 @@ from app.api_schema.videos import VideoResponse
 from app.api_schema.listings import ListingLightResponse
 from app.api_schema.influencers import InfluencerResponse, InfluencerLightResponse
 from app.api_schema.restaurants import RestaurantResponse, OptimizedFeaturedResponse, CityRestaurantsResponse, PaginatedRestaurantsResponse, rebuild_models
+from app.services.google_places_service import refetch_photo_by_place_id
 
 # Rebuild models to resolve forward references
 rebuild_models()
@@ -561,3 +562,30 @@ async def get_restaurant(
     except Exception as e:
         logger.error(f"Error fetching restaurant {restaurant_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch restaurant. Please try again later.")
+
+@router.post("/{restaurant_id}/refetch-photo/")
+async def refetch_restaurant_photo(
+    restaurant_id: str,
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Refetch restaurant photo via Google Place ID and update photo_url."""
+    # Load the restaurant
+    result = await db.execute(
+        select(Restaurant).filter(Restaurant.id == restaurant_id)
+    )
+    restaurant = result.scalars().first()
+    if not restaurant:
+        raise HTTPException(status_code=404, detail="Restaurant not found")
+
+    if not restaurant.google_place_id:
+        raise HTTPException(status_code=400, detail="Restaurant missing google_place_id")
+
+    final_url = await refetch_photo_by_place_id(restaurant.google_place_id)
+    if not final_url:
+        raise HTTPException(status_code=502, detail="Failed to refetch photo from Google")
+
+    restaurant.photo_url = final_url
+    await db.commit()
+    await db.refresh(restaurant)
+
+    return {"photo_url": restaurant.photo_url}
