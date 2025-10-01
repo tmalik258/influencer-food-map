@@ -27,8 +27,11 @@ class ScrapeRequest(BaseModel):
     trigger_type: Optional[LockType] = LockType.AUTOMATIC
 
 @router.post("/scrape-youtube/")
-async def trigger_scrape(background_tasks: BackgroundTasks = None, db: Session = Depends(get_db), admin_user = Depends(get_current_admin)):
-    """Trigger YouTube scraping in the background with Redis lock and job tracking."""
+async def trigger_scrape(
+    db: AsyncSession = Depends(get_async_db),
+    admin_user = Depends(get_current_admin)
+):
+    """Trigger YouTube scraping asynchronously with Redis lock and job tracking."""
     # Try to acquire the lock (non-blocking)
     if redis_client.get(SCRAPE_YOUTUBE_LOCK):
         raise HTTPException(
@@ -48,76 +51,76 @@ async def trigger_scrape(background_tasks: BackgroundTasks = None, db: Session =
         trigger_type=LockType.AUTOMATIC
     )
     
-    job = JobService.create_job_sync(db, job_data)
+    job = await JobService.create_job(db, job_data)
+    job_id = job.id
     
     # Set the lock with a 1-hour TTL (adjust as needed)
     redis_client.setex(SCRAPE_YOUTUBE_LOCK, 3600, "locked")
     
-    async def scrape_with_job_tracking():
+    async def run_scrape():
         start_time = time.time()
         last_heartbeat = start_time
         
-        try:
-            # Start the job
-            JobService.start_job_sync(db, job.id)
-            
-            # Initialize progress tracking
-            JobService.update_progress_sync(db, job.id, 0, 0)
-            JobService.update_queue_metrics_sync(db, job.id, len(INFLUENCER_CHANNELS), 0)
-            
-            # Run the scraping with monitoring
-            async def monitored_scrape():
-                nonlocal last_heartbeat
+        # Create a new async session for the background task
+        async with AsyncSessionLocal() as task_session:
+            try:
+                # Start the job
+                await JobService.start_job(task_session, job_id)
                 
-                # Check for cancellation
-                current_job = JobService.get_job_sync(db, job.id)
-                if current_job and current_job.cancellation_requested:
-                    JobService.cancel_job_sync(db, job.id, "Job cancelled by user request")
-                    redis_client.delete(SCRAPE_YOUTUBE_LOCK)
-                    return {"cancelled": True}
+                # Initialize progress tracking
+                await JobService.update_progress(task_session, job_id, 0, 0)
+                await JobService.update_queue_metrics(task_session, job_id, len(INFLUENCER_CHANNELS), 0)
                 
-                # Heartbeat update
-                JobService.update_heartbeat_sync(db, job.id)
+                async def monitored_scrape():
+                    nonlocal last_heartbeat
+                    
+                    # Check for cancellation
+                    current_job = await JobService.get_job(task_session, job_id)
+                    if current_job and current_job.cancellation_requested:
+                        await JobService.cancel_job(task_session, job_id, "Job cancelled by user request")
+                        redis_client.delete(SCRAPE_YOUTUBE_LOCK)
+                        return {"cancelled": True}
+                    
+                    # Heartbeat update
+                    await JobService.update_heartbeat(task_session, job_id)
+                    
+                    # Run the actual pipeline
+                    return await scrape_youtube(task_session, job_id)
                 
-                # Run the actual pipeline with video_ids
-                return scrape_youtube(db, job.id)
-            
-            result = await monitored_scrape()
-            
-            if result and result.get("cancelled"):
-                return
-            
-            # Complete the job
-            elapsed_time = time.time() - start_time
-            result_data = json.dumps({
-                "message": "YouTube scraping completed successfully",
-                "elapsed_time": elapsed_time,
-            })
-            JobService.complete_job_sync(db, job.id, result_data)
-            
-        except Exception as e:
-            # Check if it's a cancellation
-            if "cancelled" in str(e).lower():
-                JobService.cancel_job_sync(db, job.id, str(e))
-            else:
-                JobService.fail_job_sync(db, job.id, str(e))
-            redis_client.delete(SCRAPE_YOUTUBE_LOCK)  # Release lock on error
-            raise
+                result = await monitored_scrape()
+                
+                if result and result.get("cancelled"):
+                    return
+                
+                # Complete the job
+                elapsed_time = time.time() - start_time
+                result_data = json.dumps({
+                    "message": "YouTube scraping completed successfully",
+                    "elapsed_time": elapsed_time,
+                    "channels_processed": result.get("channels_processed", 0) if result else 0,
+                    "videos_processed": result.get("videos_processed", 0) if result else 0,
+                    "failed_channels": result.get("failed_channels", 0) if result else 0
+                })
+                await JobService.complete_job(task_session, job_id, result_data)
+                
+            except Exception as e:
+                # Check if it's a cancellation
+                if "cancelled" in str(e).lower():
+                    await JobService.cancel_job(task_session, job_id, str(e))
+                else:
+                    await JobService.fail_job(task_session, job_id, str(e))
+                raise
+            finally:
+                redis_client.delete(SCRAPE_YOUTUBE_LOCK)  # Release lock when done
     
-    try:
-        background_tasks.add_task(scrape_with_job_tracking)
-        return {
-            "message": "YouTube scraping started in the background",
-            "job_id": str(job.id),
-            "influencer_count": len(INFLUENCER_CHANNELS)
-        }
-    except Exception as e:
-        redis_client.delete(SCRAPE_YOUTUBE_LOCK)  # Release lock on error
-        JobService.fail_job_sync(db, job.id, str(e))
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to start scraping: {str(e)}"
-        )
+    task = asyncio.create_task(run_scrape())
+    
+    return {
+        "message": "YouTube scraping started in the background",
+        "task_id": id(task),
+        "job_id": str(job_id),
+        "influencer_count": len(INFLUENCER_CHANNELS)
+    }
 
 @router.post("/transcription-nlp/")
 async def trigger_transcription_nlp(
