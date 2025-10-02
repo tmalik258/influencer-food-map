@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Edit, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -28,6 +28,13 @@ export default function RestaurantDetailsPage() {
 
   const restaurantId = params.id as string;
 
+  const loadRestaurant = useCallback(async () => {
+    const data = await getRestaurant(restaurantId);
+    if (data) {
+      setRestaurant(data);
+    }
+  }, [restaurantId, getRestaurant]);
+
   useEffect(() => {
     if (restaurantId) {
       loadRestaurant();
@@ -36,14 +43,7 @@ export default function RestaurantDetailsPage() {
     if (searchParams.get('edit') === 'true') {
       setIsEditing(true);
     }
-  }, [restaurantId, searchParams]);
-
-  const loadRestaurant = async () => {
-    const data = await getRestaurant(restaurantId);
-    if (data) {
-      setRestaurant(data);
-    }
-  };
+  }, [restaurantId, searchParams, loadRestaurant]);
 
   const handleEdit = () => {
     setIsEditing(true);

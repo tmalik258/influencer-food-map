@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { MapPin, ArrowLeft, Grid3X3, Map, X } from "lucide-react";
-import { Restaurant, Tag, Cuisine } from "@/lib/types";
+import { Restaurant, Cuisine } from "@/lib/types";
 import { getSearchPlaceholder } from "@/lib/utils/search-utils";
 import { useRestaurantsPaginated } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";

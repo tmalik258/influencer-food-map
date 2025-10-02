@@ -162,6 +162,7 @@ async def get_all_restaurants(
         
         return restaurants
     except Exception as e:
+        logger.error(f"Failed to retrieve restaurants: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve restaurants: {str(e)}"
@@ -197,6 +198,7 @@ async def get_restaurant(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error(f"Failed to retrieve restaurant: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve restaurant: {str(e)}"
@@ -260,6 +262,7 @@ async def update_restaurant(
         raise
     except Exception as e:
         await db.rollback()
+        logger.error(f"Failed to update restaurant: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update restaurant: {str(e)}"
@@ -304,7 +307,8 @@ async def delete_restaurant(
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        await db.rollback()
+        logger.error(f"Failed to delete restaurant: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete restaurant: {str(e)}"
@@ -361,6 +365,7 @@ async def update_restaurant_tags(
         raise
     except Exception as e:
         await db.rollback()
+        logger.error(f"Failed to update restaurant tags: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update restaurant tags: {str(e)}"
@@ -417,6 +422,7 @@ async def update_restaurant_cuisines(
         raise
     except Exception as e:
         await db.rollback()
+        logger.error(f"Failed to update restaurant cuisines: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to update restaurant cuisines: {str(e)}"
@@ -455,6 +461,7 @@ async def restore_restaurant(
         raise
     except Exception as e:
         await db.rollback()
+        logger.error(f"Failed to restore restaurant: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to restore restaurant: {str(e)}"

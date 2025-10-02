@@ -2,9 +2,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_db
-from app.api_schema.dashboard import DashboardStatsResponse
-from app.services.dashboard import DashboardService
+from app.dependencies import get_current_admin
 from app.utils.logging import setup_logger
+from app.services.dashboard import DashboardService
+from app.api_schema.dashboard import DashboardStatsResponse
 
 logger = setup_logger(__name__)
 
@@ -12,7 +13,8 @@ router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
 @router.get("/overview/", response_model=DashboardStatsResponse)
 async def get_dashboard_overview(
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_user = Depends(get_current_admin)
 ) -> DashboardStatsResponse:
     """
     Get optimized dashboard overview with essential computed metrics.
@@ -39,7 +41,8 @@ async def get_dashboard_overview(
 
 @router.get("/overview/simple/")
 async def get_dashboard_overview_simple(
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
+    current_admin=Depends(get_current_admin)
 ):
     """
     Simplified dashboard overview endpoint for debugging purposes.

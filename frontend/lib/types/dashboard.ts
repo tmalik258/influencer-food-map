@@ -209,8 +209,8 @@ export interface Listing {
 export interface ListingFiltersProps {
   searchTerm: string;
   setSearchTerm: (value: string) => void;
-  statusFilter: string;
-  setStatusFilter: (value: string) => void;
+  statusFilter: "approved" | "rejected" | "pending" | "all";
+  setStatusFilter: (value: "approved" | "rejected" | "pending" | "all") => void;
   sortBy: string;
   setSortBy: (value: string) => void;
 }
@@ -224,6 +224,12 @@ export interface ListingTableProps {
   listings: Listing[];
   loading: boolean;
   actionLoading: string | null;
+  // Pagination props
+  currentPage: number;
+  totalItems: number;
+  itemsPerPage: number;
+  onPageChange: (page: number) => void;
+  onItemsPerPageChange: (value: number) => void;
   onApprove: (id: string) => void;
   onReject: (id: string) => void;
   onEdit: (id: string) => void;

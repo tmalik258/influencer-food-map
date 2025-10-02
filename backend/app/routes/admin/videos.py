@@ -364,6 +364,7 @@ async def delete_video(
         raise
     except Exception as e:
         await db.rollback()
+        logger.error(f"Failed to delete video: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to delete video: {str(e)}"

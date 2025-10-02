@@ -8,8 +8,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exception_handlers import request_validation_exception_handler
 
 from app.utils.logging import setup_logger
-from app.scripts.gpt_food_place_processor import GPTFoodPlaceProcessor
-from app.routes.user import router as user_router
 from app.routes.tags import router as tags_router
 from app.routes.cuisines import router as cuisines_router
 from app.routes.videos import router as videos_router
@@ -26,7 +24,7 @@ from app.routes.admin.videos import admin_videos_router
 from app.routes.admin.influencers import admin_influencers_router
 from app.routes.admin.tags import admin_tags_router
 from app.routes.admin.cuisines import admin_cuisines_router
-from app.routes.dashboard import router as dashboard_router
+from app.routes.admin.dashboard import router as dashboard_router
 from app.routes.geocoding import router as geocoding_router
 
 # Configure logging
@@ -50,8 +48,6 @@ app.add_middleware(
 )
 
 # Register routes
-# app.prefix = "/api"
-app.include_router(user_router, prefix="/user", tags=["user"])
 app.include_router(admin_process_router, prefix="/admin/process", tags=["admin"])
 app.include_router(influencers_router, prefix="/influencers", tags=["influencers"])
 app.include_router(videos_router, prefix="/videos", tags=["videos"])
@@ -100,10 +96,3 @@ async def custom_validation_exception_handler(
 @app.get("/")
 def root():
     return {"message": "Influencer Food Map API is live!"}
-
-
-@app.get("/test-transcribe")
-async def test_transcribe():
-    gpt_processor = GPTFoodPlaceProcessor()
-    result = await gpt_processor.transcribe_audio("audios/manual_8WC7UnH_7uU.mp3")
-    return {"result": result}

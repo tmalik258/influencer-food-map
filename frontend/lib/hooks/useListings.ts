@@ -1,51 +1,136 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { Listing, SearchParams } from "@/lib/types";
+import { useState, useEffect, useCallback } from "react";
+import { Listing } from "@/lib/types";
 import { listingActions } from "@/lib/actions";
-import { AxiosError } from "axios";
 
-export const useListings = (params?: SearchParams) => {
-  const [listings, setListings] = useState<Listing[]>([]);
-  const [loading, setLoading] = useState(true);
+interface PaginatedListingsParams {
+  search?: string;
+  restaurant_name?: string;
+  influencer_name?: string;
+  video_title?: string;
+  video_id?: string;
+  approved?: boolean;
+  status?: 'approved' | 'rejected' | 'pending' | 'all';
+  page?: number;
+  limit?: number;
+  sort_by?: string;
+  sort_order?: 'asc' | 'desc';
+}
+
+interface PaginatedListingsResponse {
+  listings: Listing[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
+}
+
+export const useListings = (initialParams?: PaginatedListingsParams) => {
+  const [data, setData] = useState<PaginatedListingsResponse>({
+    listings: [],
+    total: 0,
+    page: 1,
+    limit: 10,
+    totalPages: 0
+  });
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [params, setParams] = useState<PaginatedListingsParams>({
+    page: 1,
+    limit: 10,
+    status: 'all',
+    ...initialParams
+  });
 
-  // Memoize params to prevent infinite re-renders
-  const memoizedParams = useMemo(() => params, [params]);
+  const fetchListings = useCallback(async (searchParams?: PaginatedListingsParams) => {
+    const currentParams = searchParams || params;
+    const { page = 1, limit = 10, ...otherParams } = currentParams;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await listingActions.getPaginatedListings({
+        ...otherParams,
+        skip: (page - 1) * limit,
+        limit
+      });
+      
+      const listings = response.listings || [];
+      const total = response.total || 0;
+      const totalPages = Math.ceil(total / limit);
+      
+      setData({
+        listings,
+        total,
+        page,
+        limit,
+        totalPages
+      });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch listings');
+    } finally {
+      setLoading(false);
+    }
+  }, [params]);
 
-  const fetchListings = useCallback(
-    async (searchParams?: SearchParams) => {
-      setLoading(true);
-      setError(null);
-      try {
-        const data = await listingActions.getListings(
-          searchParams || memoizedParams
-        );
-        setListings(data);
-      } catch (err) {
-        console.log(err)
-        setError(
-          err instanceof AxiosError ? err?.response?.data?.details : "Failed to fetch listings"
-        );
-      } finally {
-        setLoading(false);
-      }
-    },
-    [memoizedParams]
-  );
+  const updateParams = useCallback((newParams: Partial<PaginatedListingsParams>) => {
+    setParams(prev => ({ ...prev, ...newParams }));
+  }, []);
+
+  const goToPage = useCallback((page: number) => {
+    updateParams({ page });
+  }, [updateParams]);
+
+  const setPage = useCallback((page: number) => {
+    updateParams({ page });
+  }, [updateParams]);
+
+  const setLimit = useCallback((limit: number) => {
+    updateParams({ limit, page: 1 }); // Reset to first page when changing limit
+  }, [updateParams]);
+
+  const setSearchTerm = useCallback((search: string) => {
+    updateParams({ search, page: 1 }); // Reset to first page when searching
+  }, [updateParams]);
+
+  const setStatusFilter = useCallback((status: 'approved' | 'rejected' | 'pending' | 'all') => {
+    updateParams({ status, page: 1 }); // Reset to first page when filtering
+  }, [updateParams]);
+
+  const setSortBy = useCallback((sort_by: string) => {
+    updateParams({ sort_by, page: 1 }); // Reset to first page when changing sort
+  }, [updateParams]);
+
+  const setSortOrder = useCallback((sort_order: 'asc' | 'desc') => {
+    updateParams({ sort_order, page: 1 }); // Reset to first page when changing sort order
+  }, [updateParams]);
 
   useEffect(() => {
-    if (memoizedParams) {
-      fetchListings();
-    }
-  }, [fetchListings, memoizedParams]);
+    fetchListings(params);
+  }, [params, fetchListings]);
 
   return {
-    listings,
+    // Data properties
+    listings: data.listings,
+    totalCount: data.total,
+    totalPages: data.totalPages,
     loading,
     error,
+    params,
+    
+    // Methods
     fetchListings,
-    refetch: () => fetchListings(memoizedParams),
+    updateParams,
+    goToPage,
+    setPage,
+    setLimit,
+    setSearchTerm,
+    setStatusFilter,
+    setSortBy,
+    setSortOrder,
+    refetch: () => fetchListings(params)
   };
 };
 

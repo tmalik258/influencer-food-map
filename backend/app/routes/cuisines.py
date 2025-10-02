@@ -43,7 +43,7 @@ async def get_cuisines(
         cuisines = result.scalars().all()
         return cuisines
     except Exception as e:
-        print(f"Error fetching cuisines: {e}")
+        logger.error(f"Error fetching cuisines: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error while fetching cuisines")
 
 @router.post("/", response_model=CuisineResponse, status_code=status.HTTP_201_CREATED)
@@ -56,7 +56,7 @@ async def create_cuisine(cuisine: CuisineCreate, db: AsyncSession = Depends(get_
         await db.refresh(db_cuisine)
         return db_cuisine
     except Exception as e:
-        print(f"Error creating cuisine: {e}")
+        logger.error(f"Error creating cuisine: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error while creating cuisine")
 
 @router.put("/{cuisine_id}/", response_model=CuisineResponse)
@@ -75,7 +75,7 @@ async def update_cuisine(cuisine_id: UUID, cuisine: CuisineUpdate, db: AsyncSess
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error updating cuisine {cuisine_id}: {e}")
+        logger.error(f"Error updating cuisine {cuisine_id}: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error while updating cuisine")
 
 @router.delete("/{cuisine_id}/", status_code=status.HTTP_204_NO_CONTENT)
@@ -93,7 +93,7 @@ async def delete_cuisine(cuisine_id: UUID, db: AsyncSession = Depends(get_async_
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error deleting cuisine {cuisine_id}: {e}")
+        logger.error(f"Error deleting cuisine {cuisine_id}: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error while deleting cuisine")
 
 @router.get("/{cuisine_id}/", response_model=CuisineResponse)
@@ -109,7 +109,7 @@ async def get_cuisine(cuisine_id: UUID, db: AsyncSession = Depends(get_async_db)
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error fetching cuisine {cuisine_id}: {e}")
+        logger.error(f"Error fetching cuisine {cuisine_id}: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Internal server error while fetching cuisine")
 
 

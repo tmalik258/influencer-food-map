@@ -16,7 +16,7 @@ import {
 import { Play } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { formatNumberAbbreviated } from "@/lib/utils/number-formatter";
-import { Tag, Listing } from "@/lib/types";
+import { Listing } from "@/lib/types";
 import ErrorCard from "@/components/error-card";
 import { VideoSlider } from "@/components/video-slider";
 import { StatsCard } from "./_components/stats-card";

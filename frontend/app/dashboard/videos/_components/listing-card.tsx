@@ -86,18 +86,17 @@ export function ListingCard({ listing }: ListingCardProps) {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Listing ID and Basic Information */}
+        <div className="flex items-center gap-2">
+          <Hash className="h-4 w-4 text-gray-500" />
+          <span className="text-sm font-medium">Listing ID:</span>
+          <button
+            onClick={handleListingIdClick}
+            className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer font-mono"
+          >
+            {listing.id}
+          </button>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center gap-2">
-            <Hash className="h-4 w-4 text-gray-500" />
-            <span className="text-sm font-medium">Listing ID:</span>
-            <button
-              onClick={handleListingIdClick}
-              className="text-sm text-blue-600 hover:text-blue-800 hover:underline cursor-pointer font-mono"
-            >
-              {listing.id}
-            </button>
-          </div>
-
           {listing.timestamp && (
             <div className="flex items-center gap-2">
               <Clock className="h-4 w-4 text-gray-500" />
@@ -164,7 +163,10 @@ export function ListingCard({ listing }: ListingCardProps) {
             </h4>
             <div className="space-y-2">
               {listing.context.map((contextItem, index) => (
-                <p key={index} className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">
+                <p
+                  key={index}
+                  className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md"
+                >
                   {contextItem}
                 </p>
               ))}

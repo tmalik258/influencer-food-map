@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useMemo, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,7 +24,6 @@ import { EditInfluencerModal } from "./edit-influencer-modal";
 import { InfluencersTable } from "./influencers-table";
 
 export default function InfluencerManagement() {
-  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState("");
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState<
@@ -161,10 +159,6 @@ export default function InfluencerManagement() {
         console.error("Failed to delete influencer:", error);
       }
     }
-  };
-
-  const handleViewInfluencer = (influencer: Influencer) => {
-    router.push(`/dashboard/influencers/${influencer.id}`);
   };
 
   const handleCreateSuccess = () => {

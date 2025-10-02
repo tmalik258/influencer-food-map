@@ -18,7 +18,7 @@ import { Listing } from "@/lib/types";
 interface UseListingFormProps {
   mode: 'create' | 'edit';
   listingData?: Listing;
-  onSuccess?: () => void;
+  onSuccess?: (data: CreateListingFormData | EditListingFormData) => void;
 }
 
 export function useListingForm({
@@ -90,7 +90,7 @@ export function useListingForm({
         toast.success("Listing updated successfully!");
       }
 
-      onSuccess?.();
+      onSuccess?.(data);
       router.refresh();
     } catch (error: unknown) {
       console.error(`Error ${mode === 'create' ? 'creating' : 'updating'} listing:`, error);
@@ -98,7 +98,7 @@ export function useListingForm({
 
       if (axios.isAxiosError(error)) {
         const status = error.response?.status;
-        const data = error.response?.data as any;
+        const data = error.response?.data;
 
         // Normalize backend message from several possible fields
         const candidates = [

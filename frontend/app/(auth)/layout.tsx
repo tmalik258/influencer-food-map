@@ -1,5 +1,4 @@
 import type React from "react";
-import Image from "next/image";
 
 interface AuthLayoutProps {
   children: React.ReactNode;

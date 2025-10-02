@@ -1,19 +1,19 @@
-from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.ext.asyncio import AsyncSession
+
 from sqlalchemy import select, func
 from sqlalchemy.orm import joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Tag, Restaurant, RestaurantTag, RestaurantCuisine, Listing
 from app.database import get_async_db
+from app.utils.logging import setup_logger
 from app.api_schema.tags import TagResponse, TagCreate, TagUpdate, PaginatedTagsResponse
-from app.api_schema.restaurants import RestaurantResponse, PaginatedRestaurantsResponse
 from app.api_schema.cuisines import CuisineResponse
 from app.api_schema.listings import ListingLightResponse
+from app.api_schema.restaurants import RestaurantResponse, PaginatedRestaurantsResponse
 from app.api_schema.influencers import InfluencerResponse
-from app.utils.logging import setup_logger
 
 logger = setup_logger(__name__)
 
@@ -23,11 +23,16 @@ router = APIRouter()
     "/", response_model=TagResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_tag(tag: TagCreate, db: AsyncSession = Depends(get_async_db)):
-    db_tag = Tag(**tag.model_dump())
-    db.add(db_tag)
-    await db.commit()
-    await db.refresh(db_tag)
-    return db_tag
+    """Create a new tag."""
+    try:
+        db_tag = Tag(**tag.model_dump())
+        db.add(db_tag)
+        await db.commit()
+        await db.refresh(db_tag)
+        return db_tag
+    except Exception as e:
+        logger.error(f"Error creating tag: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while creating tag")
 
 
 @router.get("/", response_model=PaginatedTagsResponse)
@@ -38,7 +43,7 @@ async def get_tags(
     skip: int = 0,
     limit: int = 100,
 ):
-    """Get tags with filters for name or ID."""
+    """Get tags with filters for name or city."""
     try:
         # Build the base query
         query = select(Tag)
@@ -62,7 +67,7 @@ async def get_tags(
         
         return PaginatedTagsResponse(tags=tags, total=total_count)
     except Exception as e:
-        print(f"Error fetching tags: {e}")
+        logger.error(f"Error fetching tags: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching tags")
 
 
@@ -78,32 +83,42 @@ async def get_tag(tag_id: UUID, db: AsyncSession = Depends(get_async_db)):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error fetching tag {tag_id}: {e}")
+        logger.error(f"Error fetching tag {tag_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching tag")
 
 
 @router.put("/{tag_id}/", response_model=TagResponse)
 async def update_tag(tag_id: UUID, tag: TagUpdate, db: AsyncSession = Depends(get_async_db)):
-    result = await db.execute(select(Tag).filter(Tag.id == tag_id))
-    db_tag = result.scalars().first()
-    if not db_tag:
-        raise HTTPException(status_code=404, detail="Tag not found")
-    for key, value in tag.model_dump(exclude_unset=True).items():
-        setattr(db_tag, key, value)
-    await db.commit()
-    await db.refresh(db_tag)
-    return db_tag
+    """Update a tag by ID."""
+    try:
+        result = await db.execute(select(Tag).filter(Tag.id == tag_id))
+        db_tag = result.scalars().first()
+        if not db_tag:
+            raise HTTPException(status_code=404, detail="Tag not found")
+        for key, value in tag.model_dump(exclude_unset=True).items():
+            setattr(db_tag, key, value)
+        await db.commit()
+        await db.refresh(db_tag)
+        return db_tag
+    except Exception as e:
+        logger.error(f"Error updating tag {tag_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while updating tag")
 
 
 @router.delete("/{tag_id}/", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_tag(tag_id: UUID, db: AsyncSession = Depends(get_async_db)):
-    result = await db.execute(select(Tag).filter(Tag.id == tag_id))
-    tag = result.scalars().first()
-    if not tag:
-        raise HTTPException(status_code=404, detail="Tag not found")
-    await db.delete(tag)
-    await db.commit()
-    return {"message": "Tag deleted successfully"}
+    """Delete a tag by ID."""
+    try:
+        result = await db.execute(select(Tag).filter(Tag.id == tag_id))
+        tag = result.scalars().first()
+        if not tag:
+            raise HTTPException(status_code=404, detail="Tag not found")
+        await db.delete(tag)
+        await db.commit()
+        return {"message": "Tag deleted successfully"}
+    except Exception as e:
+        logger.error(f"Error deleting tag {tag_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while deleting tag")
 
 
 @router.get("/{tag_id}/restaurants/", response_model=PaginatedRestaurantsResponse)

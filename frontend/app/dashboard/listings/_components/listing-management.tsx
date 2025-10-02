@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from 'react';
+import { useRouter, useSearchParams } from "next/navigation";
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle } from 'lucide-react';
@@ -12,37 +13,82 @@ import type { Listing as ListingDashboard } from '@/lib/types/dashboard';
 
 import { ListingDeleteDialog } from './listing-delete-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { useRouter } from 'next/navigation';
 import { ListingFilters } from './listing-filters';
 import { ListingTable } from './listing-table';
 import { toast } from 'sonner';
+import { listingActions } from '@/lib/actions';
+import { CreateListingFormData, EditListingFormData } from '@/lib/validations/listing-create';
 
 export function ListingManagement() {
-  const { listings, loading, error, fetchListings } = useListings();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [sortBy, setSortBy] = useState('created_at');
+  const {
+    listings,
+    totalCount,
+    loading,
+    error,
+    params,
+    setPage,
+    setLimit,
+    setSearchTerm,
+    setStatusFilter,
+    setSortBy,
+    refetch,
+  } = useListings({
+    page: 1,
+    limit: 10,
+    status: 'all',
+    sort_by: "created_at",
+    sort_order: "desc",
+  });
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const [isCreateFormOpen, setIsCreateFormOpen] = useState(false);
   const [isEditFormOpen, setIsEditFormOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedListing, setSelectedListing] = useState<Listing | null>(null);
+
   const router = useRouter();
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const id = searchParams.get('id');
+    if (id) {
+      const listing = listings.find((listing) => listing.id === id);
+      if (listing) {
+        setSelectedListing(listing);
+        setIsEditFormOpen(true);
+      }
+    }
+  }, [listings, searchParams]);
 
   const refreshListings = () => {
-    fetchListings();
+    refetch();
     setIsCreateFormOpen(false);
     setIsEditFormOpen(false);
     setIsDeleteDialogOpen(false);
     setSelectedListing(null);
   };
 
-  useEffect(() => {
-    if (listings.length === 0) {
-      fetchListings();
-    }
-  }, [statusFilter, sortBy, listings.length, fetchListings]);
+  // Handle pagination changes
+  const handlePageChange = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleItemsPerPageChange = (newItemsPerPage: number) => {
+    setLimit(newItemsPerPage);
+  };
+
+  // Handle filter changes
+  const handleSearchChange = (searchTerm: string) => {
+    setSearchTerm(searchTerm);
+  };
+
+  const handleStatusChange = (status: 'approved' | 'rejected' | 'pending' | 'all') => {
+    setStatusFilter(status);
+  };
+
+  const handleSortByChange = (sortBy: string) => {
+    setSortBy(sortBy);
+  };
 
   // Handle approve listing
   const handleApprove = async (listingId: string) => {
@@ -51,7 +97,7 @@ export function ListingManagement() {
       // Note: This would need to be implemented in listing-actions.ts
       // await listingActions.approveListing(listingId);
       console.log('Approve listing:', listingId);
-      await fetchListings(); // Refresh the list
+      await refetch(); // Refresh the list
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to approve listing');
     } finally {
@@ -66,7 +112,7 @@ export function ListingManagement() {
       // Note: This would need to be implemented in listing-actions.ts
       // await listingActions.rejectListing(listingId);
       console.log('Reject listing:', listingId);
-      await fetchListings(); // Refresh the list
+      await refetch(); // Refresh the list
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Failed to reject listing');
     } finally {
@@ -83,6 +129,37 @@ export function ListingManagement() {
     const foundListing = listings.find(listing => listing.id === listingId);
     setSelectedListing(foundListing || null);
     setIsEditFormOpen(true);
+
+    if (foundListing) {
+      const newSearchParams = new URLSearchParams(searchParams.toString());
+      newSearchParams.set('id', foundListing.id);
+      router.replace(`${window.location.pathname}?${newSearchParams.toString()}`);
+    }
+  };
+
+  const handleCloseEditForm = () => {
+    setIsEditFormOpen(false);
+    setSelectedListing(null);
+
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    newSearchParams.delete('id');
+    router.replace(`${window.location.pathname}?${newSearchParams.toString()}`);
+  };
+
+  // Handle edit submit
+  const handleEditSubmit = async (listingId: string, data: CreateListingFormData) => {
+    setActionLoading(listingId);
+    try {
+      await listingActions.updateListing(listingId, data);
+      toast.success('Listing updated successfully');
+      await refetch(); // Refresh the list
+      setIsEditFormOpen(false);
+      setSelectedListing(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to update listing');
+    } finally {
+      setActionLoading(null);
+    }
   };
 
   // Transform listings to dashboard format and filter
@@ -117,25 +194,28 @@ export function ListingManagement() {
     setIsDeleteDialogOpen(true);
   };
 
-  // Filter listings based on search (client-side filtering as backup)
-  const filteredListings = transformedListings.filter(listing => {
-    const matchesSearch = !searchTerm || 
-      (listing.restaurant?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (listing.influencer?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (listing.video?.title || '').toLowerCase().includes(searchTerm.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || 
-      (statusFilter === 'approved' && listing.status === 'approved') ||
-      (statusFilter === 'rejected' && listing.status === 'rejected') ||
-      (statusFilter === 'pending' && listing.status === 'pending');
-    
-    return matchesSearch && matchesStatus;
-  });
+  // Handle delete confirm
+  const handleDeleteConfirm = async (listingId: string) => {
+    setActionLoading(listingId);
+    try {
+      await listingActions.deleteListing(listingId);
+      toast.success('Listing deleted successfully');
+      await refetch(); // Refresh the list
+      setIsDeleteDialogOpen(false);
+      setSelectedListing(null);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to delete listing');
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // No client-side filtering needed - server-side filtering is used
 
   return (
     <div className="space-y-6">
       <Card className="not-dark:glass-effect not-dark:backdrop-blur-xl bg-white/10 dark:bg-black border border-white/20 dark:border-gray-700/30">
-        <ListingHeader listingCount={listings.length} onCreateClick={() => setIsCreateFormOpen(true)} />
+        <ListingHeader listingCount={totalCount} onCreateClick={() => setIsCreateFormOpen(true)} />
         <CardContent>
           {error && (
             <Alert className="mb-4 glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-orange-500/50">
@@ -145,18 +225,23 @@ export function ListingManagement() {
           )}
           
           <ListingFilters
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            statusFilter={statusFilter}
-            setStatusFilter={setStatusFilter}
-            sortBy={sortBy}
-            setSortBy={setSortBy}
+            searchTerm={params.search || ''}
+            setSearchTerm={handleSearchChange}
+            statusFilter={params.status || 'all'}
+            setStatusFilter={handleStatusChange}
+            sortBy={params.sort_by || 'created_at'}
+            setSortBy={handleSortByChange}
           />
 
           <ListingTable
-            listings={filteredListings}
+            listings={transformedListings}
             loading={loading}
             actionLoading={actionLoading}
+            currentPage={params.page || 1}
+            totalItems={totalCount}
+            itemsPerPage={params.limit || 10}
+            onPageChange={handlePageChange}
+            onItemsPerPageChange={handleItemsPerPageChange}
             onApprove={handleApprove}
             onReject={handleReject}
             onEdit={handleEdit}
@@ -174,7 +259,11 @@ export function ListingManagement() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isEditFormOpen} onOpenChange={setIsEditFormOpen}>
+      <Dialog open={isEditFormOpen} onOpenChange={(open) => {
+            if (!open) {
+              handleCloseEditForm();
+            }
+          }}>
         <DialogContent className="sm:max-w-[600px] glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-white/20 dark:border-gray-700/30">
           <DialogHeader>
             <DialogTitle className="text-gray-900 dark:text-white">Edit Listing</DialogTitle>
@@ -183,7 +272,10 @@ export function ListingManagement() {
             <ListingForm 
               mode="edit" 
               listingData={selectedListing}
-              onSuccess={refreshListings} 
+              onSuccess={async (data: CreateListingFormData | EditListingFormData) => {
+                await handleEditSubmit(selectedListing.id, data);
+                handleCloseEditForm();
+              }} 
             />
           )}
         </DialogContent>
@@ -196,7 +288,7 @@ export function ListingManagement() {
           isOpen={isDeleteDialogOpen}
           onClose={() => setIsDeleteDialogOpen(false)}
           listingId={selectedListing.id}
-          onSuccess={refreshListings}
+          onSuccess={() => handleDeleteConfirm(selectedListing.id)}
         />
       )}
     </div>

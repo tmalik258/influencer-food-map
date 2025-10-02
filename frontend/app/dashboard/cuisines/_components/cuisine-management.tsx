@@ -40,7 +40,6 @@ export function CuisineManagement() {
     error,
     goToPage,
     setSearchQuery,
-    setLimit,
     refetch,
   } = useCuisinesPaginated({
     name: searchTerm,
@@ -106,10 +105,6 @@ export function CuisineManagement() {
       console.error("Error deleting cuisine:", error);
       // You could add a toast notification here for better UX
     }
-  };
-
-  const handleItemsPerPageChange = (newLimit: number) => {
-    setLimit(newLimit);
   };
 
   if (error) {

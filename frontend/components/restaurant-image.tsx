@@ -69,6 +69,7 @@ export default function RestaurantImage({
         } catch (e) {
           // Silently fail; fallback UI will show
           // console.warn("Failed to refetch photo", e);
+          console.log("Failed to refetch photo", e);
         } finally {
           setLoadingRefetch(false);
         }

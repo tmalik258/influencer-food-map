@@ -1,5 +1,5 @@
-import { Eye, PlusCircle } from 'lucide-react';
-import { CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { PlusCircle } from 'lucide-react';
+import { CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 
 interface ListingHeaderProps {

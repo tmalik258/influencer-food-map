@@ -235,59 +235,6 @@ async def get_influencers(
         logger.error(f"Error fetching influencers: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching influencers")
 
-# @router.get("/countries/", response_model=Dict[str, List[Dict[str, str]]])
-# async def get_regions_and_countries(
-#     db: AsyncSession = Depends(get_async_db)
-# ):
-#     """Get unique regions and countries from influencers."""
-#     try:
-#         # Get unique country-region pairs from influencers
-#         countries_regions_query = select(Influencer.country, Influencer.region).filter(
-#             Influencer.country.isnot(None)
-#         ).distinct()
-#         countries_regions_result = await db.execute(countries_regions_query)
-#         countries_regions = countries_regions_result.fetchall()
-        
-#         # Create a mapping of countries to their regions
-#         country_region_map = {}
-#         for row in countries_regions:
-#             country = row[0]
-#             region = row[1]
-#             if country and country not in country_region_map:
-#                 country_region_map[country] = region
-        
-#         # Combine regions and countries into a single country structure
-#         # Use regions as codes and countries as names
-#         country_data = []
-        
-#         # Create a set to track unique entries
-#         seen_entries = set()
-        
-#         # Add countries with their corresponding regions as codes
-#         for country_name, region in country_region_map.items():
-#             if country_name and country_name not in seen_entries:
-#                 # Use region as code, fallback to initials from each word in country name if no region
-#                 if region:
-#                     code = region.upper()
-#                 else:
-#                     # Generate initials from each word in the country name
-#                     words = country_name.split()
-#                     if len(words) > 1:
-#                         code = ''.join([word[0].upper() for word in words if word])
-#                     else:
-#                         # For single word countries, use first 2 chars as fallback
-#                         code = country_name[:2].upper() if len(country_name) >= 2 else country_name.upper()
-#                 country_data.append({
-#                     "code": code,
-#                     "name": country_name
-#                 })
-#                 seen_entries.add(country_name)
-        
-#         return {"country": country_data}
-#     except Exception as e:
-#         logger.error(f"Error fetching regions and countries: {e}")
-#         raise HTTPException(status_code=500, detail="Internal server error while fetching regions and countries")
-
 @router.get("/{influencer_id}/", response_model=InfluencerResponse)
 async def get_influencer(
     influencer_id: str,

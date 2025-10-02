@@ -1,17 +1,19 @@
-from typing import List, Optional
+from typing import Optional
 
 from fastapi import (APIRouter, Depends, HTTPException)
-from pydantic import BaseModel
 
-from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func
+from sqlalchemy.orm import Session, joinedload
 
 from app.models import (Video, Influencer, Listing)
 from app.database import get_db
+from app.utils.logging import setup_logger
 from app.api_schema.videos import VideoResponse, VideosResponse
 from app.api_schema.influencers import InfluencerLightResponse
 
 router = APIRouter()
+
+logger = setup_logger(__name__)
 
 @router.get("/", response_model=VideosResponse)
 def get_videos(
@@ -126,7 +128,7 @@ def get_videos(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error fetching videos: {e}")
+        logger.error(f"Error fetching videos: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching videos")
 
 @router.get("/{video_id}/", response_model=VideoResponse)
@@ -175,5 +177,5 @@ def get_video(video_id: str, db: Session = Depends(get_db)):
     except HTTPException:
         raise
     except Exception as e:
-        print(f"Error fetching video {video_id}: {e}")
+        logger.error(f"Error fetching video {video_id}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching video")

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Video } from "@/lib/types";
 import { useVideos } from "@/lib/hooks/useVideos";
 import { useDataSync } from "@/lib/hooks/useAdmin";
@@ -24,6 +25,9 @@ export default function VideoManagement() {
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
 
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const { triggerNLPProcessing } = useDataSync();
 
   const {
@@ -46,6 +50,17 @@ export default function VideoManagement() {
     sort_by: "published_at",
     sort_order: "desc",
   });
+
+  useEffect(() => {
+    const videoId = searchParams.get("id");
+    if (videoId && videos.length > 0) {
+      const videoToEdit = videos.find((video) => video.id === videoId);
+      if (videoToEdit) {
+        setSelectedVideo(videoToEdit);
+        setIsEditModalOpen(true);
+      }
+    }
+  }, [searchParams, videos]);
 
   const refreshVideos = () => {
     refetch();
@@ -88,6 +103,9 @@ export default function VideoManagement() {
   const handleEditVideo = (video: Video) => {
     setSelectedVideo(video);
     setIsEditModalOpen(true);
+    const newSearchParams = new URLSearchParams(searchParams.toString());
+    newSearchParams.set("id", video.id);
+    router.replace(`${window.location.pathname}?${newSearchParams.toString()}`);
   };
 
   const handleDeleteVideo = (video: Video) => {
@@ -254,11 +272,19 @@ export default function VideoManagement() {
 
       <EditVideoModal
         isOpen={isEditModalOpen}
-        onClose={() => setIsEditModalOpen(false)}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          const newSearchParams = new URLSearchParams(searchParams.toString());
+          newSearchParams.delete("id");
+          router.replace(`${window.location.pathname}?${newSearchParams.toString()}`);
+        }}
         video={selectedVideo}
         onSuccess={() => {
           refreshVideos();
           setIsEditModalOpen(false);
+          const newSearchParams = new URLSearchParams(searchParams.toString());
+          newSearchParams.delete("id");
+          router.replace(`${window.location.pathname}?${newSearchParams.toString()}`);
         }}
       />
 

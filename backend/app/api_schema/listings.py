@@ -25,6 +25,15 @@ class ListingResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+class PaginatedListingsResponse(BaseModel):
+    listings: List[ListingResponse]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
+
+    model_config = ConfigDict(from_attributes=True)
+
 class ListingCreate(BaseModel):
     restaurant_id: UUID
     video_id: UUID

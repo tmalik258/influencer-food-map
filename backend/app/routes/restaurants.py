@@ -4,7 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from sqlalchemy import func, select
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Restaurant, RestaurantTag, RestaurantCuisine, Listing, Tag, Cuisine
@@ -569,23 +569,30 @@ async def refetch_restaurant_photo(
     db: AsyncSession = Depends(get_async_db),
 ):
     """Refetch restaurant photo via Google Place ID and update photo_url."""
-    # Load the restaurant
-    result = await db.execute(
-        select(Restaurant).filter(Restaurant.id == restaurant_id)
-    )
-    restaurant = result.scalars().first()
-    if not restaurant:
-        raise HTTPException(status_code=404, detail="Restaurant not found")
+    try:
+        # Load the restaurant
+        result = await db.execute(
+            select(Restaurant).filter(Restaurant.id == restaurant_id)
+        )
+        restaurant = result.scalars().first()
+        if not restaurant:
+            raise HTTPException(status_code=404, detail="Restaurant not found")
 
-    if not restaurant.google_place_id:
-        raise HTTPException(status_code=400, detail="Restaurant missing google_place_id")
+        if not restaurant.google_place_id:
+            raise HTTPException(status_code=400, detail="Restaurant missing google_place_id")
 
-    final_url = await refetch_photo_by_place_id(restaurant.google_place_id)
-    if not final_url:
-        raise HTTPException(status_code=502, detail="Failed to refetch photo from Google")
+        final_url = await refetch_photo_by_place_id(restaurant.google_place_id)
+        if not final_url:
+            raise HTTPException(status_code=502, detail="Failed to refetch photo from Google")
 
-    restaurant.photo_url = final_url
-    await db.commit()
-    await db.refresh(restaurant)
+        restaurant.photo_url = final_url
+        await db.commit()
+        await db.refresh(restaurant)
 
-    return {"photo_url": restaurant.photo_url}
+        return {"photo_url": restaurant.photo_url}
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404)
+        raise
+    except Exception as e:
+        logger.error(f"Error refetching photo for restaurant {restaurant_id}: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while refetching photo")

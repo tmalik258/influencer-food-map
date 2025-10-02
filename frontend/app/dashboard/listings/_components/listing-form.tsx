@@ -20,11 +20,12 @@ import {
 } from "@/lib/utils/fetch-functions";
 import { useListingForm } from "@/lib/hooks/useListingForm";
 import { Listing } from "@/lib/types";
+import { CreateListingFormData, EditListingFormData } from "@/lib/validations/listing-create";
 
 interface ListingFormProps {
   mode: 'create' | 'edit';
   listingData?: Listing;
-  onSuccess?: () => void;
+  onSuccess?: (data: CreateListingFormData | EditListingFormData) => void;
 }
 
 /**

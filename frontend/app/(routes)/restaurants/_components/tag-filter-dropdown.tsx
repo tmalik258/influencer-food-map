@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Check, ChevronDown, Tag as TagIcon, X } from "lucide-react";
+import { Check, ChevronDown, Tag as TagIcon } from "lucide-react";
 import { Tag } from "@/lib/types";
 import { useTags } from "@/lib/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -54,10 +54,6 @@ export function TagFilterDropdown({
     } else {
       onTagsChange([...selectedTags, tag]);
     }
-  };
-
-  const clearAllTags = () => {
-    onTagsChange([]);
   };
 
   if (loading) {

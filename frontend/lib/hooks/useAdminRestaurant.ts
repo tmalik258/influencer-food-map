@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { toast } from 'sonner';
 import { adminApi } from '@/lib/api';
 import { Restaurant } from '@/lib/types';
@@ -88,7 +88,7 @@ export function useAdminRestaurant() {
     }
   };
 
-  const getRestaurant = async (restaurantId: string): Promise<Restaurant | null> => {
+  const getRestaurant = useCallback(async (restaurantId: string): Promise<Restaurant | null> => {
     setLoading(true);
     setError(null);
 
@@ -104,7 +104,7 @@ export function useAdminRestaurant() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   return {
     createRestaurant,

@@ -1,5 +1,3 @@
-import logging
-from typing import List
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -7,14 +5,15 @@ from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 
-from app.api_schema.influencers import InfluencerCreate, InfluencerCreateFromUrl, InfluencerUpdate, InfluencerResponse
-from app.services.youtube_scraper import get_channel
 from app.database import get_async_db
 from app.dependencies import get_current_admin
+from app.utils.logging import setup_logger
 from app.models.influencer import Influencer
+from app.api_schema.influencers import InfluencerCreateFromUrl, InfluencerUpdate, InfluencerResponse
+from app.services.youtube_scraper import get_channel
 
 # Configure logger
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 admin_influencers_router = APIRouter()
 
@@ -34,7 +33,6 @@ async def create_influencer(
 ):
     """Create a new influencer from YouTube URL (Admin only)"""
     logger.info(f"Admin {current_admin.email} attempting to create influencer from URL: {influencer_data.youtube_url}")
-    
     
     try:
         # Scrape YouTube channel and create influencer

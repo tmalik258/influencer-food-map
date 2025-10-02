@@ -1,7 +1,7 @@
 "use client";
 
 import { Skeleton } from "@/components/ui/skeleton";
-import { Users, Globe, Award } from "lucide-react";
+import { Users, Award } from "lucide-react";
 import Image from "next/image";
 import { Influencer } from "@/lib/types";
 

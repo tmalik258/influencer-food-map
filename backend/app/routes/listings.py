@@ -1,25 +1,23 @@
 from enum import Enum
-import json
-from typing import List
+from typing import Optional
 
 from fastapi import (APIRouter, Depends, HTTPException)
 
-from sqlalchemy import select, delete, desc
-from sqlalchemy.orm import joinedload
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import desc, or_
+from sqlalchemy.orm import Session, joinedload
 
-from app.models import (Listing, Influencer, Restaurant, RestaurantTag, RestaurantCuisine, Cuisine, Video)
-from app.database import get_async_db
-from app.dependencies import get_current_admin
+from app.models import (Listing, Influencer, Restaurant, RestaurantTag, RestaurantCuisine, Video)
+from app.database import get_db
 from app.utils.logging import setup_logger
 from app.api_schema.videos import VideoResponse
-from app.api_schema.listings import ListingResponse
+from app.api_schema.listings import ListingResponse, PaginatedListingsResponse
 from app.api_schema.restaurants import RestaurantResponse
 from app.api_schema.influencers import InfluencerLightResponse, InfluencerResponse
 from app.api_schema.tags import TagResponse
 from app.api_schema.cuisines import CuisineResponse
 
 logger = setup_logger(__name__)
+
 router = APIRouter()
 
 class ApprovedStatus(str, Enum):
@@ -27,34 +25,77 @@ class ApprovedStatus(str, Enum):
     NOT_APPROVED = "Not Approved"
     ALL = "All"
 
-@router.get("/", response_model=List[ListingResponse])
-async def get_listings(
-    db: AsyncSession = Depends(get_async_db),
-    id: str | None = None,
-    restaurant_id: str | None = None,
-    video_id: str | None = None,
-    influencer_id: str | None = None,
-    influencer_name: str | None = None,
-    approved_status: ApprovedStatus = ApprovedStatus.ALL,
+@router.get("/", response_model=PaginatedListingsResponse)
+def get_listings(
+    db: Session = Depends(get_db),
+    # Search filters
+    search: Optional[str] = None,
+    restaurant_name: Optional[str] = None,
+    influencer_name: Optional[str] = None,
+    video_title: Optional[str] = None,
+    # Status filters
+    approved: Optional[bool] = None,
+    status: Optional[str] = None,  # 'approved', 'rejected', 'pending', 'all'
+    # Pagination
+    page: int = 1,
+    limit: int = 10,
+    # Sorting
+    sort_by: Optional[str] = "created_at",
+    sort_order: Optional[str] = "desc",
+    # Existing filters for backward compatibility
+    id: Optional[str] = None,
+    restaurant_id: Optional[str] = None,
+    video_id: Optional[str] = None,
+    influencer_id: Optional[str] = None,
+    approved_status: Optional[ApprovedStatus] = None,
     sort_by_published_date: bool = False,
-    skip: int = 0,
-    limit: int = 100
+    skip: int = 0
 ):
-    """Get approved listings with filters for ID, restaurant ID, video ID, influencer ID, or influencer name."""
+    """Get listings with search, filtering, and pagination support."""
     try:
-        query = select(Listing).options(
+        # Start with base query using ORM-style queries
+        query = db.query(Listing).options(
             joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
             joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_cuisines).joinedload(RestaurantCuisine.cuisine),
             joinedload(Listing.video),
             joinedload(Listing.influencer)
         )
 
-        if approved_status == ApprovedStatus.APPROVED:
+        # Apply search filter (searches across restaurant, influencer, and video names)
+        if search:
+            query = query.join(Restaurant).join(Video).join(Influencer, isouter=True)
+            query = query.filter(
+                or_(
+                    Restaurant.name.ilike(f"%{search}%"),
+                    Influencer.name.ilike(f"%{search}%"),
+                    Video.title.ilike(f"%{search}%")
+                )
+            )
+
+        # Apply individual name filters
+        if restaurant_name:
+            query = query.join(Restaurant).filter(Restaurant.name.ilike(f"%{restaurant_name}%"))
+        if influencer_name:
+            query = query.join(Influencer).filter(Influencer.name.ilike(f"%{influencer_name}%"))
+        if video_title:
+            query = query.join(Video).filter(Video.title.ilike(f"%{video_title}%"))
+
+        # Apply status filters
+        if status and status != 'all':
+            if status == 'approved':
+                query = query.filter(Listing.approved == True)
+            elif status == 'rejected':
+                query = query.filter(Listing.approved == False)
+            elif status == 'pending':
+                query = query.filter(Listing.approved == None)
+        elif approved is not None:
+            query = query.filter(Listing.approved == approved)
+        elif approved_status == ApprovedStatus.APPROVED:
             query = query.filter(Listing.approved == True)
         elif approved_status == ApprovedStatus.NOT_APPROVED:
             query = query.filter(Listing.approved == False)
-        # If approved_status is ApprovedStatus.ALL, no filter is applied
 
+        # Apply existing filters for backward compatibility
         if id:
             query = query.filter(Listing.id == id)
         if restaurant_id:
@@ -63,22 +104,49 @@ async def get_listings(
             query = query.filter(Listing.video_id == video_id)
         if influencer_id:
             query = query.filter(Listing.influencer_id == influencer_id)
-        if influencer_name:
-            query = query.join(Influencer).filter(Influencer.name.ilike(f"%{influencer_name}%"))
 
-        # Sort by published date if requested
+        # Apply sorting
         if sort_by_published_date:
             query = query.join(Video).order_by(desc(Video.published_at))
+        elif sort_by:
+            if sort_by == "created_at":
+                order_col = Listing.created_at
+            elif sort_by == "visit_date":
+                order_col = Listing.visit_date
+            elif sort_by == "confidence_score":
+                order_col = Listing.confidence_score
+            else:
+                order_col = Listing.created_at
+            
+            if sort_order and sort_order.lower() == "asc":
+                query = query.order_by(order_col.asc())
+            else:
+                query = query.order_by(order_col.desc())
 
-        # Apply limit if specified, otherwise use default
-        final_limit = limit if limit is not None else 100
-        query = query.offset(skip).limit(final_limit)
-        result = await db.execute(query)
-        listings = result.scalars().unique().all()
+        # Get total count before pagination
+        total_count = query.count()
 
-        if not listings:
-            logger.error(f"Failed to fetch listings with filters")
-            raise HTTPException(status_code=404, detail="No listings found")
+        # Calculate pagination (use new pagination parameters if provided, otherwise fall back to skip)
+        if page > 0 and limit > 0:
+            offset = (page - 1) * limit
+            query = query.offset(offset).limit(limit)
+        else:
+            # Fallback to legacy skip parameter
+            query = query.offset(skip).limit(limit)
+
+        # Execute main query
+        listings = query.all()
+
+        # Handle empty results gracefully
+        if not listings and page > 1:
+            # If requesting a page beyond available data, return empty result
+            return PaginatedListingsResponse(
+                listings=[],
+                total=total_count,
+                page=page,
+                limit=limit,
+                total_pages=(total_count + limit - 1) // limit
+            )
 
         # Manually construct response objects to avoid circular dependencies
         response_listings = []
@@ -163,8 +231,6 @@ async def get_listings(
                     bio=listing.influencer.bio,
                     avatar_url=listing.influencer.avatar_url,
                     banner_url=listing.influencer.banner_url,
-                    # region=listing.influencer.region,
-                    # country=listing.influencer.country,
                     youtube_channel_id=listing.influencer.youtube_channel_id,
                     youtube_channel_url=listing.influencer.youtube_channel_url,
                     subscriber_count=listing.influencer.subscriber_count,
@@ -189,27 +255,35 @@ async def get_listings(
             )
             response_listings.append(listing_response)
 
-        return response_listings
+        # Calculate total pages
+        total_pages = (total_count + limit - 1) // limit
+
+        return PaginatedListingsResponse(
+            listings=response_listings,
+            total=total_count,
+            page=page,
+            limit=limit,
+            total_pages=total_pages
+        )
     except HTTPException:
         # Re-raise HTTP exceptions (like 404)
         raise
     except Exception as e:
-        print(f"Error fetching listings: {e}")
+        logger.error(f"Error fetching listings: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch listings. Please try again later.")
 
 @router.get("/{listing_id}/", response_model=ListingResponse)
-async def get_listing(listing_id: str, db: AsyncSession = Depends(get_async_db)):
+def get_listing(listing_id: str, db: Session = Depends(get_db)):
     """Get a single approved listing by ID."""
     try:
-        query = select(Listing).options(
+        query = db.query(Listing).options(
             joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
             joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_cuisines).joinedload(RestaurantCuisine.cuisine),
             joinedload(Listing.video),
             joinedload(Listing.influencer)
         ).filter(Listing.id == listing_id, Listing.approved == True)
         
-        result = await db.execute(query)
-        listing = result.scalars().unique().first()
+        listing = query.first()
 
         if not listing:
             raise HTTPException(status_code=404, detail="Listing not found")
@@ -324,5 +398,5 @@ async def get_listing(listing_id: str, db: AsyncSession = Depends(get_async_db))
         # Re-raise HTTP exceptions (like 404)
         raise
     except Exception as e:
-        print(f"Error fetching listing {listing_id}: {e}")
+        logger.error(f"Error fetching listing {listing_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch listing. Please try again later.")

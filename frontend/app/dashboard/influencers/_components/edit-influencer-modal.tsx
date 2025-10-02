@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
@@ -22,7 +22,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, User, Youtube, Globe, MapPin, Users } from 'lucide-react';
+import { Loader2, User, Youtube, Globe, Users } from 'lucide-react';
 import { useAdminInfluencer } from '@/lib/hooks/useAdminInfluencer';
 import { 
   updateInfluencerSchema, 
@@ -44,8 +44,7 @@ export function EditInfluencerModal({
   influencer,
   onSuccess,
 }: EditInfluencerModalProps) {
-  const { updateInfluencer, loading } = useAdminInfluencer();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const { updateInfluencer, loading: isSubmitting } = useAdminInfluencer();
 
   const form = useForm<UpdateInfluencerFormData>({
     resolver: zodResolver(updateInfluencerSchema),
@@ -78,7 +77,6 @@ export function EditInfluencerModal({
   const onSubmit = async (data: UpdateInfluencerFormData) => {
     if (!influencer) return;
 
-    setIsSubmitting(true);
     try {
       // Filter out empty strings and undefined values
       const filteredData: Partial<UpdateInfluencerFormData> = {};
@@ -97,8 +95,6 @@ export function EditInfluencerModal({
     } catch (error) {
       console.error('Failed to update influencer:', error);
       toast.error('Failed to update influencer. Please try again.');
-    } finally {
-      setIsSubmitting(false);
     }
   };
 

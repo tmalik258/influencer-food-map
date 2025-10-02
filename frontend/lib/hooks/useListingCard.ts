@@ -17,7 +17,7 @@ export function useListingCard({ listing }: UseListingCardProps) {
   };
 
   const handleListingIdClick = () => {
-    router.push(`/dashboard/listings/${listing.id}`);
+    router.push(`/dashboard/listings?id=${listing.id}`);
   };
 
   const handleEditSuccess = () => {

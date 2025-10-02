@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { Youtube, MapPin, Star } from "lucide-react";
+import { Youtube, Star } from "lucide-react";
 import { formatNumberAbbreviated } from "@/lib/utils/number-formatter";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";

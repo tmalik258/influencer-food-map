@@ -10,13 +10,11 @@ import { useTags } from "@/lib/hooks/useTags";
 interface TagSelectionProps {
   selectedTagIds: string[];
   onTagsChange: (tagIds: string[]) => void;
-  availableTags?: Tag[];
 }
 
 export function TagSelection({
   selectedTagIds,
   onTagsChange,
-  availableTags = [],
 }: TagSelectionProps) {
   const { tags: allTags, loading: isLoading, fetchAllTags } = useTags();
 
@@ -42,12 +40,12 @@ export function TagSelection({
     }
   };
 
-  const handleRemoveTag = (tagToRemove: Tag) => {
-    const updatedTagIds = selectedTagIds.filter(
-      (tagId) => tagId !== tagToRemove.id
-    );
-    onTagsChange(updatedTagIds);
-  };
+  // const handleRemoveTag = (tagToRemove: Tag) => {
+  //   const updatedTagIds = selectedTagIds.filter(
+  //     (tagId) => tagId !== tagToRemove.id
+  //   );
+  //   onTagsChange(updatedTagIds);
+  // };
 
   return (
     <div className="space-y-4">

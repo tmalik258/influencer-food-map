@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -9,7 +9,6 @@ import {
   FormControl,
   FormField,
   FormItem,
-  FormLabel,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -72,7 +71,7 @@ export function CuisinesManagementTab({
   }, [cuisines, restaurant.cuisines, onUnsavedChanges]);
 
   // Fetch available cuisines from backend
-  const fetchAvailableCuisines = async () => {
+  const fetchAvailableCuisines = useCallback(async () => {
     setIsLoading(true);
     try {
       const allCuisines = await cuisineActions.getAllCuisines();
@@ -92,11 +91,11 @@ export function CuisinesManagementTab({
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [restaurant]);
 
   useEffect(() => {
     fetchAvailableCuisines();
-  }, [cuisines]);
+  }, [cuisines, fetchAvailableCuisines]);
 
   const handleAddCuisine = (cuisine: Cuisine) => {
     setCuisines((prev) => [...prev, cuisine]);
@@ -124,6 +123,7 @@ export function CuisinesManagementTab({
       form.reset();
       toast.success(`Cuisine "${data.name}" created and added`);
     } catch (error) {
+      console.error("Error creating cuisine:", error);
       toast.error("Failed to create cuisine");
     }
   };
@@ -137,6 +137,7 @@ export function CuisinesManagementTab({
       toast.success("Cuisines updated successfully");
       onSuccess();
     } catch (error) {
+      console.error("Error updating cuisines:", error);
       toast.error("Failed to update cuisines");
     } finally {
       setIsSaving(false);

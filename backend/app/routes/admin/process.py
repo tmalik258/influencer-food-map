@@ -1,30 +1,27 @@
-import redis
-import asyncio
 import json
 import time
-from typing import Optional, List
+import redis
+import asyncio
 
-from fastapi import (APIRouter, Depends, BackgroundTasks, HTTPException, status)
-from pydantic import BaseModel
+from fastapi import (APIRouter, Depends, HTTPException, status)
 
-from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import (REDIS_URL, SCRAPE_YOUTUBE_LOCK, TRANSCRIPTION_NLP_LOCK, INFLUENCER_CHANNELS)
-from app.database import (AsyncSessionLocal, get_db, get_async_db)
+from app.database import (AsyncSessionLocal, get_async_db)
 from app.services import (scrape_youtube, transcription_nlp_pipeline, JobService)
 from app.models.job import JobType, LockType
 from app.dependencies import get_current_admin
+from app.utils.logging import setup_logger
 from app.api_schema.jobs import JobCreateRequest
+from app.api_schema.process import ScrapeRequest
 
 router = APIRouter()
 
+logger = setup_logger(__name__)
+
 # Initialize Redis client
 redis_client = redis.Redis.from_url(REDIS_URL, decode_responses=True)
-
-class ScrapeRequest(BaseModel):
-    video_ids: Optional[List[str]] = None
-    trigger_type: Optional[LockType] = LockType.AUTOMATIC
 
 @router.post("/scrape-youtube/")
 async def trigger_scrape(
@@ -84,6 +81,8 @@ async def trigger_scrape(
                     # Heartbeat update
                     await JobService.update_heartbeat(task_session, job_id)
                     
+                    logger.info(f"Heartbeat: {time.time() - last_heartbeat:.2f} seconds since last update")
+
                     # Run the actual pipeline
                     return await scrape_youtube(task_session, job_id)
                 
@@ -107,8 +106,10 @@ async def trigger_scrape(
                 # Check if it's a cancellation
                 if "cancelled" in str(e).lower():
                     await JobService.cancel_job(task_session, job_id, str(e))
+                    logger.info(f"Scrape YouTube job cancelled: {e}")
                 else:
                     await JobService.fail_job(task_session, job_id, str(e))
+                    logger.error(f"Scrape YouTube job failed: {e}")
                 raise
             finally:
                 redis_client.delete(SCRAPE_YOUTUBE_LOCK)  # Release lock when done
@@ -216,8 +217,10 @@ async def trigger_transcription_nlp(
                 # Check if it's a cancellation
                 if "cancelled" in str(e).lower():
                     await JobService.cancel_job(task_session, job_id, str(e))
+                    logger.info(f"Transcription and NLP pipeline cancelled: {str(e)}")
                 else:
                     await JobService.fail_job(task_session, job_id, str(e))
+                    logger.error(f"Transcription and NLP pipeline failed: {str(e)}")
                 raise
             finally:
                 redis_client.delete(TRANSCRIPTION_NLP_LOCK)  # Release lock when done

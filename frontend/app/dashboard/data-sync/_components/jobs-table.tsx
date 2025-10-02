@@ -16,7 +16,6 @@ import {
   Clock,
   CheckCircle,
   AlertCircle,
-  Pause
 } from "lucide-react";
 import { useJobActions } from "@/lib/hooks";
 import type { Job } from "@/lib/types/api";

@@ -2,7 +2,6 @@
 
 import { useEffect } from "react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Cuisine } from "@/lib/types";
 import { Plus, X } from "lucide-react";
@@ -11,10 +10,9 @@ import { useCuisines } from "@/lib/hooks/useCuisines";
 interface CuisineSelectionProps {
   selectedCuisineIds: string[];
   onCuisinesChange: (cuisineIds: string[]) => void;
-  availableCuisines?: Cuisine[];
 }
 
-export function CuisineSelection({ selectedCuisineIds, onCuisinesChange, availableCuisines = [] }: CuisineSelectionProps) {
+export function CuisineSelection({ selectedCuisineIds, onCuisinesChange }: CuisineSelectionProps) {
   const { cuisines: allCuisines, loading: isLoading, fetchAllCuisines } = useCuisines();
 
   useEffect(() => {
@@ -39,12 +37,12 @@ export function CuisineSelection({ selectedCuisineIds, onCuisinesChange, availab
     }
   };
 
-  const handleRemoveCuisine = (cuisineToRemove: Cuisine) => {
-    const updatedCuisineIds = selectedCuisineIds.filter(
-      (cuisineId) => cuisineId !== cuisineToRemove.id
-    );
-    onCuisinesChange(updatedCuisineIds);
-  };
+  // const handleRemoveCuisine = (cuisineToRemove: Cuisine) => {
+  //   const updatedCuisineIds = selectedCuisineIds.filter(
+  //     (cuisineId) => cuisineId !== cuisineToRemove.id
+  //   );
+  //   onCuisinesChange(updatedCuisineIds);
+  // };
 
   return (
       <div className="space-y-4">
