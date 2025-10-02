@@ -9,7 +9,7 @@ const ListingTableSkeleton = ({itemsPerPage = 10}: {itemsPerPage: number}) => (
     <CardContent className="p-0">
       <Table>
         <TableHeader>
-          <TableRow>``
+          <TableRow>
             <TableHead>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-orange-600 dark:text-orange-400" />

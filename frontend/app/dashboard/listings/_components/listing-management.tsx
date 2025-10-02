@@ -210,8 +210,6 @@ export function ListingManagement() {
     }
   };
 
-  // No client-side filtering needed - server-side filtering is used
-
   return (
     <div className="space-y-6">
       <Card className="border-none shadow-none p-0">
