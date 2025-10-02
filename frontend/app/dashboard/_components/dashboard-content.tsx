@@ -111,8 +111,8 @@ const DashboardContent = () => {
       </div>
 
       {/* Dashboard Cards Grid */}
-      <div className="grid gap-6 md:grid-cols-2">
-        <QuickActionsCard />
+      <div className="grid gap-6 grid-cols-1">
+        {/* <QuickActionsCard /> */}
         <RealTimeJobsCard jobs={data.jobs} isLoading={isLoading} />
       </div>
     </div>
