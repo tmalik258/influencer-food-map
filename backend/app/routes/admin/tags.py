@@ -4,13 +4,18 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from app.api_schema.tags import TagCreate, TagUpdate, TagResponse
 from app.database import get_async_db
 from app.dependencies import get_current_admin
 from app.models.tag import Tag
+from app.utils.logging import setup_logger
 
 admin_tags_router = APIRouter()
+
+# Setup logging
+logger = setup_logger(__name__)
 
 @admin_tags_router.post(
     "/", response_model=TagResponse, status_code=status.HTTP_201_CREATED
@@ -40,8 +45,25 @@ async def create_tag(
         return new_tag
     except HTTPException:
         raise
+    except IntegrityError as e:
+        await db.rollback()
+        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        # Handle unique constraint violations on tag name
+        if "duplicate key value violates unique constraint" in error_msg:
+            if "ix_tags_name" in error_msg or "tags_name_key" in error_msg:
+                logger.warning(f"Duplicate tag name attempt: {tag.name}")
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="A tag with this name already exists"
+                )
+        logger.error(f"Database integrity error creating tag: {error_msg}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid tag data provided"
+        )
     except Exception as e:
         await db.rollback()
+        logger.error(f"Unexpected error creating tag: {e}")
         raise HTTPException(
             status_code=500, 
             detail=f"Failed to create tag: {str(e)}"
@@ -85,8 +107,25 @@ async def update_tag(
         return existing_tag
     except HTTPException:
         raise
+    except IntegrityError as e:
+        await db.rollback()
+        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        # Handle unique constraint violations on tag name
+        if "duplicate key value violates unique constraint" in error_msg:
+            if "ix_tags_name" in error_msg or "tags_name_key" in error_msg:
+                logger.warning(f"Duplicate tag name update attempt: {tag_update.name}")
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="A tag with this name already exists"
+                )
+        logger.error(f"Database integrity error updating tag: {error_msg}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid tag data provided"
+        )
     except Exception as e:
         await db.rollback()
+        logger.error(f"Failed to update tag: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to update tag: {str(e)}"
@@ -117,6 +156,7 @@ async def delete_tag(
         raise
     except Exception as e:
         await db.rollback()
+        logger.error(f"Failed to delete tag: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to delete tag: {str(e)}"

@@ -43,8 +43,8 @@ export const listingActions = {
     const payload = {
       ...data,
       visit_date: data.visit_date?.toISOString(),
-      quotes: data.quotes.join("\n"),
-      context: data.context.join("\n"),
+      quotes: data.quotes,
+      context: data.context,
     };
     
     const response = await adminApi.post("/listings/", payload);
@@ -55,8 +55,8 @@ export const listingActions = {
     const payload = {
       ...data,
       visit_date: data.visit_date?.toISOString(),
-      quotes: data.quotes.join("\n"),
-      context: data.context.join("\n"),
+      quotes: data.quotes,
+      context: data.context,
     };
     
     const response = await adminApi.put(`/listings/${id}/`, payload);

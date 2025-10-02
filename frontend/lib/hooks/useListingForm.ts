@@ -5,6 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import axios from "axios";
 import { listingActions } from "@/lib/actions/listing-actions";
 import {
   createListingSchema,
@@ -91,9 +92,36 @@ export function useListingForm({
 
       onSuccess?.();
       router.refresh();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error(`Error ${mode === 'create' ? 'creating' : 'updating'} listing:`, error);
-      toast.error(`Failed to ${mode === 'create' ? 'create' : 'update'} listing. Please try again.`);
+      let message = `Failed to ${mode === 'create' ? 'create' : 'update'} listing. Please try again.`;
+
+      if (axios.isAxiosError(error)) {
+        const status = error.response?.status;
+        const data = error.response?.data as any;
+
+        // Normalize backend message from several possible fields
+        const candidates = [
+          data?.detail,
+          data?.message,
+          data?.error,
+          data?.errors?.[0]?.message,
+        ];
+        const stringCandidate = candidates.find((v) => typeof v === 'string') as string | undefined;
+        if (stringCandidate) {
+          message = stringCandidate;
+        } else if (data?.detail && typeof data.detail === 'object') {
+          message = data.detail?.message || data.detail?.error || JSON.stringify(data.detail);
+        } else if (status === 409) {
+          message = "A listing for this influencer, video, and restaurant already exists.";
+        } else if (error.message) {
+          message = error.message;
+        }
+      } else if (error instanceof Error && error.message) {
+        message = error.message;
+      }
+
+      toast.error(message);
     } finally {
       setIsLoading(false);
     }

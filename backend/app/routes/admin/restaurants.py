@@ -235,6 +235,27 @@ async def update_restaurant(
             message="Restaurant updated successfully",
             restaurant_id=db_restaurant.id
         )
+    except IntegrityError as e:
+        await db.rollback()
+        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        
+        if "duplicate key value violates unique constraint" in error_msg:
+            if "ix_restaurants_name" in error_msg:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="A restaurant with this name already exists"
+                )
+            elif "restaurants_google_place_id_key" in error_msg:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="This restaurant location is already registered in the system"
+                )
+        
+        logger.error(f"Database integrity error updating restaurant: {error_msg}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid restaurant data provided"
+        )
     except HTTPException:
         raise
     except Exception as e:

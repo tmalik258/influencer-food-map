@@ -4,6 +4,7 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, update, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from app.api_schema.listings import ListingCreate, ListingUpdate, ListingResponse
 from app.database import get_async_db
@@ -11,6 +12,9 @@ from app.dependencies import get_current_admin
 from app.models.listing import Listing
 from app.models.restaurant import Restaurant
 from app.models.video import Video
+from app.utils.logging import setup_logger
+
+logger = setup_logger(__name__)
 
 admin_listings_router = APIRouter()
 
@@ -23,22 +27,49 @@ async def create_listing(
     current_admin=Depends(get_current_admin)
 ):
     # If visit_date is not provided, extract it from the video's published_at
-    listing_data = listing.model_dump()
-    
-    if not listing_data.get("visit_date") and listing_data.get("video_id"):
-        # Fetch the video to get the published_at date
-        video_query = select(Video).filter(Video.id == listing_data["video_id"])
-        video_result = await db.execute(video_query)
-        video = video_result.scalars().first()
+    try:
+        listing_data = listing.model_dump()
         
-        if video and video.published_at:
-            listing_data["visit_date"] = video.published_at.date()
-    
-    new_listing = Listing(**listing_data)
-    db.add(new_listing)
-    await db.commit()
-    await db.refresh(new_listing)
-    return new_listing
+        if not listing_data.get("visit_date") and listing_data.get("video_id"):
+            # Fetch the video to get the published_at date
+            video_query = select(Video).filter(Video.id == listing_data["video_id"]) 
+            video_result = await db.execute(video_query)
+            video = video_result.scalars().first()
+            
+            if video and video.published_at:
+                listing_data["visit_date"] = video.published_at.date()
+        
+        new_listing = Listing(**listing_data)
+        db.add(new_listing)
+        await db.commit()
+        await db.refresh(new_listing)
+        return new_listing
+    except IntegrityError as e:
+        await db.rollback()
+        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        
+        # Detect unique constraint violation for (video_id, restaurant_id, influencer_id)
+        if (
+            "duplicate key" in error_msg.lower() or "already exists" in error_msg.lower()
+        ) and (
+            "video_id" in error_msg and "restaurant_id" in error_msg and "influencer_id" in error_msg
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A listing for this influencer, video, and restaurant already exists"
+            )
+        
+        logger.error(f"Database integrity error creating listing: {error_msg}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid listing data provided"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Unexpected error creating listing: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while creating listing")
 
 @admin_listings_router.put(
     "/{listing_id}/", response_model=ListingResponse
@@ -49,19 +80,46 @@ async def update_listing(
     db: AsyncSession = Depends(get_async_db),
     current_admin=Depends(get_current_admin)
 ):
-    query = select(Listing).filter(Listing.id == listing_id)
-    result = await db.execute(query)
-    existing_listing = result.scalars().first()
+    try:
+        query = select(Listing).filter(Listing.id == listing_id)
+        result = await db.execute(query)
+        existing_listing = result.scalars().first()
 
-    if not existing_listing:
-        raise HTTPException(status_code=404, detail="Listing not found")
+        if not existing_listing:
+            raise HTTPException(status_code=404, detail="Listing not found")
 
-    for field, value in listing_update.model_dump(exclude_unset=True).items():
-        setattr(existing_listing, field, value)
+        for field, value in listing_update.model_dump(exclude_unset=True).items():
+            setattr(existing_listing, field, value)
 
-    await db.commit()
-    await db.refresh(existing_listing)
-    return existing_listing
+        await db.commit()
+        await db.refresh(existing_listing)
+        return existing_listing
+    except IntegrityError as e:
+        await db.rollback()
+        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        
+        # Detect unique constraint violation for (video_id, restaurant_id, influencer_id)
+        if (
+            "duplicate key" in error_msg.lower() or "already exists" in error_msg.lower()
+        ) and (
+            "video_id" in error_msg and "restaurant_id" in error_msg and "influencer_id" in error_msg
+        ):
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A listing for this influencer, video, and restaurant already exists"
+            )
+        
+        logger.error(f"Database integrity error updating listing: {error_msg}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid listing data provided"
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Unexpected error updating listing: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to update listing: {str(e)}")
 
 @admin_listings_router.put("/approve-all/", response_model=dict)
 async def approve_all_listings(

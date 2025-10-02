@@ -176,12 +176,13 @@ export function ListingForm({ mode, listingData, onSuccess }: ListingFormProps) 
             name="confidence_score"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Confidence Score (0-100)</FormLabel>
+                <FormLabel>Confidence Score (0-1)</FormLabel>
                 <FormControl>
                   <Input
                     type="number"
                     min={0}
-                    max={100}
+                    max={1}
+                    step={0.01}
                     {...field}
                     onChange={(e) => field.onChange(Number(e.target.value))}
                     className="w-full bg-white shadow-lg"

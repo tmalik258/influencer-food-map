@@ -4,13 +4,18 @@ from uuid import UUID
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select, delete
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from app.api_schema.cuisines import CuisineCreate, CuisineUpdate, CuisineResponse
 from app.database import get_async_db
 from app.dependencies import get_current_admin
 from app.models.cuisine import Cuisine
+from app.utils.logging import setup_logger
 
 admin_cuisines_router = APIRouter()
+
+# Setup logging
+logger = setup_logger(__name__)
 
 @admin_cuisines_router.post(
     "/", response_model=CuisineResponse, status_code=status.HTTP_201_CREATED
@@ -40,8 +45,26 @@ async def create_cuisine(
         return new_cuisine
     except HTTPException:
         raise
+    except IntegrityError as e:
+        await db.rollback()
+        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        # Handle unique constraint violations on cuisine name
+        if "duplicate key value violates unique constraint" in error_msg:
+            # Common patterns: index name or unique constraint name
+            if "ix_cuisines_name" in error_msg or "cuisines_name_key" in error_msg:
+                logger.warning(f"Duplicate cuisine name attempt: {cuisine.name}")
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="A cuisine with this name already exists"
+                )
+        logger.error(f"Database integrity error creating cuisine: {error_msg}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid cuisine data provided"
+        )
     except Exception as e:
         await db.rollback()
+        logger.error(f"Unexpected error creating cuisine: {e}")
         raise HTTPException(
             status_code=500, 
             detail=f"Failed to create cuisine: {str(e)}"
@@ -85,8 +108,25 @@ async def update_cuisine(
         return existing_cuisine
     except HTTPException:
         raise
+    except IntegrityError as e:
+        await db.rollback()
+        error_msg = str(e.orig) if hasattr(e, 'orig') else str(e)
+        # Handle unique constraint violations on cuisine name
+        if "duplicate key value violates unique constraint" in error_msg:
+            if "ix_cuisines_name" in error_msg or "cuisines_name_key" in error_msg:
+                logger.warning(f"Duplicate cuisine name update attempt: {cuisine_update.name}")
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="A cuisine with this name already exists"
+                )
+        logger.error(f"Database integrity error updating cuisine: {error_msg}")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid cuisine data provided"
+        )
     except Exception as e:
         await db.rollback()
+        logger.error(f"Failed to update cuisine: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to update cuisine: {str(e)}"
@@ -117,6 +157,7 @@ async def delete_cuisine(
         raise
     except Exception as e:
         await db.rollback()
+        logger.error(f"Failed to delete cuisine: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to delete cuisine: {str(e)}"

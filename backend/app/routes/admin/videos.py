@@ -14,8 +14,11 @@ from app.api_schema.videos import VideoResponse, VideoCreate, VideoUpdate, Video
 from app.api_schema.influencers import InfluencerLightResponse
 from app.services.youtube_scraper import get_video_metadata
 from datetime import datetime
+from sqlalchemy.exc import IntegrityError
+from app.utils.logging import setup_logger
 
 admin_videos_router = APIRouter()
+logger = setup_logger(__name__)
 
 @admin_videos_router.post(
     "/", response_model=VideoResponse, status_code=status.HTTP_201_CREATED
@@ -120,8 +123,23 @@ async def create_video(
         
     except HTTPException:
         raise
+    except IntegrityError as ie:
+        await db.rollback()
+        msg = str(ie.orig) if getattr(ie, 'orig', None) else str(ie)
+        # Detect unique constraint violations on youtube_video_id or composite influencer/youtube
+        if 'duplicate key value violates unique constraint' in msg and (
+            'videos_youtube_video_id_key' in msg or 'uix_influencer_youtube_video_id' in msg or 'ix_videos_youtube_video_id' in msg
+        ):
+            logger.warning(f"Video create conflict: {msg}")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A video with this YouTube ID already exists."
+            )
+        logger.error(f"Integrity error creating video: {msg}")
+        raise HTTPException(status_code=400, detail="Integrity error creating video.")
     except Exception as e:
         await db.rollback()
+        logger.error(f"Failed to create video: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to create video: {str(e)}"
@@ -220,8 +238,22 @@ async def create_video_from_url(
         
     except HTTPException:
         raise
+    except IntegrityError as ie:
+        await db.rollback()
+        msg = str(ie.orig) if getattr(ie, 'orig', None) else str(ie)
+        if 'duplicate key value violates unique constraint' in msg and (
+            'videos_youtube_video_id_key' in msg or 'uix_influencer_youtube_video_id' in msg or 'ix_videos_youtube_video_id' in msg
+        ):
+            logger.warning(f"Video URL create conflict: {msg}")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Video with this YouTube ID already exists."
+            )
+        logger.error(f"Integrity error creating video from URL: {msg}")
+        raise HTTPException(status_code=400, detail="Integrity error creating video from URL.")
     except Exception as e:
         await db.rollback()
+        logger.error(f"Failed to create video from URL: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to create video from URL: {str(e)}"
@@ -286,8 +318,22 @@ async def update_video(
         )
     except HTTPException:
         raise
+    except IntegrityError as ie:
+        await db.rollback()
+        msg = str(ie.orig) if getattr(ie, 'orig', None) else str(ie)
+        if 'duplicate key value violates unique constraint' in msg and (
+            'videos_youtube_video_id_key' in msg or 'uix_influencer_youtube_video_id' in msg or 'ix_videos_youtube_video_id' in msg
+        ):
+            logger.warning(f"Video update conflict: {msg}")
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="A video with this YouTube ID already exists."
+            )
+        logger.error(f"Integrity error updating video: {msg}")
+        raise HTTPException(status_code=400, detail="Integrity error updating video.")
     except Exception as e:
         await db.rollback()
+        logger.error(f"Failed to update video: {e}")
         raise HTTPException(
             status_code=500,
             detail=f"Failed to update video: {str(e)}"
