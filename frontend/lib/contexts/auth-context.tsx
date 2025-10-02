@@ -48,10 +48,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // Handle different auth events
         switch (event) {
           case 'SIGNED_IN':
-            // Only show toast for actual sign-ins, not session restoration on page load
-            if (!isInitialLoad) {
-              toast.success('Successfully signed in!');
-            }
             break;
           case 'SIGNED_OUT':
             toast.success('Successfully signed out!');

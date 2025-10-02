@@ -274,6 +274,24 @@ async def download_audio(video_url: str, video: Video) -> str:
                 ],
             }
 
+                # Optional: cookie-based auth to bypass YouTube bot checks
+            try:
+                from app.config import (
+                    YTDLP_COOKIES_FILE,
+                    YTDLP_COOKIES_FROM_BROWSER,
+                    YTDLP_BROWSER_PROFILE,
+                )
+                if YTDLP_COOKIES_FILE:
+                    ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
+                    logger.info(f"Using yt-dlp cookies file: {YTDLP_COOKIES_FILE}")
+                elif YTDLP_COOKIES_FROM_BROWSER:
+                    ydl_opts["cookiesfrombrowser"] = (YTDLP_COOKIES_FROM_BROWSER, None, YTDLP_BROWSER_PROFILE)
+                    logger.info(
+                        f"Using yt-dlp cookies from browser: {YTDLP_COOKIES_FROM_BROWSER}, profile: {YTDLP_BROWSER_PROFILE}"
+                    )
+            except Exception as cfg_err:
+                logger.warning(f"Could not configure yt-dlp cookies: {cfg_err}")
+
             # Download the audio
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 await loop.run_in_executor(None, lambda: ydl.download([video_url]))

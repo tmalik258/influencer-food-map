@@ -51,3 +51,8 @@ TOKEN_SIZE = 4500
 
 # Base directory for audio downloads
 AUDIO_BASE_DIR = "audios"
+
+# yt-dlp cookie/auth config (optional)
+YTDLP_COOKIES_FILE = os.getenv("YTDLP_COOKIES_FILE")  # path to cookies.txt
+YTDLP_COOKIES_FROM_BROWSER = os.getenv("YTDLP_COOKIES_FROM_BROWSER", "chrome")  # e.g., "chrome", "edge"
+YTDLP_BROWSER_PROFILE = os.getenv("YTDLP_BROWSER_PROFILE", "Default")  # optional profile name/id

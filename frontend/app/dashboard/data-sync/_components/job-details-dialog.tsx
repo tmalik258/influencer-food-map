@@ -110,13 +110,7 @@ export default function JobDetailsDialog({
               </div>
             )}
 
-            <div className="grid grid-cols-1 gap-4">
-              <div>
-                <label className="text-sm font-medium text-gray-600">
-                  Created At
-                </label>
-                <p className="text-sm">{formatDate(selectedJob.created_at)}</p>
-              </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {selectedJob.started_at && (
                 <div>
                   <label className="text-sm font-medium text-gray-600">
