@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { Table, MapPin, User, Video, TrendingUp, Calendar } from "lucide-react";
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
+import { MapPin, User, Video, TrendingUp, Calendar } from "lucide-react";
 
 // Loading skeleton for table content
 const ListingTableSkeleton = ({itemsPerPage = 10}: {itemsPerPage: number}) => (
