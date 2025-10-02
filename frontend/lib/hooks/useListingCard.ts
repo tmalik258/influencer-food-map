@@ -3,13 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Listing } from "@/lib/types";
+import { listingActions } from "@/lib/actions/listing-actions";
+import { toast } from "sonner";
 
 interface UseListingCardProps {
   listing: Listing;
+  onDeleted?: () => void;
 }
 
-export function useListingCard({ listing }: UseListingCardProps) {
+export function useListingCard({ listing, onDeleted }: UseListingCardProps) {
   const [isEditMode, setIsEditMode] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const router = useRouter();
 
   const toggleEditMode = () => {
@@ -38,11 +43,34 @@ export function useListingCard({ listing }: UseListingCardProps) {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
+  const openDeleteDialog = () => setIsDeleteOpen(true);
+  const closeDeleteDialog = () => setIsDeleteOpen(false);
+
+  const handleDeleteConfirm = async () => {
+    try {
+      setIsDeleting(true);
+      await listingActions.deleteListing(listing.id);
+      toast.success("Listing deleted successfully");
+      setIsDeleteOpen(false);
+      setIsEditMode(false);
+      if (onDeleted) onDeleted();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete listing");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
   return {
     isEditMode,
     toggleEditMode,
     handleListingIdClick,
     handleEditSuccess,
     formatTimestamp,
+    isDeleteOpen,
+    isDeleting,
+    openDeleteDialog,
+    closeDeleteDialog,
+    handleDeleteConfirm,
   };
 }

@@ -120,9 +120,6 @@ export function ListingManagement() {
     }
   };
 
-  // Handle view listing details
-  // Remove handleView function since eye icon is removed
-
   // Handle edit listing
   const handleEdit = (listingId: string) => {
     // Open modal instead of navigation
@@ -273,7 +270,11 @@ export function ListingManagement() {
               onSuccess={async (data: CreateListingFormData | EditListingFormData) => {
                 await handleEditSubmit(selectedListing.id, data);
                 handleCloseEditForm();
-              }} 
+              }}
+              onDeleted={() => {
+                refetch();
+                handleCloseEditForm();
+              }}
             />
           )}
         </DialogContent>

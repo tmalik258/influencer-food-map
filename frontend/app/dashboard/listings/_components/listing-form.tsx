@@ -21,11 +21,16 @@ import {
 import { useListingForm } from "@/lib/hooks/useListingForm";
 import { Listing } from "@/lib/types";
 import { CreateListingFormData, EditListingFormData } from "@/lib/validations/listing-create";
+import { DeleteConfirmationModal } from "@/components/delete-confirmation-modal";
+import { useState } from "react";
+import { listingActions } from "@/lib/actions/listing-actions";
+import { toast } from "sonner";
 
 interface ListingFormProps {
   mode: 'create' | 'edit';
   listingData?: Listing;
   onSuccess?: (data: CreateListingFormData | EditListingFormData) => void;
+  onDeleted?: () => void;
 }
 
 /**
@@ -35,12 +40,33 @@ interface ListingFormProps {
  * @param listingData - Existing listing data for edit mode (required when mode is 'edit')
  * @param onSuccess - Optional callback function called after successful form submission
  */
-export function ListingForm({ mode, listingData, onSuccess }: ListingFormProps) {
+export function ListingForm({ mode, listingData, onSuccess, onDeleted }: ListingFormProps) {
   const { form, isLoading, handleSubmit, handleReset } = useListingForm({
     mode,
     listingData,
     onSuccess,
   });
+
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const openDeleteDialog = () => setIsDeleteOpen(true);
+  const closeDeleteDialog = () => setIsDeleteOpen(false);
+
+  const handleDeleteConfirm = async () => {
+    if (!listingData || !listingData.id) return;
+    try {
+      setIsDeleting(true);
+      await listingActions.deleteListing(listingData.id);
+      toast.success("Listing deleted successfully");
+      setIsDeleteOpen(false);
+      if (onDeleted) onDeleted();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to delete listing");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   return (
     <div className="max-h-[80vh] overflow-y-auto pr-2">
@@ -238,24 +264,47 @@ export function ListingForm({ mode, listingData, onSuccess }: ListingFormProps) 
             )}
           />
 
-          <div className="flex justify-end space-x-4">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleReset}
-              disabled={isLoading}
-            >
-              Reset
-            </Button>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading 
-                ? (mode === 'create' ? "Creating..." : "Updating...") 
-                : (mode === 'create' ? "Create Listing" : "Update Listing")
-              }
-            </Button>
+          <div className="flex justify-between space-x-4">
+            {mode === 'edit' && listingData?.id && (
+              <Button
+                type="button"
+                variant="destructive"
+                onClick={openDeleteDialog}
+                disabled={isLoading || isDeleting}
+                className="cursor-pointer"
+              >
+                Delete Listing
+              </Button>
+            )}
+
+            <div className="ml-auto flex space-x-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleReset}
+                disabled={isLoading}
+              >
+                Reset
+              </Button>
+              <Button type="submit" disabled={isLoading}>
+                {isLoading 
+                  ? (mode === 'create' ? "Creating..." : "Updating...") 
+                  : (mode === 'create' ? "Create Listing" : "Update Listing")
+                }
+              </Button>
+            </div>
           </div>
         </form>
       </Form>
+
+      <DeleteConfirmationModal
+        isOpen={isDeleteOpen}
+        onClose={closeDeleteDialog}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Listing"
+        description="Are you sure you want to delete this listing? This action cannot be undone."
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

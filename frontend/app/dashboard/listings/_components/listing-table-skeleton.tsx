@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@/components/ui/table";
-import { MapPin, User, Video, TrendingUp, Calendar } from "lucide-react";
+import { MapPin, User, Video, TrendingUp, Calendar, Hash } from "lucide-react";
 
 // Loading skeleton for table content
 const ListingTableSkeleton = ({itemsPerPage = 10}: {itemsPerPage: number}) => (
@@ -10,6 +10,12 @@ const ListingTableSkeleton = ({itemsPerPage = 10}: {itemsPerPage: number}) => (
       <Table>
         <TableHeader>
           <TableRow>
+            <TableHead>
+              <div className="flex items-center gap-2">
+                <Hash className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                Id
+              </div>
+            </TableHead>
             <TableHead>
               <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-orange-600 dark:text-orange-400" />
@@ -56,6 +62,9 @@ const ListingTableSkeleton = ({itemsPerPage = 10}: {itemsPerPage: number}) => (
               key={index}
               className="border-b border-white/10 dark:border-gray-700/30"
             >
+              <TableCell>
+                <Skeleton className="h-4 w-24" />
+              </TableCell>
               <TableCell>
                 <div className="space-y-2">
                   <Skeleton className="h-4 w-3/4" />

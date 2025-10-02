@@ -9,6 +9,7 @@ import {
   XCircle,
   Edit,
   Trash2,
+  Hash,
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,8 +21,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Card, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { toast } from "sonner";
 
 import type { ListingTableProps } from "@/lib/types";
 import { CustomPagination } from "@/components/custom-pagination";
@@ -107,6 +107,12 @@ export function ListingTable({
           <TableRow>
             <TableHead>
               <div className="flex items-center gap-2">
+                <Hash className="h-4 w-4 text-orange-600 dark:text-orange-400" />
+                Id
+              </div>
+            </TableHead>
+            <TableHead>
+              <div className="flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-orange-600 dark:text-orange-400" />
                 Restaurant
               </div>
@@ -151,6 +157,19 @@ export function ListingTable({
               key={listing.id}
               className="hover:bg-white/20 dark:hover:bg-gray-800/50 border-b border-white/10 dark:border-gray-700/30"
             >
+              <TableCell className="font-medium text-gray-900 dark:text-white">
+                <span
+                  className="cursor-pointer"
+                  onClick={() => {
+                    if (listing.id) {
+                      navigator.clipboard.writeText(listing.id);
+                      toast.success("Listing ID copied to clipboard!");
+                    }
+                  }}
+                >
+                  {listing.id ? `${listing.id.substring(0, 10)}${listing.id.length > 10 ? "..." : ""}` : "N/A"}
+                </span>
+              </TableCell>
               <TableCell className="font-medium text-gray-900 dark:text-white">
                 {listing.restaurant?.name || "Unknown Restaurant"}
               </TableCell>

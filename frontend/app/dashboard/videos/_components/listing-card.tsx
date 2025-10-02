@@ -6,6 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Listing } from "@/lib/types";
 import { ListingForm } from "@/app/dashboard/listings/_components/listing-form";
 import { useListingCard } from "@/lib/hooks/useListingCard";
+import { DeleteConfirmationModal } from "@/components/delete-confirmation-modal";
 import {
   FileText,
   Calendar,
@@ -20,20 +21,27 @@ import {
   Hash,
   Edit,
   X,
+  Trash2,
 } from "lucide-react";
 
 interface ListingCardProps {
   listing: Listing;
+  onDeleted?: () => void;
 }
 
-export function ListingCard({ listing }: ListingCardProps) {
+export function ListingCard({ listing, onDeleted }: ListingCardProps) {
   const {
     isEditMode,
     toggleEditMode,
     handleListingIdClick,
     handleEditSuccess,
     formatTimestamp,
-  } = useListingCard({ listing });
+    isDeleteOpen,
+    isDeleting,
+    openDeleteDialog,
+    closeDeleteDialog,
+    handleDeleteConfirm,
+  } = useListingCard({ listing, onDeleted });
 
   if (isEditMode) {
     return (
@@ -59,6 +67,7 @@ export function ListingCard({ listing }: ListingCardProps) {
             mode="edit"
             listingData={listing}
             onSuccess={handleEditSuccess}
+            onDeleted={onDeleted}
           />
         </CardContent>
       </Card>
@@ -73,15 +82,26 @@ export function ListingCard({ listing }: ListingCardProps) {
             <FileText className="h-5 w-5 text-blue-600" />
             Listing Details
           </CardTitle>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={toggleEditMode}
-            className="flex items-center gap-2"
-          >
-            <Edit className="h-4 w-4" />
-            Edit
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleEditMode}
+              className="flex items-center gap-2"
+            >
+              <Edit className="h-4 w-4" />
+              Edit
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={openDeleteDialog}
+              className="flex items-center gap-2 text-red-600 hover:text-red-700 hover:bg-red-50"
+            >
+              <Trash2 className="h-4 w-4" />
+              Delete
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -283,6 +303,15 @@ export function ListingCard({ listing }: ListingCardProps) {
           </div>
         )}
       </CardContent>
+
+      <DeleteConfirmationModal
+        isOpen={isDeleteOpen}
+        onClose={closeDeleteDialog}
+        onConfirm={handleDeleteConfirm}
+        title="Delete Listing"
+        description="Are you sure you want to delete this listing? This action cannot be undone."
+        isLoading={isDeleting}
+      />
     </Card>
   );
 }

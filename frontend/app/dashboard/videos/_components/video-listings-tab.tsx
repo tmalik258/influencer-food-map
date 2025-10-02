@@ -16,7 +16,7 @@ interface VideoListingsTabProps {
 export function VideoListingsTab({ videoId }: VideoListingsTabProps) {
   // Memoize the params object to prevent infinite re-renders
   const listingsParams = useMemo(() => ({ video_id: videoId }), [videoId]);
-  const { listings, loading, error } = useListings(listingsParams);
+  const { listings, loading, error, refetch } = useListings(listingsParams);
 
   if (loading) {
     return (
@@ -68,7 +68,7 @@ export function VideoListingsTab({ videoId }: VideoListingsTabProps) {
   return (
     <div className="space-y-6">
       {listings.map((listing) => (
-        <ListingCard key={listing.id} listing={listing} />
+        <ListingCard key={listing.id} listing={listing} onDeleted={refetch} />
       ))}
     </div>
   );
