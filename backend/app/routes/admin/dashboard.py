@@ -9,7 +9,7 @@ from app.api_schema.dashboard import DashboardStatsResponse
 
 logger = setup_logger(__name__)
 
-router = APIRouter(prefix="/dashboard", tags=["dashboard"])
+router = APIRouter()
 
 @router.get("/overview/", response_model=DashboardStatsResponse)
 async def get_dashboard_overview(

@@ -65,7 +65,7 @@ app.include_router(admin_influencers_router, prefix="/admin/influencers", tags=[
 app.include_router(admin_tags_router, prefix="/admin/tags", tags=["admin"])
 app.include_router(admin_cuisines_router, prefix="/admin/cuisines", tags=["admin"])
 app.include_router(geocoding_router, prefix="/geocoding", tags=["geocoding"])
-app.include_router(dashboard_router, tags=["dashboard"])
+app.include_router(dashboard_router, prefix="/admin/dashboard", tags=["admin"])
 
 
 # Custom exception handler for validation errors
