@@ -50,7 +50,7 @@ export function useDashboardData(): UseDashboardDataReturn {
 
       // Fetch dashboard stats and jobs in parallel using the optimized endpoint
       const [statsResponse, jobsResponse] = await Promise.all([
-        api.get('/dashboard/overview'),
+        adminApi.get('/dashboard/overview/'),
         adminApi.get('/jobs/')
       ]);
 

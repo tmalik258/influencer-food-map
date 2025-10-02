@@ -214,9 +214,9 @@ export function ListingManagement() {
 
   return (
     <div className="space-y-6">
-      <Card className="not-dark:glass-effect not-dark:backdrop-blur-xl bg-white/10 dark:bg-black border border-white/20 dark:border-gray-700/30">
+      <Card className="border-none shadow-none p-0">
         <ListingHeader listingCount={totalCount} onCreateClick={() => setIsCreateFormOpen(true)} />
-        <CardContent>
+        <CardContent className='p-0'>
           {error && (
             <Alert className="mb-4 glass-effect backdrop-blur-xl bg-white/10 dark:bg-gray-900/10 border border-orange-500/50">
               <AlertCircle className="h-4 w-4 text-orange-600 dark:text-orange-400" />

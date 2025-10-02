@@ -10,6 +10,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { cn } from '@/lib/utils';
+import LoadingSkeleton from '@/components/loading-skeleton';
 
 // Utility function to truncate names to max 25 characters
 const truncateName = (name: string, maxLength: number = 25): string => {
@@ -218,9 +219,10 @@ export function AsyncSearchableSelect({
           }}
         >
           {loading && (
-            <div className="flex items-center justify-center py-6 text-sm text-muted-foreground">
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Loading options...
+            <div className="p-1">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <LoadingSkeleton key={i} className="h-8 w-full mb-1" />
+              ))}
             </div>
           )}
           
