@@ -161,7 +161,7 @@ export function ListingTable({
                 <span
                   className="cursor-pointer"
                   onClick={() => {
-                    if (listing.id) {
+                    if (listing.id && navigator.clipboard) {
                       navigator.clipboard.writeText(listing.id);
                       toast.success("Listing ID copied to clipboard!");
                     }
