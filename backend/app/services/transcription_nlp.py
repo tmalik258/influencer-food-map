@@ -29,6 +29,9 @@ from app.config import (
     TRANSCRIPTION_NLP_LOCK,
     AUDIO_BASE_DIR,
     YOUTUBE_API_KEY,
+    YTDLP_PROXY,
+    YTDLP_GEO_BYPASS,
+    YTDLP_GEO_COUNTRY,
 )
 from app.database import AsyncSessionLocal
 from app.utils.logging import setup_logger
@@ -37,6 +40,8 @@ from app.services.jobs import JobService
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import HttpRequest
+from app.utils.ytdlp_error_classifier import classify_ytdlp_error
+from app.exceptions import PipelineError
 
 # Setup logging
 logger = setup_logger(__name__)
@@ -274,23 +279,48 @@ async def download_audio(video_url: str, video: Video) -> str:
                 ],
             }
 
-                # Optional: cookie-based auth to bypass YouTube bot checks
+            # Optional: cookie-based auth to bypass YouTube bot checks
             try:
                 from app.config import (
                     YTDLP_COOKIES_FILE,
                     YTDLP_COOKIES_FROM_BROWSER,
                     YTDLP_BROWSER_PROFILE,
                 )
-                if YTDLP_COOKIES_FILE:
-                    ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
-                    logger.info(f"Using yt-dlp cookies file: {YTDLP_COOKIES_FILE}")
-                elif YTDLP_COOKIES_FROM_BROWSER:
-                    ydl_opts["cookiesfrombrowser"] = (YTDLP_COOKIES_FROM_BROWSER, None, YTDLP_BROWSER_PROFILE)
+                # Prefer cookies-from-browser over cookies.txt
+                if YTDLP_COOKIES_FROM_BROWSER:
+                    ydl_opts["cookiesfrombrowser"] = (
+                        YTDLP_COOKIES_FROM_BROWSER,
+                        None,
+                        YTDLP_BROWSER_PROFILE,
+                    )
                     logger.info(
                         f"Using yt-dlp cookies from browser: {YTDLP_COOKIES_FROM_BROWSER}, profile: {YTDLP_BROWSER_PROFILE}"
                     )
+                elif YTDLP_COOKIES_FILE:
+                    ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
+                    logger.info(f"Using yt-dlp cookies file: {YTDLP_COOKIES_FILE}")
             except Exception as cfg_err:
                 logger.warning(f"Could not configure yt-dlp cookies: {cfg_err}")
+
+            # Proxy and geo options
+            if YTDLP_PROXY:
+                ydl_opts["proxy"] = YTDLP_PROXY
+                logger.info("Using yt-dlp proxy for YouTube download")
+            # Extractor args to help bypass geo/captcha
+            ydl_opts["extractor_args"] = {
+                "youtube": {
+                    "geo_bypass": YTDLP_GEO_BYPASS,
+                    **({"geo_bypass_country": YTDLP_GEO_COUNTRY} if YTDLP_GEO_COUNTRY else {}),
+                    # Use android client to reduce likelihood of bot checks
+                    "player_client": "android",
+                }
+            }
+            # Extra headers
+            ydl_opts["http_headers"] = {
+                "Referer": "https://www.youtube.com/",
+                "Origin": "https://www.youtube.com",
+                "Accept-Language": "en-US,en;q=0.9",
+            }
 
             # Download the audio
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -358,7 +388,8 @@ async def download_audio(video_url: str, video: Video) -> str:
             if os.path.exists(final_output_path):
                 os.remove(final_output_path)
             if attempt == max_retries - 1:
-                raise Exception(f"FFmpeg conversion failed: {e.stderr}")
+                details = {"video_url": video_url, "stderr": e.stderr}
+                raise PipelineError("ffmpeg_failed", "FFmpeg conversion failed", details)
             await asyncio.sleep(2**attempt)
 
         except yt_dlp.utils.DownloadError as e:
@@ -371,7 +402,14 @@ async def download_audio(video_url: str, video: Video) -> str:
             if os.path.exists(final_output_path):
                 os.remove(final_output_path)
             if attempt == max_retries - 1:
-                raise
+                cls = classify_ytdlp_error(str(e))
+                details = {
+                    "video_url": video_url,
+                    "youtube_video_id": video.youtube_video_id,
+                    "raw": str(e),
+                    "hint": cls.get("hint"),
+                }
+                raise PipelineError(cls.get("type", "yt_dlp_download"), str(e), details)
             await asyncio.sleep(2**attempt)
 
         except Exception as e:
@@ -384,43 +422,17 @@ async def download_audio(video_url: str, video: Video) -> str:
             if os.path.exists(final_output_path):
                 os.remove(final_output_path)
             if attempt == max_retries - 1:
-                raise
+                cls = classify_ytdlp_error(str(e))
+                details = {
+                    "video_url": video_url,
+                    "youtube_video_id": video.youtube_video_id,
+                    "raw": str(e),
+                    "hint": cls.get("hint"),
+                }
+                raise PipelineError(cls.get("type", "unknown"), str(e), details)
             await asyncio.sleep(2**attempt)
 
-    raise Exception("Max retries exceeded for audio download and conversion")
-
-
-# async def transcribe_video(audio_path: str) -> str:
-#     """Transcribe audio using Whisper."""
-#     loop = asyncio.get_event_loop()
-#     audio_file_path = Path(audio_path)
-#     temp_dir = audio_file_path.parent
-
-#     try:
-#         logger.info(f"Transcribing audio {audio_path}")
-#         # model = whisper.load_model("large-v2")
-#         segments, _ = await loop.run_in_executor(
-#             None,
-#             lambda: model.transcribe(
-#                 audio_path,
-#                 word_timestamps=True  # Optional: enable word-level timestamps
-#             ),
-#         )
-        
-#         # Combine segments into one full transcription
-#         transcription = "".join([segment.text for segment in segments])
-
-#         logger.info(f"Transcription completed for {audio_path}")
-#         return transcription
-#     except Exception as e:
-#         logger.error(f"Error transcribing audio {audio_path}: {e}")
-#         raise
-#     finally:
-#         # Clean up both file and directory
-#         await loop.run_in_executor(None, cleanup_temp_files, audio_file_path, temp_dir)
-
-
-
+    raise PipelineError("max_retries_exceeded", "Max retries exceeded for audio download and conversion", {"video_url": video_url, "youtube_video_id": video.youtube_video_id})
 
 async def validate_restaurant(entities: dict) -> dict:
     """Validate restaurant details using Google Maps Places API with referer header."""
@@ -473,7 +485,6 @@ async def validate_restaurant(entities: dict) -> dict:
     except ApiError as e:
         logger.error(f"Error validating restaurant with Google Maps: {e}")
         return {"valid": False}
-
 
 async def store_restaurant_and_listing(
     db: AsyncSession, video: Video, entities: dict, validated: dict
@@ -613,7 +624,6 @@ async def store_restaurant_and_listing(
         )
         raise # Let the outer transaction handle the rollback
 
-
 async def process_video(video: Video):
     """Process a single video: transcribe, extract entities, validate, and store."""
     async with AsyncSessionLocal() as db:  # Create a new session for each video
@@ -688,12 +698,12 @@ async def process_video(video: Video):
                 logger.error(f"Error processing video {video.youtube_video_id}: {e}")
                 raise  # Let the transaction rollback automatically
 
-
 async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list] = None, job_id: Optional[uuid.UUID] = None):
     """Main pipeline to process videos with job tracking."""
     start_time = time.time()
     processed_videos = 0
     failed_videos = 0
+    errors_list: list[dict] = []
     
     try:
         # Limit to 4-5 concurrent downloads to avoid rate limits
@@ -748,7 +758,7 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
             await JobService.update_progress(db, job_id, 0, total_videos)
 
         async def process_with_semaphore(video):
-            nonlocal processed_videos, failed_videos
+            nonlocal processed_videos, failed_videos, errors_list
             
             async with semaphore:
                 try:
@@ -796,6 +806,31 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
                     if job_id:
                         await JobService.update_tracking_stats(db, job_id, failed_items=failed_videos)
                     logger.error(f"Error processing video {video.id}: {e}")
+                    # Collect structured error info
+                    try:
+                        if isinstance(e, PipelineError):
+                            err_info = {
+                                "type": e.error_type,
+                                "message": str(e),
+                                "video_id": getattr(video, "youtube_video_id", None),
+                                "details": e.details,
+                            }
+                        else:
+                            cls = classify_ytdlp_error(str(e))
+                            err_info = {
+                                "type": cls.get("type", "unknown"),
+                                "message": str(e),
+                                "video_id": getattr(video, "youtube_video_id", None),
+                                "details": {"hint": cls.get("hint")},
+                            }
+                        errors_list.append(err_info)
+                    except Exception:
+                        # Fallback minimal error record
+                        errors_list.append({
+                            "type": "unknown",
+                            "message": str(e),
+                            "video_id": getattr(video, "youtube_video_id", None),
+                        })
                     return e
 
         # Process videos concurrently
@@ -806,6 +841,11 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
         successful = sum(1 for r in results if r is not None and not isinstance(r, Exception))
         failed = len(results) - successful
 
+        # Build error summary by type
+        summary: dict[str, int] = {}
+        for er in errors_list:
+            tp = er.get("type", "unknown")
+            summary[tp] = summary.get(tp, 0) + 1
         logger.info(f"Transcription and NLP pipeline completed: {successful} successful, {failed} failed")
         
         # Final job update
@@ -814,7 +854,9 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
             "total_videos": total_videos,
             "failed_videos": failed,
             "processing_time_minutes": (time.time() - start_time) / 60,
-            "concurrency_limit": 5
+            "concurrency_limit": 5,
+            "errors": errors_list,
+            "error_summary": summary,
         }
         
         if job_id:

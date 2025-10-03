@@ -56,3 +56,7 @@ AUDIO_BASE_DIR = "audios"
 YTDLP_COOKIES_FILE = os.getenv("YTDLP_COOKIES_FILE")  # path to cookies.txt
 YTDLP_COOKIES_FROM_BROWSER = os.getenv("YTDLP_COOKIES_FROM_BROWSER", "chrome")  # e.g., "chrome", "edge"
 YTDLP_BROWSER_PROFILE = os.getenv("YTDLP_BROWSER_PROFILE", "Default")  # optional profile name/id
+# Add proxy and geo-bypass options for yt-dlp
+YTDLP_PROXY = os.getenv("YTDLP_PROXY")  # optional proxy (e.g., http://user:pass@host:port)
+YTDLP_GEO_BYPASS = os.getenv("YTDLP_GEO_BYPASS", "true").lower() == "true"
+YTDLP_GEO_COUNTRY = os.getenv("YTDLP_GEO_COUNTRY")  # e.g., "PK" or "AE"
