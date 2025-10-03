@@ -164,6 +164,7 @@ async def create_video_from_url(
         existing_video = result.scalars().first()
         
         if existing_video:
+            logger.warning(f"Video with ID {video_id} already exists")
             raise HTTPException(
                 status_code=400,
                 detail=f"Video with ID {video_id} already exists"
@@ -172,6 +173,7 @@ async def create_video_from_url(
         # Fetch video metadata from YouTube API
         metadata = get_video_metadata(video_id)
         if not metadata:
+            logger.error(f"Failed to fetch metadata for video ID {video_id}")
             raise HTTPException(
                 status_code=400,
                 detail="Could not fetch video metadata from YouTube. Please check the URL."
@@ -185,6 +187,7 @@ async def create_video_from_url(
                     metadata["published_at"], "%Y-%m-%dT%H:%M:%SZ"
                 )
             except ValueError:
+                logger.error(f"Failed to parse published_at for video ID {video_id}")
                 # Handle different date formats if needed
                 pass
         
