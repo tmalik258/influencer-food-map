@@ -202,6 +202,15 @@ async def trigger_transcription_nlp(
                     return
                 
                 if result and result.get("failed_videos") == result.get("total_videos"):
+                    # If all failed, fail job with detailed errors
+                    details = {
+                        "summary": result.get("error_summary"),
+                        "errors": result.get("errors"),
+                        "videos_processed": result.get("videos_processed"),
+                        "total_videos": result.get("total_videos"),
+                        "failed_videos": result.get("failed_videos"),
+                    }
+                    await JobService.fail_job(task_session, job_id, json.dumps(details))
                     raise Exception(f"Transcription and NLP pipeline completed with {result.get('failed_videos')} failures.")
                 
                 # Complete the job
@@ -209,7 +218,11 @@ async def trigger_transcription_nlp(
                 result_data = json.dumps({
                     "message": "Video transcription and NLP processing completed successfully",
                     "elapsed_time": elapsed_time,
-                    "videos_processed": result.get("videos_processed", 0) if result else 0
+                    "videos_processed": result.get("videos_processed", 0) if result else 0,
+                    "total_videos": result.get("total_videos", 0) if result else 0,
+                    "failed_videos": result.get("failed_videos", 0) if result else 0,
+                    "error_summary": result.get("error_summary"),
+                    "errors": result.get("errors"),
                 })
                 await JobService.complete_job(task_session, job_id, result_data)
                 
@@ -219,7 +232,12 @@ async def trigger_transcription_nlp(
                     await JobService.cancel_job(task_session, job_id, str(e))
                     logger.info(f"Transcription and NLP pipeline cancelled: {str(e)}")
                 else:
-                    await JobService.fail_job(task_session, job_id, str(e))
+                    # Store detailed error info in job
+                    err_payload = {
+                        "error": str(e),
+                        "hint": "Check errors list and summary for specific causes.",
+                    }
+                    await JobService.fail_job(task_session, job_id, json.dumps(err_payload))
                     logger.error(f"Transcription and NLP pipeline failed: {str(e)}")
                 raise
             finally:

@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Video } from '@/lib/types';
 import { videoActions } from '@/lib/actions';
 import { adminVideoActions } from '@/lib/actions/admin-video-actions';
+import type { AxiosError } from 'axios';
 
 interface PaginatedVideosParams {
   title?: string;
@@ -186,9 +187,10 @@ export const useCreateVideo = () => {
       const video = await adminVideoActions.createVideoFromUrl(data);
       return video;
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to create video';
+      const axiosErr = err as AxiosError<{ detail?: string }>;
+      const errorMessage = axiosErr.response?.data?.detail || axiosErr.message || 'Failed to create video';
       setError(errorMessage);
-      throw err;
+      throw axiosErr;
     } finally {
       setLoading(false);
     }
