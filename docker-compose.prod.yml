@@ -63,6 +63,8 @@ services:
   tor:
     image: peterdavehello/tor-socks-proxy:latest  # Or pin a version like :0.4.8.12
     container_name: tor-proxy
+    networks:
+      - nomtok-network
     restart: unless-stopped
 
 networks:
