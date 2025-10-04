@@ -3,7 +3,6 @@
 import { useEffect } from "react";
 import { useDashboardData } from "@/lib/hooks/useDashboardData";
 import { MetricCard } from "./metric-card";
-import { QuickActionsCard } from "./quick-actions-card";
 import { RealTimeJobsCard } from "./real-time-jobs-card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";

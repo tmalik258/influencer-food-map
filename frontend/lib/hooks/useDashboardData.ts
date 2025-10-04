@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import api, { adminApi } from '@/lib/api';
+import { adminApi } from '@/lib/api';
 import type { Job } from '@/lib/types/api';
 
 interface DashboardStats {
