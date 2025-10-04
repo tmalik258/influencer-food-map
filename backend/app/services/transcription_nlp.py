@@ -29,9 +29,7 @@ from app.config import (
     TRANSCRIPTION_NLP_LOCK,
     AUDIO_BASE_DIR,
     YOUTUBE_API_KEY,
-    YTDLP_PROXY,
-    YTDLP_GEO_BYPASS,
-    YTDLP_GEO_COUNTRY,
+    YTDLP_COOKIES_FILE,
 )
 from app.database import AsyncSessionLocal
 from app.utils.logging import setup_logger
@@ -210,12 +208,12 @@ async def store_influencer_from_video(db: AsyncSession, video: Video) -> Tuple[I
         logger.error(f"Error storing influencer from video {video.youtube_video_id}: {e}")
         raise
 
-async def download_audio(video_url: str, video: Video) -> str:
-    """Download audio from a YouTube video and explicitly convert with FFmpeg."""
-    # Create base directory if it doesn't exist
+async def download_audio(video_url: str, video: Video) -> Optional[str]:
+    """Download audio from a YouTube video using cookie file only.
+    Fallback to Tor proxy only when geo-restriction error is detected.
+    """
     os.makedirs(AUDIO_BASE_DIR, exist_ok=True)
 
-    # Use influencer's name as subfolder (sanitized)
     influencer_name = (
         video.influencer.name.replace(" ", "_").replace("/", "_")
         if video.influencer
@@ -224,64 +222,35 @@ async def download_audio(video_url: str, video: Video) -> str:
     influencer_dir = os.path.join(AUDIO_BASE_DIR, influencer_name)
     os.makedirs(influencer_dir, exist_ok=True)
 
-    # Sanitize video title for filename
-    # video_title = (
-    #     video.title.replace(" ", "_").replace("/", "_").replace("\\", "_")[:50]
-    #     if video.title
-    #     else str(uuid.uuid4())
-    # )
     base_filename = video.youtube_video_id
-
-    # Final output path (what we'll return)
     final_output_path = os.path.join(influencer_dir, f"{base_filename}_converted.mp3")
 
-    ## Verify the file exists and has content
-    if (
-        os.path.exists(final_output_path)
-        and os.path.getsize(final_output_path) > 0
-    ):
-        logger.info(
-            f"Audio file already exists and has content: {final_output_path}"
-        )
+    if os.path.exists(final_output_path) and os.path.getsize(final_output_path) > 0:
+        logger.info(f"Audio file already exists and has content: {final_output_path}")
         return final_output_path
 
     loop = asyncio.get_event_loop()
-    max_retries = 3
-    use_browser_cookies = True
-    use_cookie_file = True
 
-    for attempt in range(max_retries):
+    tor_proxy = "socks5://tor:9150"
+
+    # Two attempts: first without Tor, second with Tor if geo-restricted
+    use_tor = False
+    max_attempts = 2
+
+    for attempt in range(max_attempts):
         downloaded_file = None
-        temp_file = None
         try:
-            logger.info(
-                f"Attempt {attempt + 1}/{max_retries} downloading audio for {video_url}"
-            )
+            logger.info(f"Attempt {attempt + 1}/{max_attempts} downloading audio for {video_url} (tor={use_tor})")
 
-            # Rotate user-agent and player client per attempt to reduce bot detection
-            ua_candidates = [
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
-                "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
-                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
-            ]
-            player_client_candidates = ["android", "ios", "web"]
-            ua = ua_candidates[attempt % len(ua_candidates)]
-            client = player_client_candidates[attempt % len(player_client_candidates)]
-
-            # Step 1: Download to temporary file
-            with tempfile.NamedTemporaryFile(
-                suffix=".%(ext)s", delete=False
-            ) as temp_file:
+            with tempfile.NamedTemporaryFile(suffix=".%(ext)s", delete=False) as temp_file:
                 temp_output_template = temp_file.name
 
             ydl_opts = {
-                "format": "bestaudio[ext=m4a]/bestaudio[ext=webm]/bestaudio",
+                "format": "bestaudio/best",
                 "outtmpl": temp_output_template,
                 "quiet": True,
                 "retries": 3,
                 "fragment_retries": 10,
-                "extractor_retries": 10,
-                "user_agent": ua,
                 "postprocessors": [
                     {
                         "key": "FFmpegExtractAudio",
@@ -291,66 +260,26 @@ async def download_audio(video_url: str, video: Video) -> str:
                 ],
             }
 
-            # Optional: cookie-based auth to bypass YouTube bot checks
-            try:
-                from app.config import (
-                    YTDLP_COOKIES_FILE,
-                    YTDLP_COOKIES_FROM_BROWSER,
-                    YTDLP_BROWSER_PROFILE,
-                )
-                # Prefer cookies file first if set and accessible
-                if YTDLP_COOKIES_FILE and use_cookie_file and os.path.exists(YTDLP_COOKIES_FILE):
-                    ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
-                    logger.info(f"Using yt-dlp cookies file: {YTDLP_COOKIES_FILE}")
-                elif YTDLP_COOKIES_FROM_BROWSER and use_browser_cookies:
-                    # Fall back to cookies from browser (correct arg order)
-                    if YTDLP_BROWSER_PROFILE:
-                        ydl_opts["cookiesfrombrowser"] = (
-                            YTDLP_COOKIES_FROM_BROWSER,
-                            YTDLP_BROWSER_PROFILE,
-                        )
-                    else:
-                        ydl_opts["cookiesfrombrowser"] = (YTDLP_COOKIES_FROM_BROWSER,)
-                    logger.info(
-                        f"Using yt-dlp cookies from browser: {YTDLP_COOKIES_FROM_BROWSER}{', profile: ' + YTDLP_BROWSER_PROFILE if YTDLP_BROWSER_PROFILE else ''}"
-                    )
-                else:
-                    logger.info("No cookies configured or accessible; proceeding without cookies.")
-            except Exception as cfg_err:
-                logger.warning(f"Could not configure yt-dlp cookies: {cfg_err}")
+            # Cookie file only
+            if YTDLP_COOKIES_FILE and os.path.exists(YTDLP_COOKIES_FILE):
+                ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
+                logger.info(f"Using yt-dlp cookies file: {YTDLP_COOKIES_FILE}")
+            else:
+                logger.info("Cookie file not set or not found; proceeding without cookies")
 
-            # Proxy and geo options
-            if YTDLP_PROXY:
-                ydl_opts["proxy"] = YTDLP_PROXY
-                logger.info("Using yt-dlp proxy for YouTube download")
-            # Extractor args to help bypass geo/captcha
-            ydl_opts["extractor_args"] = {
-                "youtube": {
-                    "geo_bypass": YTDLP_GEO_BYPASS,
-                    **({"geo_bypass_country": YTDLP_GEO_COUNTRY} if YTDLP_GEO_COUNTRY else {}),
-                    # Rotate player client to reduce bot checks
-                    "player_client": [client],
-                }
-            }
-            # Extra headers
-            ydl_opts["http_headers"] = {
-                "Referer": "https://www.youtube.com/",
-                "Origin": "https://www.youtube.com",
-                "Accept-Language": "en-US,en;q=0.9",
-                "Sec-Fetch-Dest": "empty",
-                "Sec-Fetch-Mode": "cors",
-                "Sec-Fetch-Site": "same-site",
-            }
+            # Proxy selection: normal proxy if configured; Tor only on geo-restriction fallback
+            if use_tor:
+                ydl_opts["proxy"] = tor_proxy
+                logger.info("Using Tor proxy for geo-restricted video")
 
-            # Download the audio
+            # Download
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
                 await loop.run_in_executor(None, lambda: ydl.download([video_url]))
 
             # Find the downloaded file
             temp_dir = os.path.dirname(temp_output_template)
             temp_base = os.path.splitext(os.path.basename(temp_output_template))[0]
-
-            # Look for the actual downloaded file
+            downloaded_file = None
             for file in os.listdir(temp_dir):
                 if file.startswith(temp_base) and file.endswith(".mp3"):
                     downloaded_file = os.path.join(temp_dir, file)
@@ -361,116 +290,84 @@ async def download_audio(video_url: str, video: Video) -> str:
 
             logger.info(f"Downloaded temporary file: {downloaded_file}")
 
-            # Step 2: Convert with FFmpeg to ensure proper format
+            # Convert with FFmpeg
             ffmpeg_command = [
                 "ffmpeg",
                 "-i",
-                downloaded_file,  # Input file
+                downloaded_file,
                 "-ar",
-                "16000",  # Sample rate: 16kHz
+                "16000",
                 "-ac",
-                "1",  # Audio channels: mono
-                "-y",  # Overwrite output file
-                final_output_path,  # Output file
+                "1",
+                "-y",
+                final_output_path,
             ]
-
-            logger.info(f"Converting audio with FFmpeg: {' '.join(ffmpeg_command)}")
-
-            # Run FFmpeg conversion
-            result = await loop.run_in_executor(
+            await loop.run_in_executor(
                 None,
-                lambda: subprocess.run(
-                    ffmpeg_command, check=True, capture_output=True, text=True
-                ),
+                lambda: subprocess.run(ffmpeg_command, check=True, capture_output=True, text=True),
             )
 
-            # Clean up temporary file
+            # Cleanup
             if os.path.exists(downloaded_file):
                 os.remove(downloaded_file)
 
-            # Verify the final file exists and has content
-            if (
-                os.path.exists(final_output_path)
-                and os.path.getsize(final_output_path) > 0
-            ):
-                logger.info(
-                    f"Audio successfully converted and saved to: {final_output_path}"
-                )
+            if os.path.exists(final_output_path) and os.path.getsize(final_output_path) > 0:
+                logger.info(f"Audio successfully converted and saved to: {final_output_path}")
                 return final_output_path
             else:
                 raise Exception("Converted file is empty or doesn't exist")
 
+        except yt_dlp.utils.DownloadError as e:
+            err = str(e)
+            logger.error(f"Download error for {video_url}: {err}")
+
+            # Detect geo-restriction; fallback to Tor on next attempt
+            err_l = err.lower()
+            geo_hit = (
+                "not made this video available in your country" in err_l
+                or "available in your country" in err_l
+                or "video is not available in your country" in err_l
+            )
+            if geo_hit and not use_tor and attempt < max_attempts - 1:
+                logger.warning("Geo-restriction detected; will retry with Tor proxy")
+                use_tor = True
+                # Cleanup and retry
+                if downloaded_file and os.path.exists(downloaded_file):
+                    os.remove(downloaded_file)
+                if os.path.exists(final_output_path):
+                    os.remove(final_output_path)
+                await asyncio.sleep(1)
+                continue
+
+            # Final failure
+            cls = classify_ytdlp_error(err)
+            details = {
+                "video_url": video_url,
+                "youtube_video_id": video.youtube_video_id,
+                "raw": err,
+                "hint": cls.get("hint"),
+            }
+            raise PipelineError(cls.get("type", "yt_dlp_download"), err, details)
+
         except subprocess.CalledProcessError as e:
             logger.error(f"FFmpeg conversion failed for {video_url}: {e.stderr}")
-            # Clean up files on error
             if downloaded_file and os.path.exists(downloaded_file):
                 os.remove(downloaded_file)
             if os.path.exists(final_output_path):
                 os.remove(final_output_path)
-            if attempt == max_retries - 1:
-                details = {"video_url": video_url, "stderr": e.stderr}
-                raise PipelineError("ffmpeg_failed", "FFmpeg conversion failed", details)
-            await asyncio.sleep(2**attempt)
-
-        except yt_dlp.utils.DownloadError as e:
-            logger.error(
-                f"Attempt {attempt + 1}/{max_retries} failed for {video_url}: {e}"
-            )
-            err = str(e).lower()
-            # If browser cookies error (missing chrome profile/keyring), disable browser cookies
-            if "cookiesfrombrowser" in err or "could not find chrome cookies database" in err or "unsupported keyring" in err:
-                logger.warning("Browser cookies unavailable; disabling cookiesfrombrowser for next attempt.")
-                use_browser_cookies = False
-            # If cookie file error, disable cookie file usage
-            if "cookiefile" in err or "cookies file" in err:
-                logger.warning("Cookie file error detected; disabling cookiefile for next attempt.")
-                use_cookie_file = False
-            # Clean up files on error
-            if downloaded_file and os.path.exists(downloaded_file):
-                os.remove(downloaded_file)
-            if os.path.exists(final_output_path):
-                os.remove(final_output_path)
-            if attempt == max_retries - 1:
-                cls = classify_ytdlp_error(str(e))
-                details = {
-                    "video_url": video_url,
-                    "youtube_video_id": video.youtube_video_id,
-                    "raw": str(e),
-                    "hint": cls.get("hint"),
-                }
-                raise PipelineError(cls.get("type", "yt_dlp_download"), str(e), details)
-            await asyncio.sleep(2**attempt)
+            details = {"video_url": video_url, "stderr": e.stderr}
+            raise PipelineError("ffmpeg_failed", "FFmpeg conversion failed", details)
 
         except Exception as e:
-            logger.error(
-                f"Unexpected error on attempt {attempt + 1}/{max_retries} for {video_url}: {e}"
-            )
-            err = str(e).lower()
-            # If browser cookies error (missing chrome profile/keyring), disable browser cookies
-            if "cookiesfrombrowser" in err or "could not find chrome cookies database" in err or "unsupported keyring" in err:
-                logger.warning("Browser cookies unavailable; disabling cookiesfrombrowser for next attempt.")
-                use_browser_cookies = False
-            # If cookie file error, disable cookie file usage
-            if "cookiefile" in err or "cookies file" in err:
-                logger.warning("Cookie file error detected; disabling cookiefile for next attempt.")
-                use_cookie_file = False
-            # Clean up files on error
-            if downloaded_file and os.path.exists(downloaded_file):
-                os.remove(downloaded_file)
-            if os.path.exists(final_output_path):
-                os.remove(final_output_path)
-            if attempt == max_retries - 1:
-                cls = classify_ytdlp_error(str(e))
-                details = {
-                    "video_url": video_url,
-                    "youtube_video_id": video.youtube_video_id,
-                    "raw": str(e),
-                    "hint": cls.get("hint"),
-                }
-                raise PipelineError(cls.get("type", "unknown"), str(e), details)
-            await asyncio.sleep(2**attempt)
-
-    raise PipelineError("max_retries_exceeded", "Max retries exceeded for audio download and conversion", {"video_url": video_url, "youtube_video_id": video.youtube_video_id})
+            logger.error(f"Unexpected error for {video_url}: {e}")
+            cls = classify_ytdlp_error(str(e))
+            details = {
+                "video_url": video_url,
+                "youtube_video_id": video.youtube_video_id,
+                "raw": str(e),
+                "hint": cls.get("hint"),
+            }
+            raise PipelineError(cls.get("type", "unknown"), str(e), details)
 
 async def validate_restaurant(entities: dict) -> dict:
     """Validate restaurant details using Google Maps Places API with referer header."""
@@ -887,18 +784,29 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
         logger.info(f"Transcription and NLP pipeline completed: {successful} successful, {failed} failed")
         
         # Final job update
+        # Build result_data without errors list or summary; keep only hint
+        hint = None
+        if errors_list:
+            h = errors_list[0].get("details", {}).get("hint") if isinstance(errors_list[0], dict) else None
+            if h:
+                hint = h
         result_data = {
             "videos_processed": successful,
             "total_videos": total_videos,
             "failed_videos": failed,
             "processing_time_minutes": (time.time() - start_time) / 60,
             "concurrency_limit": 5,
-            "errors": errors_list,
-            "error_summary": summary,
         }
+        if hint:
+            result_data["hint"] = hint
         
         if job_id:
-            job_data = JobUpdateRequest(result_data=json.dumps(result_data))
+            # Store raw original error messages in Job.error_message
+            err_msgs = [er.get("message") for er in errors_list if isinstance(er, dict) and er.get("message")]
+            job_data = JobUpdateRequest(
+                result_data=json.dumps(result_data),
+                error_message=("; ".join(err_msgs) if err_msgs else None)
+            )
             await JobService.update_job(db, job_id, job_data)
             await JobService.update_tracking_stats(db, job_id, items_in_progress=0)
             
