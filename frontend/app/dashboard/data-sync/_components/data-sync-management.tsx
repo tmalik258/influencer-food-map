@@ -24,17 +24,17 @@ export function DataSyncManagement() {
   const handleJobUpdate = useCallback((updatedJob: Job) => {
     console.log('[Realtime] Job updated:', { id: updatedJob.id, status: updatedJob.status, title: updatedJob.title });
     refetch();
-  }, []);
+  }, [refetch]);
 
   const handleJobCreate = useCallback((newJob: Job) => {
     console.log('[Realtime] Job created:', { id: newJob.id, status: newJob.status, title: newJob.title });
     refetch();
-  }, []);
+  }, [refetch]);
 
   const handleJobDelete = useCallback((jobId: string) => {
     console.log('[Realtime] Job deleted:', { id: jobId });
     refetch();
-  }, []);
+  }, [refetch]);
 
   // Set up real-time subscriptions
   useJobsRealtime({

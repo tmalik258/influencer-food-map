@@ -2,6 +2,7 @@ import { useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Job } from '../types';
+import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
 
 interface UseJobsRealtimeProps {
   onJobUpdate?: (job: Job) => void;
@@ -10,7 +11,7 @@ interface UseJobsRealtimeProps {
 }
 
 export const useJobsRealtime = ({ onJobUpdate, onJobCreate, onJobDelete }: UseJobsRealtimeProps = {}) => {
-  const handleJobUpdate = useCallback((payload: any) => {
+  const handleJobUpdate = useCallback((payload: RealtimePostgresChangesPayload<Job>) => {
     const job = payload.new as Job;
     const oldJob = payload.old as Job;
     
@@ -22,7 +23,7 @@ export const useJobsRealtime = ({ onJobUpdate, onJobCreate, onJobDelete }: UseJo
 
     // Show toast notification for status changes
     if (oldJob && oldJob.status !== job.status) {
-      const statusMessage = getStatusChangeMessage(oldJob.status, job.status, job.title);
+      const statusMessage = getStatusChangeMessage(oldJob.status, job.status);
       if (statusMessage) {
         console.log('Showing status change toast:', statusMessage);
         toast.success(statusMessage, {
@@ -32,7 +33,7 @@ export const useJobsRealtime = ({ onJobUpdate, onJobCreate, onJobDelete }: UseJo
     }
   }, [onJobUpdate]);
 
-  const handleJobCreate = useCallback((payload: any) => {
+  const handleJobCreate = useCallback((payload: RealtimePostgresChangesPayload<Job>) => {
     const job = payload.new as Job;
     
     console.log('Job create received:', { jobId: job.id, title: job.title });
@@ -46,7 +47,7 @@ export const useJobsRealtime = ({ onJobUpdate, onJobCreate, onJobDelete }: UseJo
     });
   }, [onJobCreate]);
 
-  const handleJobDelete = useCallback((payload: any) => {
+  const handleJobDelete = useCallback((payload: RealtimePostgresChangesPayload<Job>) => {
     const job = payload.old as Job;
     
     console.log('Job delete received:', { jobId: job.id, title: job.title });
@@ -88,7 +89,7 @@ export const useJobsRealtime = ({ onJobUpdate, onJobCreate, onJobDelete }: UseJo
   }, [handleJobUpdate, handleJobCreate, handleJobDelete]);
 };
 
-function getStatusChangeMessage(oldStatus: string, newStatus: string, jobTitle: string): string | null {
+function getStatusChangeMessage(oldStatus: string, newStatus: string): string | null {
   const statusMessages: Record<string, Record<string, string>> = {
     'pending': {
       'running': 'Job started processing',

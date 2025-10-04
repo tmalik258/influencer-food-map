@@ -1,6 +1,3 @@
-"use client";
-
-import { useState } from "react";
 import { Share2, Facebook, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -25,8 +22,6 @@ export function SocialShareButtons({
   className,
   variant = "default"
 }: SocialShareButtonsProps) {
-  const [copied, setCopied] = useState(false);
-
   const shareData = {
     whatsapp: {
       url: `https://wa.me/?text=${encodeURIComponent(`${title} - ${url}`)}`,
