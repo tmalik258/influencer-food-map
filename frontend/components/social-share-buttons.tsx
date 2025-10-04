@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Share2, Facebook, Instagram, Twitter } from "lucide-react";
+import { Share2, Facebook, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -46,24 +46,9 @@ export function SocialShareButtons({
       icon: Twitter,
       color: "bg-black hover:bg-gray-800"
     },
-    instagram: {
-      url: url, // Instagram doesn't support direct URL sharing, so we'll copy to clipboard
-      label: "Instagram",
-      icon: Instagram,
-      color: "bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
-    }
   };
 
   const handleShare = (platform: keyof typeof shareData) => {
-    if (platform === "instagram") {
-      // For Instagram, copy URL to clipboard since direct sharing isn't supported
-      navigator.clipboard.writeText(url).then(() => {
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2000);
-      });
-      return;
-    }
-
     window.open(
       shareData[platform].url,
       "_blank",
@@ -94,7 +79,7 @@ export function SocialShareButtons({
                 className="flex items-center gap-2 cursor-pointer"
               >
                 <Icon className="w-4 h-4" />
-                {platform === "instagram" && copied ? "Copied!" : data.label}
+                {data.label}
               </DropdownMenuItem>
             );
           })}
@@ -142,7 +127,7 @@ export function SocialShareButtons({
             size="sm"
           >
             <Icon className="w-4 h-4" />
-            {platform === "instagram" && copied ? "Copied!" : data.label}
+            {data.label}
           </Button>
         );
       })}
