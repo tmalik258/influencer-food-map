@@ -40,7 +40,9 @@ app.add_middleware(
         "http://localhost:3000",  # For local development
         "http://localhost",  # For local development
         "http://frontend:3000",  # For local development
-        "https://caribou-equipped-turtle.ngrok-free.app"
+        "https://caribou-equipped-turtle.ngrok-free.app",
+        "https://nomtok.com",
+        "https://www.nomtok.com",
     ],
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
