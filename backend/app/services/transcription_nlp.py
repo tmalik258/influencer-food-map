@@ -248,6 +248,7 @@ async def download_audio(video_url: str, video: Video) -> str:
     loop = asyncio.get_event_loop()
     max_retries = 3
     use_browser_cookies = True
+    use_cookie_file = True
 
     for attempt in range(max_retries):
         downloaded_file = None
@@ -287,8 +288,12 @@ async def download_audio(video_url: str, video: Video) -> str:
                     YTDLP_COOKIES_FROM_BROWSER,
                     YTDLP_BROWSER_PROFILE,
                 )
-                # Prefer cookies-from-browser over cookies.txt (correct arg order)
-                if YTDLP_COOKIES_FROM_BROWSER and use_browser_cookies:
+                # Prefer cookies file first if set and accessible
+                if YTDLP_COOKIES_FILE and use_cookie_file and os.path.exists(YTDLP_COOKIES_FILE):
+                    ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
+                    logger.info(f"Using yt-dlp cookies file: {YTDLP_COOKIES_FILE}")
+                elif YTDLP_COOKIES_FROM_BROWSER and use_browser_cookies:
+                    # Fall back to cookies from browser (correct arg order)
                     if YTDLP_BROWSER_PROFILE:
                         ydl_opts["cookiesfrombrowser"] = (
                             YTDLP_COOKIES_FROM_BROWSER,
@@ -299,9 +304,8 @@ async def download_audio(video_url: str, video: Video) -> str:
                     logger.info(
                         f"Using yt-dlp cookies from browser: {YTDLP_COOKIES_FROM_BROWSER}{', profile: ' + YTDLP_BROWSER_PROFILE if YTDLP_BROWSER_PROFILE else ''}"
                     )
-                elif YTDLP_COOKIES_FILE:
-                    ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
-                    logger.info(f"Using yt-dlp cookies file: {YTDLP_COOKIES_FILE}")
+                else:
+                    logger.info("No cookies configured or accessible; proceeding without cookies.")
             except Exception as cfg_err:
                 logger.warning(f"Could not configure yt-dlp cookies: {cfg_err}")
 
@@ -399,10 +403,15 @@ async def download_audio(video_url: str, video: Video) -> str:
             logger.error(
                 f"Attempt {attempt + 1}/{max_retries} failed for {video_url}: {e}"
             )
-            # If keyring/cookies error, disable browser cookies and retry
-            if "unsupported keyring" in str(e).lower() or "cookiesfrombrowser" in str(e).lower():
-                logger.warning("Unsupported keyring/cookies error detected; disabling browser cookies for next attempt.")
+            err = str(e).lower()
+            # If browser cookies error (missing chrome profile/keyring), disable browser cookies
+            if "cookiesfrombrowser" in err or "could not find chrome cookies database" in err or "unsupported keyring" in err:
+                logger.warning("Browser cookies unavailable; disabling cookiesfrombrowser for next attempt.")
                 use_browser_cookies = False
+            # If cookie file error, disable cookie file usage
+            if "cookiefile" in err or "cookies file" in err:
+                logger.warning("Cookie file error detected; disabling cookiefile for next attempt.")
+                use_cookie_file = False
             # Clean up files on error
             if downloaded_file and os.path.exists(downloaded_file):
                 os.remove(downloaded_file)
@@ -423,10 +432,15 @@ async def download_audio(video_url: str, video: Video) -> str:
             logger.error(
                 f"Unexpected error on attempt {attempt + 1}/{max_retries} for {video_url}: {e}"
             )
-            # If keyring/cookies error, disable browser cookies and retry
-            if "unsupported keyring" in str(e).lower() or "cookiesfrombrowser" in str(e).lower():
-                logger.warning("Unsupported keyring/cookies error detected; disabling browser cookies for next attempt.")
+            err = str(e).lower()
+            # If browser cookies error (missing chrome profile/keyring), disable browser cookies
+            if "cookiesfrombrowser" in err or "could not find chrome cookies database" in err or "unsupported keyring" in err:
+                logger.warning("Browser cookies unavailable; disabling cookiesfrombrowser for next attempt.")
                 use_browser_cookies = False
+            # If cookie file error, disable cookie file usage
+            if "cookiefile" in err or "cookies file" in err:
+                logger.warning("Cookie file error detected; disabling cookiefile for next attempt.")
+                use_cookie_file = False
             # Clean up files on error
             if downloaded_file and os.path.exists(downloaded_file):
                 os.remove(downloaded_file)
