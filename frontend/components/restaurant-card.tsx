@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Restaurant, Listing } from "@/lib/types";
 import { Star } from "lucide-react";
 import RestaurantImage from "@/components/restaurant-image";
+import { useRouter } from "next/navigation";
 
 interface RestaurantCardProps {
   restaurant: Restaurant;
@@ -18,10 +19,12 @@ export function RestaurantCard({
   listings,
   showButton = true,
 }: RestaurantCardProps) {
+  const router = useRouter();
   return (
     <Card
       key={restaurant.id}
-      className="overflow-hidden border-gray-100 shadow-lg hover:shadow-xl transition-all duration-300 group p-4"
+      className="overflow-hidden border-gray-100 shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 group p-4"
+      onClick={() => router.push(`/restaurants/${restaurant.id}`)}
     >
       <div className="relative h-48 rounded-lg overflow-hidden">
         {/* Use fallback-aware image component */}
