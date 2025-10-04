@@ -57,13 +57,12 @@ class GPTFoodPlaceProcessor:
 
                 - **tags**: An array of descriptive tags about food, experience, or cuisine (examples: "BBQ", "vegan", "Michelin-starred"). Use an empty array if no tags apply.
                 - **cuisines**: An array of cuisine types served at this place (examples: "Italian", "Chinese", "Mexican", "French", "Indian", "Japanese", "Thai", "Mediterranean", "American", "Korean"). Use an empty array if no cuisines can be determined.
-                - **context**: An array of up to 7 relevant transcript or description lines/passages that directly support the identification of the restaurant name, location information, and the selected quotes. If no such context exists, set it to null.
                 - **confidence_score**: A float from 0.0 to 1.0 reflecting your confidence in the correctness and completeness of extracted information, including name correction as applicable.
         4. If no valid food-related place can be confidently extracted based on the transcript, return a single empty JSON array: [].
         5. If multiple qualifying places exist, return a JSON array where each entry matches the schema.
         6. Do not provide explanations, notes, or reasoning in your answer. All output must be strictly valid JSON, matching the schema exactly and containing nothing but the data.
         7. Do not include any object in your output where restaurant_name is null.
-        8. Only include a restaurant/place object in the output if it has at least two qualifying quotes (i.e., the "quotes" array contains two or more items) and at least two context lines (i.e., the "context" array contains two or more items).
+        8. Only include a restaurant/place object in the output if it has at least two qualifying quotes (i.e., the "quotes" array contains two or more items).
         9. If a restaurant/place does not meet both of these minimums, do not include it in the output array.
 
         # Output Format
@@ -79,7 +78,6 @@ class GPTFoodPlaceProcessor:
             "quotes": ["string", "..."] or null,
             "tags": ["tag1", "tag2", "..."],
             "cuisines": ["cuisine1", "cuisine2", "..."],
-            "context": ["string", "..."] or null,
             "confidence_score": float (0.0-1.0)
         }
         - Use null for any missing fields, and [] for tags or cuisines if none apply.
@@ -109,11 +107,6 @@ class GPTFoodPlaceProcessor:
                 ],
                 "tags": ["BBQ", "chicken tikka", "Pakistani"],
                 "cuisines": ["Pakistani", "Middle Eastern"],
-                "context": [
-                    "So today we're at Al Habib BBQ in Lahore, and the aroma here is just amazing. The air is thick with the scent of charcoal and spices, and you can feel the energy of the place as families gather around sizzling platters.",
-                    "Honestly, this might be the juiciest chicken tikka I've had on this trip. Each bite is smoky, succulent, and bursting with flavor. The marinade seeps deep into the meat, leaving you craving more.",
-                    "In this episode, we explore Lahore's legendary BBQ food scene."
-                ],
                 "confidence_score": 0.95
             }
         ]
@@ -144,11 +137,6 @@ class GPTFoodPlaceProcessor:
                     "We started off at The Oyster Shed, where the seafood is as fresh as it gets, straight from the harbor. The briny sweetness of the oysters here is unforgettable. Each shell bursts with freshness, and the view of the harbor makes every bite even more special."
                 ],
                 "tags": ["seafood", "harbor"],
-                "context": [
-                    "We started off at The Oyster Shed, where the seafood is as fresh as it gets, straight from the harbor. The briny sweetness of the oysters here is unforgettable. Each shell bursts with freshness, and the view of the harbor makes every bite even more special.",
-                    "Both located near the harbor in Portree on the Isle of Skye.",
-                    "Exploring Portree's famous harbor for local bites."
-                ],
                 "confidence_score": 0.85
             },
         {
@@ -162,11 +150,6 @@ class GPTFoodPlaceProcessor:
                 "Then we grabbed a sandwich at Bread Me Up, and the bread was perfectly crusty on the outside and soft inside. Every sandwich is made to order, packed with local ingredients and bursting with flavor."
             ],
             "tags": ["sandwich", "bakery"],
-            "context": [
-                "Then we grabbed a sandwich at Bread Me Up, and the bread was perfectly crusty on the outside and soft inside. Every sandwich is made to order, packed with local ingredients and bursting with flavor.",
-                "both located near the harbor in Portree on the Isle of Skye.",
-                "Exploring Portree's famous harbor for local bites."
-            ],
             "confidence_score": 0.8
         }
         ]
@@ -190,11 +173,6 @@ class GPTFoodPlaceProcessor:
                     "Each course was a work of art, blending traditional Korean flavors with contemporary techniques in a way that truly surprised me."
                 ],
                 "tags": ["modern Korean", "tasting menu"],
-                "context": [
-                    "And finally for dinner, we went to Zhong Sik—I'm not sure if that's spelled right—but the chef is famous for modern Korean tasting menus.",
-                    "Each course was a work of art, blending traditional Korean flavors with contemporary techniques in a way that truly surprised me.",
-                    "The chef at JungSik is renowned for modern Korean cuisine."
-                ],
                 "confidence_score": 0.85
             }
         ]
@@ -210,7 +188,7 @@ class GPTFoodPlaceProcessor:
         - Each quote must be a full, self-contained sentence or a group of closely related sentences, wrapped in quotation marks (“...”).
         - Do not include generic quotes, travel commentary, or unrelated narrative.
         - If fewer than two such quotes exist, set the quotes field to null for that entry
-        - Do not use lines from the video description in the "quotes" field. Descriptions are only for the "context" field if they support extracted data.
+        - Do not use lines from the video description in the "quotes" field.
         - Choose quotes that:
                 ~ Express strong opinions or emotions (“I have goosebumps.”, “This is a wonderful opening.”)
                 ~ Describe the food, service, or ambiance in detail (“The interior looks very nice. A lot of food and stone with charming, fast-low colors.”)
@@ -225,9 +203,6 @@ class GPTFoodPlaceProcessor:
                 ~ The identification of the restaurant name.
                 ~ The location information.
                 ~ The selected quotes.
-
-        ## Context Instructions
-        - The "context" field should be an array of up to 7 relevant transcript or description lines/passages. If no such context exists, set it to null.
 
         ## Cuisines Instructions
         - Write cuisines from pre-defined list only [French, Italian, Indian, Chinese, Japanese, Thai, Mexican, Spanish, Greek, Turkish, Lebanese, Moroccan, Ethiopian, Korean, Vietnamese, Malaysian, Indonesian, Filipino, Brazilian, Argentine, Peruvian, "American (Traditional)", "Fast Food", "BBQ / Barbecue", "Cajun / Creole", Caribbean, Cuban, Jamaican, German, Austrian, Swiss, Belgian, "Scandinavian (Nordic)", British, Irish, Russian, Polish, "Hungarian", "Middle Eastern (General)", "Persian / Iranian", Afghan, Pakistani, Bangladeshi, Nepalese, Tibetan, "African (General)", "West African (e.g., Nigerian, Ghanaian)", "South African", "Mediterranean (General)", "Fusion / Contemporary"]

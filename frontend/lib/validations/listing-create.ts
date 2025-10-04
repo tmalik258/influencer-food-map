@@ -6,7 +6,6 @@ const baseListingSchema = z.object({
   video_id: z.string().min(1, "Video is required"),
   influencer_id: z.string().min(1, "Influencer is required"),
   quotes: z.array(z.string()),
-  context: z.array(z.string()),
   confidence_score: z.number().min(0).max(1),
   approved: z.boolean(),
   timestamp: z.number().min(0, "Timestamp must be a positive number"),

@@ -9,7 +9,6 @@ import { useListings } from '@/lib/hooks/useListings';
 import { ListingHeader } from './listing-header';
 import { ListingForm } from './listing-form';
 import type { Listing } from '@/lib/types';
-import type { Listing as ListingDashboard } from '@/lib/types/dashboard';
 
 import { ListingDeleteDialog } from './listing-delete-dialog';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -159,31 +158,6 @@ export function ListingManagement() {
     }
   };
 
-  // Transform listings to dashboard format and filter
-  const transformedListings: ListingDashboard[] = listings.map(listing => ({
-    id: listing.id,
-    restaurant_id: listing.restaurant?.id,
-    restaurant: {
-      name: listing.restaurant?.name || 'Unknown Restaurant',
-      city: listing.restaurant?.city || 'Unknown City'
-    },
-    influencer_id: listing.influencer?.id,
-    influencer: {
-      name: listing.influencer?.name || 'Unknown Influencer'
-    },
-    video_id: listing.video?.id,
-    video: {
-      title: listing.video?.title || 'Unknown Video'
-    },
-    quotes: Array.isArray(listing.quotes) ? listing.quotes : (listing.quotes ? [listing.quotes] : []),
-    confidence_score: listing.confidence_score || 0,
-    approved: listing.approved,
-    visit_date: listing.visit_date,
-    status: listing.approved === true ? 'approved' : listing.approved === false ? 'rejected' : 'pending',
-    created_at: listing.created_at,
-    updated_at: listing.updated_at
-  }));
-
   // Handle delete listing
   const handleDelete = (listingId: string) => {
     const foundListing = listings.find(listing => listing.id === listingId);
@@ -229,7 +203,7 @@ export function ListingManagement() {
           />
 
           <ListingTable
-            listings={transformedListings}
+            listings={listings}
             loading={loading}
             actionLoading={actionLoading}
             currentPage={params.page || 1}

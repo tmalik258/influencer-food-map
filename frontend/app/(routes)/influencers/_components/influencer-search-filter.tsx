@@ -72,7 +72,7 @@ export function InfluencerSearchFilter({
   onCountryChange,
   onClearFilters,
 }: InfluencerSearchFilterProps) {
-  // Use custom sort options if provided, otherwise use default based on context
+  // Use custom sort options if provided, otherwise use default based on search type
   const sortOptions = customSortOptions || 
     (influencerId ? RESTAURANT_SORT_OPTIONS : DEFAULT_SORT_OPTIONS);
   // Only fetch countries if country filter is enabled

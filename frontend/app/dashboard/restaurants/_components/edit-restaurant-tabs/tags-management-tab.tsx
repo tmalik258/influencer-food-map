@@ -66,58 +66,10 @@ export function TagsManagementTab({
   const fetchAvailableTags = useCallback(async () => {
     setIsLoading(true);
     try {
-      // This would be replaced with actual API call
-      const mockTags: TagType[] = [
-        { id: "1", name: "Fine Dining", created_at: new Date().toISOString() },
-        { id: "2", name: "Casual", created_at: new Date().toISOString() },
-        {
-          id: "3",
-          name: "Family Friendly",
-          created_at: new Date().toISOString(),
-        },
-        { id: "4", name: "Romantic", created_at: new Date().toISOString() },
-        {
-          id: "5",
-          name: "Business Lunch",
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: "6",
-          name: "Outdoor Seating",
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: "7",
-          name: "Vegetarian Options",
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: "8",
-          name: "Vegan Friendly",
-          created_at: new Date().toISOString(),
-        },
-        { id: "9", name: "Gluten Free", created_at: new Date().toISOString() },
-        {
-          id: "10",
-          name: "Pet Friendly",
-          created_at: new Date().toISOString(),
-        },
-        {
-          id: "11",
-          name: "Delivery Available",
-          created_at: new Date().toISOString(),
-        },
-        { id: "12", name: "Takeout", created_at: new Date().toISOString() },
-        { id: "13", name: "Late Night", created_at: new Date().toISOString() },
-        { id: "14", name: "Happy Hour", created_at: new Date().toISOString() },
-        { id: "15", name: "Live Music", created_at: new Date().toISOString() },
-      ];
-
       // Filter out tags already assigned to the restaurant
       const assignedTagIds = new Set(tags.map((t) => t.id));
-      const filtered = mockTags.filter((t) => !assignedTagIds.has(t.id));
 
-      setAvailableTags(filtered);
+      setAvailableTags(prev => prev.filter((t) => !assignedTagIds.has(t.id)));
     } catch (error) {
       console.log("Failed to fetch available tags:", error);
       toast.error("Failed to fetch available tags");
@@ -207,7 +159,7 @@ export function TagsManagementTab({
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="pt-6 space-y-6">
       {/* Current Tags */}
       <Card className="glass-effect border-orange-500/20">
         <CardHeader>

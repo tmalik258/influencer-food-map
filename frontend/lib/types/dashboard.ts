@@ -180,32 +180,6 @@ export interface VideoTableProps {
   videoListingsCounts?: Record<string, number>;
 }
 
-// Listing management types
-export interface Listing {
-  id: string;
-  restaurant_id?: string;
-  restaurant?: {
-    name: string;
-    city: string;
-  };
-  influencer_id?: string;
-  influencer?: {
-    name: string;
-  };
-  video_id?: string;
-  video?: {
-    title: string;
-  };
-  context?: string[];
-  quotes: string[];
-  confidence_score: number;
-  approved?: boolean;
-  visit_date?: string;
-  status: "pending" | "approved" | "rejected";
-  timestamp?: string;
-  created_at: string;
-}
-
 export interface ListingFiltersProps {
   searchTerm: string;
   setSearchTerm: (value: string) => void;
@@ -244,4 +218,4 @@ export interface JobCardProps {
 }
 
 // Import base types
-import type { Video } from "./index";
+import type { Listing, Video } from "./index";

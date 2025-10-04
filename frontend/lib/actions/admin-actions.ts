@@ -16,7 +16,6 @@ export const adminActions = {
   getJobs: async (params?: {
     status?: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
     job_type?: 'scrape_youtube' | 'transcription_nlp';
-    started_by?: string;
     sort_by?: 'created_at' | 'started_at' | 'completed_at' | 'progress' | 'status';
     sort_order?: 'asc' | 'desc';
     start_date?: string;
@@ -102,7 +101,7 @@ export const adminActions = {
   },
 
   // Data Synchronization
-  triggerYouTubeScraping: async (videoIds?: string[], triggerType: 'automatic' | 'manual' | 'system' = 'automatic'): Promise<TriggerScrapeResponse> => {
+  triggerYouTubeScraping: async (videoIds?: string[], triggerType: 'manual' | 'system' = 'manual'): Promise<TriggerScrapeResponse> => {
     const requestBody = {
       ...(videoIds ? { video_ids: videoIds } : {}),
       trigger_type: triggerType
@@ -111,7 +110,7 @@ export const adminActions = {
     return response.data;
   },
 
-  triggerNLPProcessing: async (videoIds?: string[], triggerType: 'automatic' | 'manual' | 'system' = 'automatic'): Promise<TriggerNLPResponse> => {
+  triggerNLPProcessing: async (videoIds?: string[], triggerType: 'manual' | 'system' = 'manual'): Promise<TriggerNLPResponse> => {
     const requestBody = {
       ...(videoIds ? { video_ids: videoIds } : {}),
       trigger_type: triggerType

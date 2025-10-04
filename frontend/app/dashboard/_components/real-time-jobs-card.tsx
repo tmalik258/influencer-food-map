@@ -130,11 +130,6 @@ export function RealTimeJobsCard({ jobs, isLoading }: RealTimeJobsCardProps) {
                         <span className="text-xs text-gray-600 dark:text-gray-400">
                           {formatJobDuration(job.started_at, job.completed_at)}
                         </span>
-                        {job.started_by && (
-                          <span className="text-xs text-gray-600 dark:text-gray-400">
-                            • by {job.started_by}
-                          </span>
-                        )}
                       </div>
                     </div>
                   </div>

@@ -19,7 +19,6 @@ class JobType(str, Enum):
 
 class LockType(str, Enum):
     """Enum for different types of processing locks."""
-    AUTOMATIC = "automatic"  # For scheduled/automatic processing
     MANUAL = "manual"       # For user-triggered processing
     SYSTEM = "system"       # For system maintenance operations
     
@@ -31,6 +30,7 @@ class Job(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     job_type = Column(SQLEnum(JobType), nullable=False)
+    trigger_type = Column(SQLEnum(LockType), default=LockType.SYSTEM, nullable=False)  # Type of trigger (manual/system)
     status = Column(SQLEnum(JobStatus), default=JobStatus.PENDING, nullable=False)
     title = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
@@ -39,10 +39,7 @@ class Job(Base):
     processed_items = Column(Integer, default=0)  # Items processed so far
     result_data = Column(Text, nullable=True)  # JSON string of result data
     error_message = Column(Text, nullable=True)  # Error details if failed
-    logs = Column(Text, nullable=True)  # Detailed logs
-    started_by = Column(String(255), nullable=True)  # User who started the job
     redis_lock_key = Column(String(255), nullable=True)  # Redis lock key if applicable
-    trigger_type = Column(SQLEnum(LockType), default=LockType.AUTOMATIC, nullable=False)  # Type of trigger (manual/automatic)
     
     # Advanced tracking fields
     queue_size = Column(Integer, default=0, nullable=True)  # Number of items queued for processing
@@ -54,7 +51,6 @@ class Job(Base):
     processing_rate = Column(Float, nullable=True)  # Items processed per minute
     last_heartbeat = Column(DateTime(timezone=True), nullable=True)  # Last activity timestamp for monitoring
     cancellation_requested = Column(Boolean, default=False, nullable=False, server_default=text('false'))  # Flag to indicate if cancellation was requested
-    cancelled_by = Column(String(255), nullable=True)  # User who requested cancellation
     cancelled_at = Column(DateTime(timezone=True), nullable=True)  # When cancellation was requested
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())

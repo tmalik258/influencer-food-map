@@ -39,7 +39,6 @@ export function useListingForm({
       video_id: "",
       influencer_id: "",
       quotes: [],
-      context: [],
       confidence_score: 0,
       approved: false,
       timestamp: 0,
@@ -53,10 +52,6 @@ export function useListingForm({
       const quotesArray = listingData.quotes 
         ? listingData.quotes.filter(quote => quote.trim() !== '')
         : [];
-      
-      const contextArray = listingData.context 
-        ? listingData.context?.filter(context => context.trim() !== '')
-        : [];
 
       form.reset({
         restaurant_id: listingData.restaurant_id || listingData.restaurant?.id || "",
@@ -64,7 +59,6 @@ export function useListingForm({
         influencer_id: listingData.influencer_id || listingData.influencer?.id || "",
         visit_date: listingData.visit_date ? new Date(listingData.visit_date) : undefined,
         quotes: quotesArray,
-        context: contextArray,
         confidence_score: listingData.confidence_score,
         approved: listingData.approved,
         timestamp: listingData.timestamp ? Number(listingData.timestamp) : 0,
@@ -137,17 +131,12 @@ export function useListingForm({
           ? listingData.quotes.filter(quote => quote.trim() !== '')
           : [];
         
-        const contextArray = listingData.context 
-          ? listingData.context.filter(context => context.trim() !== '')
-          : [];
-
         form.reset({
           restaurant_id: listingData.restaurant_id,
           video_id: listingData.video_id,
           influencer_id: listingData.influencer_id,
           visit_date: listingData.visit_date ? new Date(listingData.visit_date) : undefined,
           quotes: quotesArray,
-          context: contextArray,
           confidence_score: listingData.confidence_score,
           approved: listingData.approved,
           timestamp: listingData.timestamp ? Number(listingData.timestamp) : 0,

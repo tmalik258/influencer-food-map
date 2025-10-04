@@ -524,7 +524,6 @@ async def store_restaurant_and_listing(
                 if existing_listing.visit_date is None:
                     existing_listing.visit_date = video.published_at.date()
                 existing_listing.quotes = entities.get("quotes", [])
-                existing_listing.context = entities.get("context", [])
                 existing_listing.confidence_score = validated["confidence_score"]
                 await db.flush()
                 return
@@ -535,7 +534,6 @@ async def store_restaurant_and_listing(
                 influencer_id=video.influencer_id,
                 visit_date=video.published_at.date() if video.published_at else None,
                 quotes=entities.get("quotes", []),
-                context=entities.get("context", []),
                 confidence_score=validated["confidence_score"],
                 approved=False,  # Requires admin approval
             )
@@ -588,6 +586,9 @@ async def process_video(video: Video):
                         f"No transcription found for video {video.youtube_video_id}, downloading and transcribing..."
                     )
                     audio_path = await download_audio(video.video_url, video)
+                    if audio_path is None:
+                        logger.error(f"No audio file downloaded for video {video.youtube_video_id}")
+                        raise PipelineError("audio_download_failed", "Audio download returned None", {"video_id": video.youtube_video_id})
                     transcription = await gpt_processor.transcribe_audio(audio_path)
 
                     logger.info(
@@ -705,7 +706,7 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
                         current_job = await JobService.get_job(db, job_id)
                         if current_job and current_job.cancellation_requested:
                             logger.info(f"Job {job_id} cancellation requested, stopping pipeline")
-                            await JobService.cancel_job(db, job_id, "Pipeline cancelled by user request")
+                            await JobService.cancel_job(db, job_id)
                             return None
                         
                         # Update items in progress

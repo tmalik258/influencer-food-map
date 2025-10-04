@@ -34,6 +34,7 @@ import {
 } from "@/lib/validations/video";
 import { adminVideoActions } from "@/lib/actions/admin-video-actions";
 import { VideoListingsTab } from "./video-listings-tab";
+import { useListings } from "@/lib/hooks";
 
 interface EditVideoModalProps {
   video: VideoType | null;
@@ -49,6 +50,17 @@ export default function EditVideoModal({
   onSuccess,
 }: EditVideoModalProps) {
   const [loading, setLoading] = useState(false);
+  const [activeTab, setActiveTab] = useState<string>("edit");
+  const [listingsLoaded, setListingsLoaded] = useState(false);
+  const {
+    listings,
+    loading: listingsLoading,
+    error,
+    refetch,
+    fetchListings,
+    params,
+    updateParams,
+  } = useListings({ video_id: video?.id || "" }, { autoFetch: false });
 
   const form = useForm<UpdateVideoFormData>({
     resolver: zodResolver(updateVideoSchema),
@@ -103,6 +115,12 @@ export default function EditVideoModal({
     }
   };
 
+  // Reset listings lazy-load state when the selected video changes
+  useEffect(() => {
+    setListingsLoaded(false);
+    setActiveTab("edit");
+  }, [video?.id]);
+
   const handleCancel = () => {
     form.reset();
     onClose(false);
@@ -129,27 +147,35 @@ export default function EditVideoModal({
               Update the video information and view associated listings.
             </DialogDescription>
 
-            <Tabs defaultValue="edit" className="flex flex-col h-full">
+            <Tabs value={activeTab} onValueChange={(val) => {
+                setActiveTab(val);
+                if (val === "listings" && !listingsLoaded) {
+                   // Initialize params in case video changes while dialog is open
+                   updateParams({ video_id: video?.id || "" });
+                   fetchListings({ ...params, video_id: video?.id || "" });
+                   setListingsLoaded(true);
+                 }
+              }} className="flex flex-col h-full">
               <TabsList className="grid w-full grid-cols-2 mb-4">
-                <TabsTrigger value="edit" className="flex items-center gap-2">
+                <TabsTrigger value="edit" className="flex items-center gap-2 cursor-pointer">
                   <Video className="h-4 w-4" />
                   Video Edit Form
                 </TabsTrigger>
-                <TabsTrigger value="listings" className="flex items-center gap-2">
+                <TabsTrigger value="listings" className="flex items-center gap-2 cursor-pointer">
                   <List className="h-4 w-4" />
                   Listings
                 </TabsTrigger>
               </TabsList>
 
               <TabsContent value="edit" className="flex-1 flex flex-col">
-                <Card className="bg-white shadow-sm flex-1 flex flex-col">
+                <Card className="bg-white flex-1 flex flex-col">
                   <CardContent className="pt-6 flex-1 flex flex-col">
                     <Form {...form}>
                       <form
                         onSubmit={form.handleSubmit(onSubmit)}
                         className="flex flex-col h-full"
                       >
-                        <div className="flex-1 overflow-y-auto pr-2 space-y-6">
+                        <div className="flex-1 overflow-y-auto p-2 pt-0 space-y-6">
                           <div className="grid gap-4">
                             {/* Title Field */}
                             <FormField
@@ -163,7 +189,7 @@ export default function EditVideoModal({
                                   </FormLabel>
                                   <FormControl>
                                     <Input
-                                      className="w-full bg-white shadow-md"
+                                      className="w-full bg-white"
                                       placeholder="Enter video title"
                                       {...field}
                                       disabled={loading}
@@ -187,8 +213,9 @@ export default function EditVideoModal({
                                   <FormControl>
                                     <Textarea
                                       placeholder="Enter video description (optional)"
-                                      className="min-h-[100px] resize-none w-full bg-white shadow-md"
+                                      className="max-h-56 resize-none w-full bg-white"
                                       {...field}
+                                      rows={4}
                                       disabled={loading}
                                     />
                                   </FormControl>
@@ -211,7 +238,7 @@ export default function EditVideoModal({
                                     <Input
                                       placeholder="https://www.youtube.com/watch?v=..."
                                       {...field}
-                                      className="w-full bg-white shadow-md"
+                                      className="w-full bg-white"
                                       disabled={loading}
                                     />
                                   </FormControl>
@@ -256,8 +283,9 @@ export default function EditVideoModal({
                                   <FormControl>
                                     <Textarea
                                       placeholder="Enter video transcription (optional)"
-                                      className="min-h-[120px] resize-none w-full bg-white shadow-md"
+                                      className="max-h-56 resize-none w-full bg-white"
                                       {...field}
+                                      rows={5}
                                       disabled={loading}
                                     />
                                   </FormControl>
@@ -268,7 +296,7 @@ export default function EditVideoModal({
                           </div>
                         </div>
 
-                        <div className="flex-shrink-0 gap-2 pt-4 border-t border-gray-200 dark:border-gray-700 flex justify-end space-x-2">
+                        <div className="flex-shrink-0 gap-2 pt-4 flex justify-end space-x-2">
                           <Button
                             type="button"
                             variant="outline"
@@ -291,7 +319,7 @@ export default function EditVideoModal({
               </TabsContent>
 
               <TabsContent value="listings" className="flex-1 overflow-y-auto">
-                <VideoListingsTab videoId={video.id} />
+                <VideoListingsTab listings={listings} loading={listingsLoaded ? listingsLoading : true} error={error} refetch={refetch} />
               </TabsContent>
             </Tabs>
           </>

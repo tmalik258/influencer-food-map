@@ -46,14 +46,14 @@ const sidebarItems = [
     icon: RefreshCw,
   },
   {
-    title: 'Restaurants',
-    href: '/dashboard/restaurants',
-    icon: Utensils,
-  },
-  {
     title: 'Videos',
     href: '/dashboard/videos',
     icon: Video,
+  },
+  {
+    title: 'Restaurants',
+    href: '/dashboard/restaurants',
+    icon: Utensils,
   },
   {
     title: 'Tags',

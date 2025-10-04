@@ -135,7 +135,7 @@ export function RestaurantDetailsTab({
   };
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="pt-6 space-y-6">
       <Form {...form}>
         <form onSubmit={form.handleSubmit(handleSave)} className="space-y-6">
           {/* Basic Information */}
@@ -397,7 +397,7 @@ export function RestaurantDetailsTab({
           </Card>
 
           {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-border/20">
+          <div className="flex justify-end gap-3 pt-2 border-t border-border/20">
             <Button
               type="button"
               variant="outline"

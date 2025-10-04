@@ -78,7 +78,6 @@ export interface Listing {
   influencer?: Influencer;
   visit_date?: string;
   quotes?: string[];
-  context?: string[];
   confidence_score?: number;
   timestamp?: number;  // Video timestamp in seconds for start time
   approved?: boolean;

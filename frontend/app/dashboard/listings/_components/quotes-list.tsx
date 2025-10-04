@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Plus, X, GripVertical } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-interface QuotesContextListProps {
+interface QuotesListProps {
   items: string[];
   onItemsChange: (items: string[]) => void;
   placeholder?: string;
@@ -14,13 +14,13 @@ interface QuotesContextListProps {
   maxItems?: number;
 }
 
-export function QuotesContextList({
+export function QuotesList({
   items,
   onItemsChange,
   placeholder = "Add item...",
   emptyMessage = "No items added yet",
   maxItems = 10
-}: QuotesContextListProps) {
+}: QuotesListProps) {
   const [newItem, setNewItem] = useState('');
   const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);

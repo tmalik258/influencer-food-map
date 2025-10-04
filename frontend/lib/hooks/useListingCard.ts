@@ -31,6 +31,8 @@ export function useListingCard({ listing, onDeleted }: UseListingCardProps) {
   };
 
   const formatTimestamp = (timestamp?: number) => {
+    if (timestamp === 0) return "00:00";
+
     if (!timestamp) return null;
     
     const hours = Math.floor(timestamp / 3600);

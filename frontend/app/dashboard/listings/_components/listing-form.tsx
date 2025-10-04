@@ -13,7 +13,7 @@ import { Input } from "@/components/ui/input";
 import { DatePicker } from "@/components/ui/date-picker";
 import { AsyncSearchableSelect } from "./async-searchable-select";
 import { Switch } from "@/components/ui/switch";
-import { QuotesContextList } from "./quotes-context-list";
+import { QuotesList } from "./quotes-list";
 import {
   fetchFunctions,
   EntityType,
@@ -25,12 +25,14 @@ import { DeleteConfirmationModal } from "@/components/delete-confirmation-modal"
 import { useState } from "react";
 import { listingActions } from "@/lib/actions/listing-actions";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface ListingFormProps {
   mode: 'create' | 'edit';
   listingData?: Listing;
   onSuccess?: (data: CreateListingFormData | EditListingFormData) => void;
   onDeleted?: () => void;
+  className?: string;
 }
 
 /**
@@ -40,7 +42,7 @@ interface ListingFormProps {
  * @param listingData - Existing listing data for edit mode (required when mode is 'edit')
  * @param onSuccess - Optional callback function called after successful form submission
  */
-export function ListingForm({ mode, listingData, onSuccess, onDeleted }: ListingFormProps) {
+export function ListingForm({ mode, listingData, onSuccess, onDeleted, className = 'max-h-[80vh] overflow-y-auto pr-2' }: ListingFormProps) {
   const { form, isLoading, handleSubmit, handleReset } = useListingForm({
     mode,
     listingData,
@@ -69,7 +71,7 @@ export function ListingForm({ mode, listingData, onSuccess, onDeleted }: Listing
   };
 
   return (
-    <div className="max-h-[80vh] overflow-y-auto pr-2">
+    <div className={cn(className)}>
       <div className="mb-6">
         <p className="text-muted-foreground">
           {mode === 'create' 
@@ -153,6 +155,7 @@ export function ListingForm({ mode, listingData, onSuccess, onDeleted }: Listing
                         date={field.value}
                         onDateChange={field.onChange}
                         placeholder="Select published date"
+                        className="w-full bg-white shadow-lg border-none"
                       />
                     </FormControl>
                     <FormMessage />
@@ -169,28 +172,10 @@ export function ListingForm({ mode, listingData, onSuccess, onDeleted }: Listing
               <FormItem>
                 <FormLabel>Quotes</FormLabel>
                 <FormControl>
-                  <QuotesContextList
+                  <QuotesList
                     items={field.value}
                     onItemsChange={field.onChange}
                     placeholder="Add a quote..."
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="context"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Context</FormLabel>
-                <FormControl>
-                  <QuotesContextList
-                    items={field.value}
-                    onItemsChange={field.onChange}
-                    placeholder="Add context..."
                   />
                 </FormControl>
                 <FormMessage />
@@ -212,7 +197,7 @@ export function ListingForm({ mode, listingData, onSuccess, onDeleted }: Listing
                     step={0.01}
                     {...field}
                     onChange={(e) => field.onChange(Number(e.target.value))}
-                    className="w-full bg-white shadow-lg"
+                    className="w-full bg-white shadow-lg border-none"
                   />
                 </FormControl>
                 <FormMessage />
@@ -234,7 +219,7 @@ export function ListingForm({ mode, listingData, onSuccess, onDeleted }: Listing
                     {...field}
                     value={field.value || ""}
                     onChange={(e) => field.onChange(e.target.value ? Number(e.target.value) : undefined)}
-                    className="w-full bg-white shadow-lg"
+                    className="w-full bg-white shadow-lg border-none"
                   />
                 </FormControl>
                 <FormMessage />
@@ -246,7 +231,7 @@ export function ListingForm({ mode, listingData, onSuccess, onDeleted }: Listing
             control={form.control}
             name="approved"
             render={({ field }) => (
-              <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <FormItem className="flex flex-row items-center justify-between rounded-lg p-4 bg-white shadow-lg">
                 <div className="space-y-0.5">
                   <FormLabel className="text-base">Approved</FormLabel>
                   <div className="text-sm text-muted-foreground">
