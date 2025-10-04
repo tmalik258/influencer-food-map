@@ -204,6 +204,8 @@ async def get_restaurants(
                             influencer=influencer_response,
                             visit_date=listing.visit_date,
                             quotes=listing.quotes,
+                            timestamp=listing.timestamp,
+                            approved=listing.approved,
                             created_at=listing.created_at,
                             updated_at=listing.updated_at
                         )
@@ -215,6 +217,8 @@ async def get_restaurants(
                             video=listing.video.id,
                             visit_date=listing.visit_date,
                             quotes=listing.quotes,
+                            timestamp=listing.timestamp,
+                            approved=listing.approved,
                             created_at=listing.created_at,
                             updated_at=listing.updated_at
                         )
@@ -388,8 +392,8 @@ async def get_featured_optimized(db: AsyncSession = Depends(get_async_db)):
                             influencer=influencer_response,
                             visit_date=listing.visit_date,
                             quotes=listing.quotes,
-                            context=listing.context,
                             confidence_score=listing.confidence_score,
+                            timestamp=listing.timestamp,
                             approved=listing.approved,
                             created_at=listing.created_at,
                             updated_at=listing.updated_at
@@ -538,6 +542,8 @@ async def get_restaurant(
                         influencer=influencer_response,
                         visit_date=listing.visit_date,
                         quotes=listing.quotes,
+                        timestamp=listing.timestamp,
+                        approved=listing.approved,
                         created_at=listing.created_at,
                         updated_at=listing.updated_at
                     )
@@ -549,6 +555,8 @@ async def get_restaurant(
                         influencer=influencer_response,
                         visit_date=listing.visit_date,
                         quotes=listing.quotes,
+                        timestamp=listing.timestamp,
+                        approved=listing.approved,
                         created_at=listing.created_at,
                         updated_at=listing.updated_at
                     )

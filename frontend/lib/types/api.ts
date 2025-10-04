@@ -1,21 +1,19 @@
-// API-related interfaces and types
-
 // Admin actions types
 export interface Job {
   id: string;
   job_type: 'scrape_youtube' | 'transcription_nlp';
-  status: 'pending' | 'running' | 'completed' | 'failed';
+  trigger_type: 'manual' | 'system';
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   title: string;
   description: string;
   progress: number;
   total_items: number;
   processed_items: number;
-  created_at: string;
+  result_data: Record<string, undefined> | null;
+  error_message?: string;
   started_at?: string;
   completed_at?: string;
-  error_message?: string;
-  started_by: string;
-  // New job tracking fields
+  redis_lock_key?: string;
   queue_size?: number;
   items_in_progress?: number;
   failed_items?: number;
@@ -25,7 +23,6 @@ export interface Job {
   processing_rate?: number;
   last_heartbeat?: string;
   cancellation_requested?: boolean;
-  cancelled_by?: string;
   cancelled_at?: string;
 }
 

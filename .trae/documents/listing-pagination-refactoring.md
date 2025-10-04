@@ -3,12 +3,17 @@
 ## 1. Current State Analysis
 
 ### Frontend Implementation Issues
-- **Client-side filtering only**: The current `listing-management.tsx` performs all filtering on the frontend
-- **No pagination support**: The `useListings` hook doesn't support pagination parameters
-- **Manual data transformation**: Listings are manually transformed from API response format to dashboard format
-- **Performance issues**: All listings are fetched and filtered client-side, causing performance degradation with large datasets
+
+* **Client-side filtering only**: The current `listing-management.tsx` performs all filtering on the frontend
+
+* **No pagination support**: The `useListings` hook doesn't support pagination parameters
+
+* **Manual data transformation**: Listings are manually transformed from API response format to dashboard format
+
+* **Performance issues**: All listings are fetched and filtered client-side, causing performance degradation with large datasets
 
 ### Current Code Structure
+
 ```typescript
 // Current frontend filtering in listing-management.tsx
 const filteredListings = transformedListings.filter(listing => {
@@ -29,22 +34,31 @@ const filteredListings = transformedListings.filter(listing => {
 ## 2. Target State (Following Videos Pattern)
 
 ### Backend Responsibilities
-- **Server-side filtering**: All search and status filtering handled by backend
-- **Pagination support**: Proper skip/limit pagination with total count
-- **Search optimization**: Database-level search with proper indexing
-- **Response standardization**: Consistent response format with pagination metadata
+
+* **Server-side filtering**: All search and status filtering handled by backend
+
+* **Pagination support**: Proper skip/limit pagination with total count
+
+* **Search optimization**: Database-level search with proper indexing
+
+* **Response standardization**: Consistent response format with pagination metadata
 
 ### Frontend Responsibilities
-- **Pagination UI**: Use `CustomPagination` component for consistent UX
-- **Filter state management**: Manage filter states and trigger backend requests
-- **Loading states**: Proper skeleton loading during data fetching
-- **Error handling**: Consistent error display and retry mechanisms
+
+* **Pagination UI**: Use `CustomPagination` component for consistent UX
+
+* **Filter state management**: Manage filter states and trigger backend requests
+
+* **Loading states**: Proper skeleton loading during data fetching
+
+* **Error handling**: Consistent error display and retry mechanisms
 
 ## 3. Implementation Plan
 
 ### Phase 1: Backend API Enhancement
 
 #### 3.1.1 Update Listings Route (`backend/app/routes/listings.py`)
+
 Add pagination and filtering support following the videos pattern:
 
 ```python
@@ -82,6 +96,7 @@ async def get_listings(
 ```
 
 #### 3.1.2 Update Admin Listings Route (`backend/app/routes/admin/listings.py`)
+
 Add admin-specific pagination endpoint:
 
 ```python
@@ -97,6 +112,7 @@ async def get_paginated_listings(
 ### Phase 2: Frontend Hook Enhancement
 
 #### 3.2.1 Create New useListings Hook (`frontend/lib/hooks/useListings.ts`)
+
 Replace current implementation with pagination support:
 
 ```typescript
@@ -180,6 +196,7 @@ export const useListings = (initialParams?: PaginatedListingsParams) => {
 ### Phase 3: Frontend Component Updates
 
 #### 3.3.1 Update ListingManagement Component
+
 Replace current implementation with pagination support:
 
 ```typescript
@@ -249,6 +266,7 @@ export function ListingManagement() {
 ```
 
 #### 3.3.2 Update ListingTable Component
+
 Add pagination support to the table:
 
 ```typescript
@@ -303,20 +321,22 @@ export function ListingTable({
 ### 4.1 API Parameters
 
 #### Request Parameters
-| Parameter | Type | Description | Default |
-|-----------|------|-------------|---------|
-| search | string | Global search across restaurant, influencer, video names | - |
-| restaurant_name | string | Filter by restaurant name | - |
-| influencer_name | string | Filter by influencer name | - |
-| video_title | string | Filter by video title | - |
-| approved | boolean | Filter by approval status | - |
-| status | string | Status filter: 'approved', 'rejected', 'pending', 'all' | 'all' |
-| page | number | Page number for pagination | 1 |
-| limit | number | Items per page | 10 |
-| sort_by | string | Sort field: 'created_at', 'visit_date', 'confidence_score' | 'created_at' |
-| sort_order | string | Sort direction: 'asc', 'desc' | 'desc' |
+
+| Parameter        | Type    | Description                                                   | Default       |
+| ---------------- | ------- | ------------------------------------------------------------- | ------------- |
+| search           | string  | Global search across restaurant, influencer, video names      | -             |
+| restaurant\_name | string  | Filter by restaurant name                                     | -             |
+| influencer\_name | string  | Filter by influencer name                                     | -             |
+| video\_title     | string  | Filter by video title                                         | -             |
+| approved         | boolean | Filter by approval status                                     | -             |
+| status           | string  | Status filter: 'approved', 'rejected', 'pending', 'all'       | 'all'         |
+| page             | number  | Page number for pagination                                    | 1             |
+| limit            | number  | Items per page                                                | 10            |
+| sort\_by         | string  | Sort field: 'created\_at', 'visit\_date', 'confidence\_score' | 'created\_at' |
+| sort\_order      | string  | Sort direction: 'asc', 'desc'                                 | 'desc'        |
 
 #### Response Format
+
 ```json
 {
   "listings": [
@@ -327,7 +347,6 @@ export function ListingTable({
       "influencer": { "id": "uuid", "name": "string", ... },
       "visit_date": "2024-01-01",
       "quotes": ["string"],
-      "context": ["string"],
       "confidence_score": 0.95,
       "approved": true,
       "created_at": "2024-01-01T00:00:00Z",
@@ -344,6 +363,7 @@ export function ListingTable({
 ### 4.2 Database Query Optimization
 
 #### Indexing Strategy
+
 ```sql
 -- Create indexes for search performance
 CREATE INDEX idx_listings_approved ON listings(approved);
@@ -357,6 +377,7 @@ CREATE INDEX idx_listings_search ON listings(approved, created_at);
 ```
 
 #### Query Implementation
+
 ```python
 # Optimized query with joins and filters
 query = select(Listing).options(
@@ -410,50 +431,75 @@ query = query.offset((page - 1) * limit).limit(limit)
 ## 5. Files to Modify
 
 ### Backend Files
+
 1. **`backend/app/api_schema/listings.py`**
-   - Add `PaginatedListingsResponse` schema
-   - Update response models
+
+   * Add `PaginatedListingsResponse` schema
+
+   * Update response models
 
 2. **`backend/app/routes/listings.py`**
-   - Update `get_listings` endpoint with pagination
-   - Add search and filtering logic
-   - Implement proper query optimization
+
+   * Update `get_listings` endpoint with pagination
+
+   * Add search and filtering logic
+
+   * Implement proper query optimization
 
 3. **`backend/app/routes/admin/listings.py`**
-   - Add `get_paginated_listings` endpoint
-   - Implement admin-specific filtering
+
+   * Add `get_paginated_listings` endpoint
+
+   * Implement admin-specific filtering
 
 ### Frontend Files
+
 1. **`frontend/lib/hooks/useListings.ts`**
-   - Replace current implementation with pagination support
-   - Follow `useVideos` pattern exactly
+
+   * Replace current implementation with pagination support
+
+   * Follow `useVideos` pattern exactly
 
 2. **`frontend/app/dashboard/listings/_components/listing-management.tsx`**
-   - Remove client-side filtering
-   - Add pagination state management
-   - Integrate with new hook
+
+   * Remove client-side filtering
+
+   * Add pagination state management
+
+   * Integrate with new hook
 
 3. **`frontend/app/dashboard/listings/_components/listing-table.tsx`**
-   - Add pagination component integration
-   - Update props interface
+
+   * Add pagination component integration
+
+   * Update props interface
 
 4. **`frontend/lib/actions/listing-actions.ts`**
-   - Update API calls to support pagination parameters
-   - Handle new response format
+
+   * Update API calls to support pagination parameters
+
+   * Handle new response format
 
 5. **`frontend/lib/types/dashboard.ts`**
-   - Update `ListingTableProps` interface
-   - Add pagination-related types
+
+   * Update `ListingTableProps` interface
+
+   * Add pagination-related types
 
 ## 6. Consistency Check for Other Entities
 
 ### Tags, Cuisines, and Restaurants
+
 Apply the same pagination pattern to:
-- **Tags dashboard**: `app/dashboard/tags/`
-- **Cuisines dashboard**: `app/dashboard/cuisines/`
-- **Restaurants dashboard**: `app/dashboard/restaurants/`
+
+* **Tags dashboard**: `app/dashboard/tags/`
+
+* **Cuisines dashboard**: `app/dashboard/cuisines/`
+
+* **Restaurants dashboard**: `app/dashboard/restaurants/`
 
 Each should follow the exact same pattern:
+
 1. Backend pagination endpoint
 2. Frontend hook with pagination support
 3. Integration with `CustomPagination` component
@@ -462,33 +508,45 @@ Each should follow the exact same pattern:
 ## 7. Testing Strategy
 
 ### Unit Tests
-- Backend API endpoint testing
-- Frontend hook testing
-- Component integration testing
+
+* Backend API endpoint testing
+
+* Frontend hook testing
+
+* Component integration testing
 
 ### Integration Tests
-- End-to-end pagination flow
-- Filter and search functionality
-- Performance testing with large datasets
+
+* End-to-end pagination flow
+
+* Filter and search functionality
+
+* Performance testing with large datasets
 
 ### Performance Metrics
-- Query execution time < 100ms
-- API response time < 500ms
-- Frontend render time < 200ms
+
+* Query execution time < 100ms
+
+* API response time < 500ms
+
+* Frontend render time < 200ms
 
 ## 8. Migration Strategy
 
 ### Phase 1: Backend Implementation
+
 1. Create new pagination endpoints
 2. Test with manual API calls
 3. Ensure backward compatibility
 
 ### Phase 2: Frontend Implementation
+
 1. Create new hook alongside existing one
 2. Test with new backend endpoints
 3. Gradual component migration
 
 ### Phase 3: Full Migration
+
 1. Replace old implementation
 2. Remove deprecated code
 3. Update all references
@@ -496,6 +554,7 @@ Each should follow the exact same pattern:
 ## 9. Error Handling
 
 ### Backend Errors
+
 ```python
 try:
     # Query execution
@@ -513,6 +572,7 @@ except Exception as e:
 ```
 
 ### Frontend Errors
+
 ```typescript
 const fetchListings = useCallback(async (searchParams?: PaginatedListingsParams) => {
   setLoading(true);

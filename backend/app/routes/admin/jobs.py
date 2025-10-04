@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Body
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_db, get_db
-from app.models.job import JobStatus, JobType
+from app.models.job import JobStatus, JobType, LockType
 from app.dependencies import get_current_admin
 from app.utils.logging import setup_logger
 from app.services.jobs import JobService
@@ -32,7 +32,7 @@ async def get_jobs(
     limit: int = Query(100, ge=1, le=1000),
     status: Optional[JobStatus] = Query(None),
     job_type: Optional[JobType] = Query(None),
-    started_by: Optional[str] = Query(None, description="Filter by user who started the job"),
+    trigger_type: Optional[LockType] = Query(None, description="Filter by lock type"),
     cancellation_requested: Optional[bool] = Query(None, description="Filter by cancellation status"),
     has_failed_items: Optional[bool] = Query(None, description="Filter jobs with failed items"),
     min_progress: Optional[int] = Query(None, ge=0, le=100, description="Minimum progress percentage"),
@@ -64,8 +64,8 @@ async def get_jobs(
         )
         
         # Apply additional filters
-        if started_by:
-            jobs = [job for job in jobs if job.started_by and started_by.lower() in job.started_by.lower()]
+        if trigger_type is not None:
+            jobs = [job for job in jobs if job.trigger_type == trigger_type]
         
         if cancellation_requested is not None:
             jobs = [job for job in jobs if job.cancellation_requested == cancellation_requested]
@@ -155,9 +155,6 @@ async def create_job(
 ):
     """Create a new job."""
     try:
-        # Set the started_by field to the current admin's email
-        job_data.started_by = admin_user.get('email', 'admin')
-        
         job = await JobService.create_job(db, job_data)
         return job
     except Exception as e:
@@ -258,8 +255,7 @@ async def cancel_job(
 ):
     """Cancel a job."""
     try:
-        cancelled_by = admin_user.get('email', 'admin')
-        job = await JobService.cancel_job(db, job_id, cancelled_by)
+        job = await JobService.cancel_job(db, job_id)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         return job
@@ -276,8 +272,7 @@ async def request_job_cancellation(
 ):
     """Request job cancellation without immediately stopping it."""
     try:
-        cancelled_by = admin_user.get('email', 'admin')
-        job = await JobService.request_cancellation(db, job_id, cancelled_by)
+        job = await JobService.request_cancellation(db, job_id)
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         return job

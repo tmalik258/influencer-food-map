@@ -155,7 +155,7 @@ export function CuisinesManagementTab({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto pt-6 space-y-6">
         {/* Current Cuisines */}
         <Card className="glass-effect border-orange-500/20">
           <CardHeader>

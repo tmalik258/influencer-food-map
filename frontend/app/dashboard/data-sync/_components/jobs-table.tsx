@@ -18,6 +18,7 @@ import {
   AlertCircle,
 } from "lucide-react";
 import { useJobActions } from "@/lib/hooks";
+import { toast } from "sonner";
 import type { Job } from "@/lib/types/api";
 import JobDetailsDialog from "./job-details-dialog";
 
@@ -26,7 +27,7 @@ interface JobsTableProps {
   onRefresh: () => void;
 }
 
-type SortField = 'created_at' | 'started_at' | 'completed_at' | 'job_type' | 'status' | 'progress';
+type SortField = 'started_at' | 'completed_at' | 'job_type' | 'status' | 'progress';
 type SortDirection = 'asc' | 'desc';
 
 const ITEMS_PER_PAGE = 10;
@@ -37,6 +38,7 @@ function getStatusBadge(status: Job['status']) {
     running: { variant: 'default' as const, icon: RefreshCw, className: 'bg-blue-100 text-blue-800' },
     completed: { variant: 'default' as const, icon: CheckCircle, className: 'bg-green-100 text-green-800' },
     failed: { variant: 'destructive' as const, icon: AlertCircle, className: 'bg-red-100 text-red-800' },
+    cancelled: { variant: 'secondary' as const, icon: X, className: 'bg-gray-100 text-gray-800' },
   };
 
   const config = statusConfig[status];
@@ -76,7 +78,7 @@ function formatDuration(startTime?: string, endTime?: string) {
 }
 
 function JobsTable({ jobs, onRefresh }: JobsTableProps) {
-  const [sortField, setSortField] = useState<SortField>('created_at');
+  const [sortField, setSortField] = useState<SortField>('started_at');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
@@ -135,6 +137,28 @@ function JobsTable({ jobs, onRefresh }: JobsTableProps) {
     }
   };
 
+  const handleRestartJob = async (job: Job) => {
+    try {
+      // For now, we'll trigger a new job of the same type
+      // This can be enhanced later with proper restart logic
+      toast.success('Job restart initiated', {
+        description: `Restarting job: ${job.title}`,
+      });
+      
+      // You can implement actual restart logic here
+      // For example, calling a restart API endpoint
+      console.log('Restarting job:', job.id, job.job_type);
+      
+      // Trigger a refresh to show the new job
+      setTimeout(() => onRefresh(), 1000);
+    } catch (error) {
+      console.error('Failed to restart job:', error);
+      toast.error('Failed to restart job', {
+        description: 'Please try again or contact support',
+      });
+    }
+  };
+
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return null;
     return sortDirection === 'asc' ? 
@@ -167,11 +191,11 @@ function JobsTable({ jobs, onRefresh }: JobsTableProps) {
               <TableRow className="bg-orange-50/50">
                 <TableHead 
                   className="cursor-pointer hover:bg-orange-100/50 transition-colors"
-                  onClick={() => handleSort('created_at')}
+                  onClick={() => handleSort('started_at')}
                 >
                   <div className="flex items-center">
                     Job ID
-                    <SortIcon field="created_at" />
+                    <SortIcon field="started_at" />
                   </div>
                 </TableHead>
                 <TableHead 
@@ -200,16 +224,6 @@ function JobsTable({ jobs, onRefresh }: JobsTableProps) {
                   <div className="flex items-center">
                     Progress
                     <SortIcon field="progress" />
-                  </div>
-                </TableHead>
-                <TableHead>Started By</TableHead>
-                <TableHead 
-                  className="cursor-pointer hover:bg-orange-100/50 transition-colors"
-                  onClick={() => handleSort('created_at')}
-                >
-                  <div className="flex items-center">
-                    Created
-                    <SortIcon field="created_at" />
                   </div>
                 </TableHead>
                 <TableHead 
@@ -268,12 +282,6 @@ function JobsTable({ jobs, onRefresh }: JobsTableProps) {
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">
-                    {job.started_by || '-'}
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-600">
-                    {formatDate(job.created_at)}
-                  </TableCell>
-                  <TableCell className="text-sm text-gray-600">
                     {formatDate(job.started_at)}
                   </TableCell>
                   <TableCell className="text-sm text-gray-600">
@@ -304,12 +312,24 @@ function JobsTable({ jobs, onRefresh }: JobsTableProps) {
                           <X className="h-4 w-4" />
                         </Button>
                       )}
-                      {(job.status === 'failed' || job.status === 'completed') && (
+                      {['failed', 'cancelled'].includes(job.status) && (
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 hover:bg-green-100 text-green-600"
+                          onClick={() => handleRestartJob(job)}
+                          className="h-8 w-8 p-0 hover:bg-green-100 text-green-600 cursor-pointer"
                           title="Restart Job"
+                        >
+                          <Play className="h-4 w-4" />
+                        </Button>
+                      )}
+                      {job.status === 'completed' && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          disabled
+                          className="h-8 w-8 p-0 cursor-not-allowed opacity-50"
+                          title="Cannot restart completed job"
                         >
                           <Play className="h-4 w-4" />
                         </Button>

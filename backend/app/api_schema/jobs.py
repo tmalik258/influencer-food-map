@@ -19,7 +19,6 @@ class JobResponse(BaseModel):
     result_data: Optional[str] = None
     error_message: Optional[str] = None
     logs: Optional[str] = None
-    started_by: Optional[str] = None
     redis_lock_key: Optional[str] = None
     
     # Advanced tracking fields
@@ -32,11 +31,9 @@ class JobResponse(BaseModel):
     processing_rate: Optional[float] = None
     last_heartbeat: Optional[datetime] = None
     cancellation_requested: bool = False
-    cancelled_by: Optional[str] = None
     cancelled_at: Optional[datetime] = None
     
     created_at: datetime
-    started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None
     updated_at: datetime
 
@@ -117,7 +114,6 @@ class ActiveJobResponse(BaseModel):
     processing_rate: Optional[float] = None
     estimated_completion_time: Optional[datetime] = None
     last_heartbeat: Optional[datetime] = None
-    started_by: Optional[str] = None
     started_at: Optional[datetime] = None
     runtime_seconds: Optional[int] = Field(
         None,
@@ -136,10 +132,6 @@ class JobFilterRequest(BaseModel):
     job_type: Optional[List[JobType]] = Field(
         None,
         description="Filter by job types"
-    )
-    started_by: Optional[List[str]] = Field(
-        None,
-        description="Filter by users who started the jobs"
     )
     created_after: Optional[datetime] = Field(
         None,
@@ -204,9 +196,8 @@ class JobCreateRequest(BaseModel):
     title: str
     description: Optional[str] = None
     total_items: Optional[int] = None
-    started_by: Optional[str] = None
     redis_lock_key: Optional[str] = None
-    trigger_type: Optional[LockType] = LockType.AUTOMATIC
+    trigger_type: Optional[LockType] = LockType.SYSTEM
 
 class JobUpdateRequest(BaseModel):
     status: Optional[JobStatus] = None
@@ -228,7 +219,6 @@ class JobUpdateRequest(BaseModel):
     processing_rate: Optional[float] = None
     last_heartbeat: Optional[datetime] = None
     cancellation_requested: Optional[bool] = None
-    cancelled_by: Optional[str] = None
     cancelled_at: Optional[datetime] = None
 
 class JobListResponse(BaseModel):
@@ -239,8 +229,7 @@ class JobListResponse(BaseModel):
     progress: int
     total_items: Optional[int] = None
     processed_items: int
-    started_by: Optional[str] = None
-    
+
     # Key tracking fields for list view
     queue_size: Optional[int] = None
     items_in_progress: Optional[int] = None
@@ -248,7 +237,6 @@ class JobListResponse(BaseModel):
     retry_count: Optional[int] = None
     processing_rate: Optional[float] = None
     cancellation_requested: bool = False
-    cancelled_by: Optional[str] = None
     
     created_at: datetime
     started_at: Optional[datetime] = None
@@ -268,16 +256,6 @@ class TrackingStatsRequest(BaseModel):
     failed_items: Optional[int] = None
     processing_rate: Optional[float] = None
     estimated_completion_time: Optional[datetime] = None
-
-
-class JobAnalyticsResponse(BaseModel):
-    completion_rates_by_type: dict
-    average_processing_times: dict
-    success_failure_ratios: dict
-    processing_rate_statistics: dict
-    queue_metrics: dict
-    total_jobs: int
-    period_analyzed: str
 
 
 class ActiveJobsResponse(BaseModel):

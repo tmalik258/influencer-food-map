@@ -7,7 +7,6 @@ import type { Job, JobsSummary, JobCreateRequest, JobUpdateRequest, JobAnalytics
 export const useJobs = (params?: {
   status?: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   job_type?: 'scrape_youtube' | 'transcription_nlp';
-  started_by?: string;
   sort_by?: 'created_at' | 'started_at' | 'completed_at' | 'progress' | 'status';
   sort_order?: 'asc' | 'desc';
   start_date?: string;
@@ -340,7 +339,7 @@ export const useDataSync = () => {
     }
   }, []);
 
-  const triggerNLPProcessing = useCallback(async (videoIds?: string[], triggerType: 'automatic' | 'manual' | 'system' = 'manual') => {
+  const triggerNLPProcessing = useCallback(async (videoIds?: string[], triggerType: 'manual' | 'system' = 'manual') => {
     setLoading(true);
     setError(null);
     try {

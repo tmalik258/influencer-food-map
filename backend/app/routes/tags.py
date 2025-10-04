@@ -249,8 +249,8 @@ async def get_restaurants_by_tag(
                         influencer=influencer_response,
                         visit_date=listing.visit_date,
                         quotes=listing.quotes,
-                        context=listing.context,
                         confidence_score=listing.confidence_score,
+                        timestamp=listing.timestamp,
                         approved=listing.approved,
                         created_at=listing.created_at,
                         updated_at=listing.updated_at

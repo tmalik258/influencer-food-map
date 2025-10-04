@@ -1,27 +1,25 @@
 "use client";
 
-import { useMemo } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { 
   FileText, 
 } from "lucide-react";
-import { useListings } from "@/lib/hooks/useListings";
 import { ListingCard } from "./listing-card";
+import { Listing } from "@/lib/types";
 
 interface VideoListingsTabProps {
-  videoId: string;
+  listings: Listing[];
+  loading: boolean;
+  error: string | null;
+  refetch: () => Promise<void>;
 }
 
-export function VideoListingsTab({ videoId }: VideoListingsTabProps) {
-  // Memoize the params object to prevent infinite re-renders
-  const listingsParams = useMemo(() => ({ video_id: videoId }), [videoId]);
-  const { listings, loading, error, refetch } = useListings(listingsParams);
-
+export function VideoListingsTab({ listings, loading, error, refetch }: VideoListingsTabProps) {
   if (loading) {
     return (
       <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
+        {[1, 2].map((i) => (
           <Card key={i} className="bg-white shadow-sm">
             <CardHeader>
               <Skeleton className="h-6 w-3/4" />
@@ -68,7 +66,7 @@ export function VideoListingsTab({ videoId }: VideoListingsTabProps) {
   return (
     <div className="space-y-6">
       {listings.map((listing) => (
-        <ListingCard key={listing.id} listing={listing} onDeleted={refetch} />
+        <ListingCard key={listing.id} listing={listing} onDeleted={refetch} onUpdate={refetch} />
       ))}
     </div>
   );

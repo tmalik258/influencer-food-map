@@ -26,7 +26,7 @@ interface PaginatedListingsResponse {
   totalPages: number;
 }
 
-export const useListings = (initialParams?: PaginatedListingsParams) => {
+export const useListings = (initialParams?: PaginatedListingsParams, options?: { autoFetch?: boolean }) => {
   const [data, setData] = useState<PaginatedListingsResponse>({
     listings: [],
     total: 0,
@@ -42,6 +42,8 @@ export const useListings = (initialParams?: PaginatedListingsParams) => {
     status: 'all',
     ...initialParams
   });
+
+  const autoFetch = options?.autoFetch ?? true;
 
   const fetchListings = useCallback(async (searchParams?: PaginatedListingsParams) => {
     const currentParams = searchParams || params;
@@ -108,8 +110,10 @@ export const useListings = (initialParams?: PaginatedListingsParams) => {
   }, [updateParams]);
 
   useEffect(() => {
-    fetchListings(params);
-  }, [params, fetchListings]);
+    if (autoFetch) {
+      fetchListings(params);
+    }
+  }, [params, fetchListings, autoFetch]);
 
   return {
     // Data properties

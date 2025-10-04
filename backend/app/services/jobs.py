@@ -19,7 +19,6 @@ class JobService:
             title=job_data.title,
             description=job_data.description,
             total_items=job_data.total_items,
-            started_by=job_data.started_by,
             redis_lock_key=job_data.redis_lock_key,
             trigger_type=job_data.trigger_type,
             status=JobStatus.PENDING
@@ -37,7 +36,6 @@ class JobService:
             title=job_data.title,
             description=job_data.description,
             total_items=job_data.total_items,
-            started_by=job_data.started_by,
             redis_lock_key=job_data.redis_lock_key,
             trigger_type=job_data.trigger_type,
             status=JobStatus.PENDING
@@ -204,45 +202,41 @@ class JobService:
         return JobService.update_job_sync(db, job_id, update_data)
 
     @staticmethod
-    async def cancel_job(db: AsyncSession, job_id: UUID, cancelled_by: str) -> Optional[Job]:
+    async def cancel_job(db: AsyncSession, job_id: UUID) -> Optional[Job]:
         """Cancel a job."""
         update_data = JobUpdateRequest(
             status=JobStatus.CANCELLED,
             cancellation_requested=True,
-            cancelled_by=cancelled_by,
             cancelled_at=datetime.utcnow(),
             completed_at=datetime.utcnow()
         )
         return await JobService.update_job(db, job_id, update_data)
 
     @staticmethod
-    def cancel_job_sync(db: Session, job_id: UUID, cancelled_by: str) -> Optional[Job]:
+    def cancel_job_sync(db: Session, job_id: UUID) -> Optional[Job]:
         """Cancel a job (synchronous version)."""
         update_data = JobUpdateRequest(
             status=JobStatus.CANCELLED,
             cancellation_requested=True,
-            cancelled_by=cancelled_by,
             cancelled_at=datetime.utcnow(),
             completed_at=datetime.utcnow()
         )
         return JobService.update_job_sync(db, job_id, update_data)
 
     @staticmethod
-    async def request_cancellation(db: AsyncSession, job_id: UUID, cancelled_by: str) -> Optional[Job]:
+    async def request_cancellation(db: AsyncSession, job_id: UUID) -> Optional[Job]:
         """Request job cancellation without immediately stopping it."""
         update_data = JobUpdateRequest(
             cancellation_requested=True,
-            cancelled_by=cancelled_by,
             cancelled_at=datetime.utcnow()
         )
         return await JobService.update_job(db, job_id, update_data)
 
     @staticmethod
-    def request_cancellation_sync(db: Session, job_id: UUID, cancelled_by: str) -> Optional[Job]:
+    def request_cancellation_sync(db: Session, job_id: UUID) -> Optional[Job]:
         """Request job cancellation without immediately stopping it (synchronous version)."""
         update_data = JobUpdateRequest(
             cancellation_requested=True,
-            cancelled_by=cancelled_by,
             cancelled_at=datetime.utcnow()
         )
         return JobService.update_job_sync(db, job_id, update_data)
@@ -434,7 +428,6 @@ class JobService:
             "processing_rate": job.processing_rate,
             "estimated_completion_time": job.estimated_completion_time,
             "cancellation_requested": job.cancellation_requested,
-            "cancelled_by": job.cancelled_by,
             "cancelled_at": job.cancelled_at,
             "created_at": job.created_at,
             "started_at": job.started_at,
@@ -479,7 +472,6 @@ class JobService:
             "processing_rate": job.processing_rate,
             "estimated_completion_time": job.estimated_completion_time,
             "cancellation_requested": job.cancellation_requested,
-            "cancelled_by": job.cancelled_by,
             "cancelled_at": job.cancelled_at,
             "created_at": job.created_at,
             "started_at": job.started_at,

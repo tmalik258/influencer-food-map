@@ -44,8 +44,7 @@ async def trigger_scrape(
         title="YouTube Video Scraping",
         description=job_description,
         redis_lock_key=SCRAPE_YOUTUBE_LOCK,
-        started_by="system",
-        trigger_type=LockType.AUTOMATIC
+        trigger_type=LockType.SYSTEM
     )
     
     job = await JobService.create_job(db, job_data)
@@ -154,7 +153,6 @@ async def trigger_transcription_nlp(
         title="Video Transcription & NLP Processing",
         description=job_description,
         redis_lock_key=TRANSCRIPTION_NLP_LOCK,
-        started_by="system",
         trigger_type=request.trigger_type
     )
     

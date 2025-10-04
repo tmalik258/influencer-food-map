@@ -113,16 +113,16 @@ export function EditRestaurantModal({
             </TabsList>
 
             <div className="flex-1 min-h-0 overflow-y-auto">
-              <TabsContent value="cuisines" className="mt-0 h-full">
-                <CuisinesManagementTab
+              <TabsContent value="details" className="mt-0 h-full">
+                <RestaurantDetailsTab
                   restaurant={restaurant}
                   onSuccess={handleSuccess}
                   onUnsavedChanges={setHasUnsavedChanges}
                 />
               </TabsContent>
 
-              <TabsContent value="details" className="mt-0 h-full">
-                <RestaurantDetailsTab
+              <TabsContent value="cuisines" className="mt-0 h-full">
+                <CuisinesManagementTab
                   restaurant={restaurant}
                   onSuccess={handleSuccess}
                   onUnsavedChanges={setHasUnsavedChanges}

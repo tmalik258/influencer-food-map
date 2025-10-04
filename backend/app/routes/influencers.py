@@ -183,8 +183,8 @@ async def get_influencers(
                             influencer_id=listing.influencer.id,
                             visit_date=listing.visit_date,
                             quotes=listing.quotes,
-                            context=listing.context,
                             confidence_score=listing.confidence_score,
+                            timestamp=listing.timestamp,
                             approved=listing.approved,
                             created_at=listing.created_at,
                             updated_at=listing.updated_at
@@ -217,8 +217,8 @@ async def get_influencers(
                             video=listing.video.id,
                             visit_date=listing.visit_date,
                             quotes=listing.quotes,
-                            context=listing.context,
                             confidence_score=listing.confidence_score,
+                            timestamp=listing.timestamp,
                             approved=listing.approved,
                             created_at=listing.created_at,
                             updated_at=listing.updated_at
@@ -345,8 +345,8 @@ async def get_influencer(
                         influencer_id=listing.influencer.id,
                         visit_date=listing.visit_date,
                         quotes=listing.quotes,
-                        context=listing.context,
                         confidence_score=listing.confidence_score,
+                        timestamp=listing.timestamp,
                         approved=listing.approved,
                         created_at=listing.created_at,
                         updated_at=listing.updated_at
@@ -379,8 +379,8 @@ async def get_influencer(
                         influencer_id=listing.influencer.id,
                         visit_date=listing.visit_date,
                         quotes=listing.quotes,
-                        context=listing.context,
                         confidence_score=listing.confidence_score,
+                        timestamp=listing.timestamp,
                         approved=listing.approved,
                         created_at=listing.created_at,
                         updated_at=listing.updated_at
