@@ -258,6 +258,16 @@ async def download_audio(video_url: str, video: Video) -> str:
                 f"Attempt {attempt + 1}/{max_retries} downloading audio for {video_url}"
             )
 
+            # Rotate user-agent and player client per attempt to reduce bot detection
+            ua_candidates = [
+                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36",
+                "Mozilla/5.0 (Linux; Android 13; Pixel 7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Mobile Safari/537.36",
+                "Mozilla/5.0 (iPhone; CPU iPhone OS 17_2 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.2 Mobile/15E148 Safari/604.1",
+            ]
+            player_client_candidates = ["android", "ios", "web"]
+            ua = ua_candidates[attempt % len(ua_candidates)]
+            client = player_client_candidates[attempt % len(player_client_candidates)]
+
             # Step 1: Download to temporary file
             with tempfile.NamedTemporaryFile(
                 suffix=".%(ext)s", delete=False
@@ -271,7 +281,7 @@ async def download_audio(video_url: str, video: Video) -> str:
                 "retries": 3,
                 "fragment_retries": 10,
                 "extractor_retries": 10,
-                "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+                "user_agent": ua,
                 "postprocessors": [
                     {
                         "key": "FFmpegExtractAudio",
@@ -318,8 +328,8 @@ async def download_audio(video_url: str, video: Video) -> str:
                 "youtube": {
                     "geo_bypass": YTDLP_GEO_BYPASS,
                     **({"geo_bypass_country": YTDLP_GEO_COUNTRY} if YTDLP_GEO_COUNTRY else {}),
-                    # Use android client to reduce likelihood of bot checks
-                    "player_client": "android",
+                    # Rotate player client to reduce bot checks
+                    "player_client": [client],
                 }
             }
             # Extra headers
@@ -327,6 +337,9 @@ async def download_audio(video_url: str, video: Video) -> str:
                 "Referer": "https://www.youtube.com/",
                 "Origin": "https://www.youtube.com",
                 "Accept-Language": "en-US,en;q=0.9",
+                "Sec-Fetch-Dest": "empty",
+                "Sec-Fetch-Mode": "cors",
+                "Sec-Fetch-Site": "same-site",
             }
 
             # Download the audio
