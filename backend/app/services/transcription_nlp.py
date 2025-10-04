@@ -247,6 +247,7 @@ async def download_audio(video_url: str, video: Video) -> str:
 
     loop = asyncio.get_event_loop()
     max_retries = 3
+    use_browser_cookies = True
 
     for attempt in range(max_retries):
         downloaded_file = None
@@ -286,15 +287,17 @@ async def download_audio(video_url: str, video: Video) -> str:
                     YTDLP_COOKIES_FROM_BROWSER,
                     YTDLP_BROWSER_PROFILE,
                 )
-                # Prefer cookies-from-browser over cookies.txt
-                if YTDLP_COOKIES_FROM_BROWSER:
-                    ydl_opts["cookiesfrombrowser"] = (
-                        YTDLP_COOKIES_FROM_BROWSER,
-                        None,
-                        YTDLP_BROWSER_PROFILE,
-                    )
+                # Prefer cookies-from-browser over cookies.txt (correct arg order)
+                if YTDLP_COOKIES_FROM_BROWSER and use_browser_cookies:
+                    if YTDLP_BROWSER_PROFILE:
+                        ydl_opts["cookiesfrombrowser"] = (
+                            YTDLP_COOKIES_FROM_BROWSER,
+                            YTDLP_BROWSER_PROFILE,
+                        )
+                    else:
+                        ydl_opts["cookiesfrombrowser"] = (YTDLP_COOKIES_FROM_BROWSER,)
                     logger.info(
-                        f"Using yt-dlp cookies from browser: {YTDLP_COOKIES_FROM_BROWSER}, profile: {YTDLP_BROWSER_PROFILE}"
+                        f"Using yt-dlp cookies from browser: {YTDLP_COOKIES_FROM_BROWSER}{', profile: ' + YTDLP_BROWSER_PROFILE if YTDLP_BROWSER_PROFILE else ''}"
                     )
                 elif YTDLP_COOKIES_FILE:
                     ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
@@ -396,6 +399,10 @@ async def download_audio(video_url: str, video: Video) -> str:
             logger.error(
                 f"Attempt {attempt + 1}/{max_retries} failed for {video_url}: {e}"
             )
+            # If keyring/cookies error, disable browser cookies and retry
+            if "unsupported keyring" in str(e).lower() or "cookiesfrombrowser" in str(e).lower():
+                logger.warning("Unsupported keyring/cookies error detected; disabling browser cookies for next attempt.")
+                use_browser_cookies = False
             # Clean up files on error
             if downloaded_file and os.path.exists(downloaded_file):
                 os.remove(downloaded_file)
@@ -416,6 +423,10 @@ async def download_audio(video_url: str, video: Video) -> str:
             logger.error(
                 f"Unexpected error on attempt {attempt + 1}/{max_retries} for {video_url}: {e}"
             )
+            # If keyring/cookies error, disable browser cookies and retry
+            if "unsupported keyring" in str(e).lower() or "cookiesfrombrowser" in str(e).lower():
+                logger.warning("Unsupported keyring/cookies error detected; disabling browser cookies for next attempt.")
+                use_browser_cookies = False
             # Clean up files on error
             if downloaded_file and os.path.exists(downloaded_file):
                 os.remove(downloaded_file)
