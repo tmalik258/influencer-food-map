@@ -14,6 +14,7 @@ services:
       - ./backend/cookies:/code/cookies
     depends_on:
       - redis
+      - tor
     networks:
       - nomtok-network
     restart: always
@@ -58,6 +59,11 @@ services:
     networks:
       - nomtok-network
     restart: always
+  
+  tor:
+    image: peterdavehello/tor-socks-proxy:latest  # Or pin a version like :0.4.8.12
+    container_name: tor-proxy
+    restart: unless-stopped
 
 networks:
   nomtok-network:
