@@ -11,6 +11,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Install yt-dlp nightly for latest fixes (overrides requirements.txt version)
 RUN pip install --no-cache-dir --pre "yt-dlp[default]"
+RUN playwright install --with-deps chromium  # Installs browser + system deps (e.g., libnss3)
 
 # Copy application code
 COPY . .
