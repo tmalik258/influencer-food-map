@@ -118,6 +118,7 @@ def get_videos(
                 video_url=video.video_url,
                 published_at=video.published_at,
                 transcription=video.transcription,
+                processed=video.processed,
                 created_at=video.created_at,
                 updated_at=video.updated_at,
                 listings_count=listings_count
@@ -168,6 +169,7 @@ def get_video(video_id: str, db: Session = Depends(get_db)):
             video_url=video.video_url,
             published_at=video.published_at,
             transcription=video.transcription,
+            processed=video.processed,
             created_at=video.created_at,
             updated_at=video.updated_at,
             listings_count=listings_count

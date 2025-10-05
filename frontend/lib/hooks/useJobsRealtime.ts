@@ -1,8 +1,8 @@
 import { useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Job } from '../types';
 import type { RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { createClient } from '../utils/supabase/client';
 
 interface UseJobsRealtimeProps {
   onJobUpdate?: (job: Job) => void;
@@ -11,6 +11,8 @@ interface UseJobsRealtimeProps {
 }
 
 export const useJobsRealtime = ({ onJobUpdate, onJobCreate, onJobDelete }: UseJobsRealtimeProps = {}) => {
+  const supabase = createClient();
+
   const handleJobUpdate = useCallback((payload: RealtimePostgresChangesPayload<Job>) => {
     const job = payload.new as Job;
     const oldJob = payload.old as Job;

@@ -37,6 +37,7 @@ export const updateVideoSchema = z.object({
   video_url: baseVideoSchema.video_url.optional(),
   published_at: baseVideoSchema.published_at,
   transcription: baseVideoSchema.transcription,
+  processed: z.boolean().optional(),
 });
 
 // Schema for creating a video from URL (matches VideoCreateFromUrl)
@@ -59,4 +60,5 @@ export const defaultVideoEditFormValues: Partial<UpdateVideoFormData> = {
   video_url: "",
   published_at: null,
   transcription: "",
+  processed: false,
 };

@@ -18,7 +18,9 @@ export function VideoFilters({
   hasListings,
   setHasListings,
   selectedInfluencer,
-  setSelectedInfluencer
+  setSelectedInfluencer,
+  processedFilter,
+  setProcessedFilter
 }: VideoFiltersProps) {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
 
@@ -37,7 +39,7 @@ export function VideoFilters({
   return (
     <Card className="border-none shadow-none p-0">
       <CardContent className="space-y-4 p-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -97,6 +99,18 @@ export function VideoFilters({
               <SelectItem value="all">All Videos</SelectItem>
               <SelectItem value="true">With Listings</SelectItem>
               <SelectItem value="false">Without Listings</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {/* Processing Status Filter */}
+          <Select value={processedFilter} onValueChange={(value: "all" | "processed" | "pending") => setProcessedFilter(value)}>
+            <SelectTrigger className="w-full glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white">
+              <SelectValue placeholder="Filter by processing status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Videos</SelectItem>
+              <SelectItem value="processed">Processed</SelectItem>
+              <SelectItem value="pending">Pending</SelectItem>
             </SelectContent>
           </Select>
         </div>

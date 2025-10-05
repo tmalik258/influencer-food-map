@@ -145,6 +145,8 @@ export interface VideoFiltersProps {
   setHasListings: (value: boolean | undefined) => void;
   selectedInfluencer: string;
   setSelectedInfluencer: (value: string) => void;
+  processedFilter: "all" | "processed" | "pending";
+  setProcessedFilter: (value: "all" | "processed" | "pending") => void;
 }
 
 export interface VideoHeaderProps {
@@ -162,6 +164,7 @@ export interface VideoTableProps {
   searchTerm: string;
   selectedInfluencer: string;
   hasListings: boolean | undefined;
+  processedFilter: "all" | "processed" | "pending";
   onViewVideo: (video: Video) => void;
   onEditVideo: (video: Video) => void;
   onDeleteVideo: (video: Video) => void;
@@ -187,6 +190,7 @@ export interface ListingFiltersProps {
   setStatusFilter: (value: "approved" | "rejected" | "pending" | "all") => void;
   sortBy: string;
   setSortBy: (value: string) => void;
+  onCreateClick: () => void;
 }
 
 export interface ListingHeaderProps {

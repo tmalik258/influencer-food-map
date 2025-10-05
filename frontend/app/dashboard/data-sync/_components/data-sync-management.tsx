@@ -1,47 +1,28 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefreshCw, Play, AlertCircle, CheckCircle, Activity, BarChart3 } from "lucide-react";
 import { useJobs, useDataSync, useJobActions } from "@/lib/hooks";
-import { useJobsRealtime } from "@/lib/hooks/useJobsRealtime";
 import DashboardLoadingSkeleton from "@/app/dashboard/_components/dashboard-loading-skeleton";
-import { JobAnalyticsDashboard } from "./job-analytics-dashboard";
 import JobsTable from "./jobs-table";
 
-import type { Job } from '@/lib/types';
 import { JobCard } from "./job-card";
+import { useDashboardRealtime } from "@/lib/contexts/dashboard-realtime-context";
 
 export function DataSyncManagement() {
   const { data: jobs, isLoading, error, refetch } = useJobs();
   const { triggerYouTubeScraping, triggerNLPProcessing } = useDataSync();
   const { cancelJob } = useJobActions();
   const [triggering, setTriggering] = useState<string | null>(null);
+  const { version } = useDashboardRealtime();
 
-  // Real-time job updates
-  const handleJobUpdate = useCallback((updatedJob: Job) => {
-    console.log('[Realtime] Job updated:', { id: updatedJob.id, status: updatedJob.status, title: updatedJob.title });
+  // Refresh jobs when any realtime job event occurs
+  useEffect(() => {
     refetch();
-  }, [refetch]);
-
-  const handleJobCreate = useCallback((newJob: Job) => {
-    console.log('[Realtime] Job created:', { id: newJob.id, status: newJob.status, title: newJob.title });
-    refetch();
-  }, [refetch]);
-
-  const handleJobDelete = useCallback((jobId: string) => {
-    console.log('[Realtime] Job deleted:', { id: jobId });
-    refetch();
-  }, [refetch]);
-
-  // Set up real-time subscriptions
-  useJobsRealtime({
-    onJobUpdate: handleJobUpdate,
-    onJobCreate: handleJobCreate,
-    onJobDelete: handleJobDelete,
-  });
+  }, [version, refetch]);
 
   const handleTriggerJob = async (type: string) => {
     setTriggering(type);
@@ -138,7 +119,7 @@ export function DataSyncManagement() {
 
       {/* Job Status and Analytics Tabs */}
       <Tabs defaultValue="all" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5 glass-effect backdrop-blur-sm bg-white/70 border border-orange-200/50">
+        <TabsList className="grid w-full grid-cols-4 glass-effect backdrop-blur-sm bg-white/70 border border-orange-200/50">
           <TabsTrigger value="all" className="flex items-center gap-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white">
             <Activity className="h-4 w-4 text-orange-600 data-[state=active]:text-white" />
             All Jobs ({jobs?.length || 0})
@@ -154,10 +135,6 @@ export function DataSyncManagement() {
           <TabsTrigger value="failed" className="flex items-center gap-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white">
             <AlertCircle className="h-4 w-4 text-orange-600 data-[state=active]:text-white" />
             Failed ({failedJobs.length || 0})
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2 data-[state=active]:bg-orange-600 data-[state=active]:text-white">
-            <BarChart3 className="h-4 w-4 text-orange-600 data-[state=active]:text-white" />
-            Analytics
           </TabsTrigger>
         </TabsList>
 
@@ -205,10 +182,6 @@ export function DataSyncManagement() {
               <JobCard key={job.id} job={job} onTrigger={handleTriggerJob} cancelJob={async (jobId, reason) => { await cancelJob(jobId, reason); }} />
             ))
           )}
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-4">
-          <JobAnalyticsDashboard />
         </TabsContent>
       </Tabs>
     </div>

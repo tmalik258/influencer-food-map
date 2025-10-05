@@ -3,12 +3,8 @@ import { adminApi } from '../api';
 // Import types from centralized location
 import type {
   Job,
-  JobCreateRequest,
-  JobUpdateRequest,
-  JobsSummary,
   TriggerScrapeResponse,
   TriggerNLPResponse,
-  JobAnalytics,
 } from '../types';
 
 export const adminActions = {
@@ -29,16 +25,6 @@ export const adminActions = {
 
   getJob: async (jobId: string): Promise<Job> => {
     const response = await adminApi.get(`/jobs/${jobId}/`);
-    return response.data;
-  },
-
-  createJob: async (jobData: JobCreateRequest): Promise<Job> => {
-    const response = await adminApi.post('/jobs/', jobData);
-    return response.data;
-  },
-
-  updateJob: async (jobId: string, jobData: JobUpdateRequest): Promise<Job> => {
-    const response = await adminApi.put(`/jobs/${jobId}/`, jobData);
     return response.data;
   },
 
@@ -76,27 +62,6 @@ export const adminActions = {
     const response = await adminApi.post(`/jobs/${jobId}/request-cancellation/`, {
       reason: reason || 'Cancellation requested by user'
     });
-    return response.data;
-  },
-
-  getJobsSummary: async (): Promise<JobsSummary> => {
-    const response = await adminApi.get('/jobs/summary/');
-    return response.data;
-  },
-
-  // Job Analytics and Metrics
-  getJobAnalytics: async (): Promise<JobAnalytics> => {
-    const response = await adminApi.get('/jobs/analytics/');
-    return response.data;
-  },
-
-  getActiveJobs: async (): Promise<Job[]> => {
-    const response = await adminApi.get('/jobs/active/');
-    return response.data;
-  },
-
-  cleanupStaleJobs: async (): Promise<{ message: string; cleaned_jobs: number }> => {
-    const response = await adminApi.post('/jobs/cleanup-stale/');
     return response.data;
   },
 

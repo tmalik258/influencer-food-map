@@ -382,3 +382,4 @@ export function ListingCard({ listing, onDeleted, onUpdate }: ListingCardProps) 
     </Card>
   );
 }
+

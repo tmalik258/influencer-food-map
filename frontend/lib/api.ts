@@ -1,8 +1,4 @@
-import axios, { AxiosError } from 'axios';
-
-interface CustomAxiosError<T = unknown, D = unknown> extends AxiosError<T, D> {
-  friendlyMessage?: string;
-}
+import axios from 'axios';
 import { createClient } from '@/lib/utils/supabase/client';
 
 export { restaurantActions as restaurantApi } from './actions/restaurant-actions';
@@ -39,22 +35,6 @@ adminApi.interceptors.request.use(
   },
   (error) => {
     return Promise.reject(error);
-  }
-);
-
-// Add response interceptor to standardize error messages
-adminApi.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    const axiosError = error as CustomAxiosError<{ detail?: string; message?: string } & Record<string, unknown>>;
-    const detail = axiosError.response?.data?.detail;
-    const fallback = axiosError.response?.data?.message;
-    const friendlyMessage = detail || fallback || axiosError.message || 'Request failed';
-    // Attach a friendly message for consumers
-    axiosError.friendlyMessage = friendlyMessage;
-    // Also override the default message to make catch(err.message) useful
-    axiosError.message = friendlyMessage;
-    return Promise.reject(axiosError);
   }
 );
 

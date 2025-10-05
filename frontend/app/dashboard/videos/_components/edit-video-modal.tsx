@@ -41,6 +41,7 @@ interface EditVideoModalProps {
   isOpen: boolean;
   onClose: (open: boolean) => void;
   onSuccess: () => void;
+  refetchVideos: () => void;
 }
 
 export default function EditVideoModal({
@@ -48,6 +49,7 @@ export default function EditVideoModal({
   isOpen,
   onClose,
   onSuccess,
+  refetchVideos,
 }: EditVideoModalProps) {
   const [loading, setLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>("edit");
@@ -319,7 +321,7 @@ export default function EditVideoModal({
               </TabsContent>
 
               <TabsContent value="listings" className="flex-1 overflow-y-auto">
-                <VideoListingsTab listings={listings} loading={listingsLoaded ? listingsLoading : true} error={error} refetch={refetch} />
+                <VideoListingsTab listings={listings} loading={listingsLoaded ? listingsLoading : true} error={error} refetch={refetch} refetchVideos={refetchVideos} />
               </TabsContent>
             </Tabs>
           </>

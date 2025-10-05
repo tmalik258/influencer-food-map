@@ -271,11 +271,10 @@ async def update_restaurant(
 @router.delete("/{restaurant_id}/", response_model=AdminRestaurantResponse)
 async def delete_restaurant(
     restaurant_id: UUID,
-    permanent: bool = False,
     db: AsyncSession = Depends(get_async_db),
     current_admin = Depends(get_current_admin)
 ):
-    """Delete a restaurant (soft delete by default)."""
+    """Delete a restaurant."""
     try:
         # Find the restaurant
         query = select(Restaurant).filter(Restaurant.id == restaurant_id)
@@ -287,15 +286,9 @@ async def delete_restaurant(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Restaurant not found"
             )
-        
-        if permanent:
-            # Hard delete - remove from database
-            await db.delete(db_restaurant)
-            message = "Restaurant permanently deleted"
-        else:
-            # Soft delete - mark as inactive
-            db_restaurant.is_active = False
-            message = "Restaurant deactivated"
+        # Hard delete - remove from database
+        await db.delete(db_restaurant)
+        message = "Restaurant permanently deleted"
         
         # Commit changes
         await db.commit()

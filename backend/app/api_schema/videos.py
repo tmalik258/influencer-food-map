@@ -16,6 +16,7 @@ class VideoResponse(BaseModel):
     video_url: str
     published_at: Optional[datetime] = None
     transcription: Optional[str] = None
+    processed: bool = False
     created_at: datetime
     updated_at: datetime
     listings_count: int = 0
@@ -41,6 +42,7 @@ class VideoUpdate(BaseModel):
     video_url: Optional[str] = None
     published_at: Optional[datetime] = None
     transcription: Optional[str] = None
+    processed: Optional[bool] = None
 
 class VideoCreateFromUrl(BaseModel):
     """Simplified schema for creating videos from YouTube URL"""

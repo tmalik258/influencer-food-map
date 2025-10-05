@@ -118,6 +118,7 @@ async def create_video(
             video_url=video_with_influencer.video_url,
             published_at=video_with_influencer.published_at,
             transcription=video_with_influencer.transcription,
+            processed=video_with_influencer.processed,
             created_at=video_with_influencer.created_at,
             updated_at=video_with_influencer.updated_at
         )
@@ -200,6 +201,7 @@ async def update_video(
             video_url=video_with_influencer.video_url,
             published_at=video_with_influencer.published_at,
             transcription=video_with_influencer.transcription,
+            processed=video_with_influencer.processed,
             created_at=video_with_influencer.created_at,
             updated_at=video_with_influencer.updated_at
         )

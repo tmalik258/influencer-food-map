@@ -1,11 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { toast } from 'sonner';
-import axios from 'axios';
 import { Video } from '@/lib/types';
+import { useDeleteVideo } from '@/lib/hooks/useVideos';
 
 interface VideoDeleteDialogProps {
   isOpen: boolean;
@@ -15,22 +13,13 @@ interface VideoDeleteDialogProps {
 }
 
 export function VideoDeleteDialog({ isOpen, onClose, video, onSuccess }: VideoDeleteDialogProps) {
-  const [isLoading, setIsLoading] = useState(false);
+  const { deleteVideo, loading } = useDeleteVideo();
 
   const handleDelete = async () => {
     if (!video) return;
-    setIsLoading(true);
-    try {
-      await axios.delete(`/api/admin/videos/${video.id}`);
-      toast.success('Video deleted successfully!');
-      onClose();
-      onSuccess();
-    } catch (error) {
-      console.error('Failed to delete video:', error);
-      toast.error('Failed to delete video. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    await deleteVideo(video.id);
+    onClose();
+    onSuccess();
   };
 
   return (
@@ -43,11 +32,11 @@ export function VideoDeleteDialog({ isOpen, onClose, video, onSuccess }: VideoDe
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose} disabled={isLoading} className="border-orange-200 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-200">
+          <Button variant="outline" onClick={onClose} disabled={loading} className="border-orange-200 text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20 transition-all duration-200 cursor-pointer">
             Cancel
           </Button>
-          <Button variant="destructive" onClick={handleDelete} disabled={isLoading} className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 transition-all duration-200">
-            {isLoading ? 'Deleting...' : 'Delete'}
+          <Button variant="destructive" onClick={handleDelete} disabled={loading} className="bg-red-600 hover:bg-red-700 text-white border-red-600 hover:border-red-700 transition-all duration-200 cursor-pointer">
+            {loading ? 'Deleting...' : 'Delete'}
           </Button>
         </DialogFooter>
       </DialogContent>

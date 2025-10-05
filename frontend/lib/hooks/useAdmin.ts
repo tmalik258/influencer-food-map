@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { adminActions } from '@/lib/actions/admin-actions';
-import type { Job, JobsSummary, JobCreateRequest, JobUpdateRequest, JobAnalytics } from '@/lib/types/api';
+import type { Job } from '@/lib/types/api';
 
 export const useJobs = (params?: {
   status?: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
@@ -75,67 +75,9 @@ export const useJob = (jobId: string) => {
   };
 };
 
-export const useJobsSummary = () => {
-  const [summary, setSummary] = useState<JobsSummary | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchSummary = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await adminActions.getJobsSummary();
-      setSummary(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch jobs summary');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchSummary();
-  }, [fetchSummary]);
-
-  return {
-    summary,
-    loading,
-    error,
-    refetch: fetchSummary
-  };
-};
-
 export const useJobActions = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  const createJob = useCallback(async (jobData: JobCreateRequest): Promise<Job | null> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const job = await adminActions.createJob(jobData);
-      return job;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create job');
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  const updateJob = useCallback(async (jobId: string, jobData: JobUpdateRequest): Promise<Job | null> => {
-    setLoading(true);
-    setError(null);
-    try {
-      const job = await adminActions.updateJob(jobId, jobData);
-      return job;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update job');
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
 
   const startJob = useCallback(async (jobId: string): Promise<Job | null> => {
     setLoading(true);
@@ -224,100 +166,12 @@ export const useJobActions = () => {
   return {
     loading,
     error,
-    createJob,
-    updateJob,
     startJob,
     completeJob,
     failJob,
     updateJobProgress,
     cancelJob,
     requestJobCancellation
-  };
-};
-
-// New hooks for job analytics and metrics
-export const useJobAnalytics = () => {
-  const [analytics, setAnalytics] = useState<JobAnalytics | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchAnalytics = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await adminActions.getJobAnalytics();
-      setAnalytics(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch job analytics');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchAnalytics();
-  }, [fetchAnalytics]);
-
-  return {
-    analytics,
-    loading,
-    error,
-    refetch: fetchAnalytics
-  };
-};
-
-export const useActiveJobs = () => {
-  const [activeJobs, setActiveJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchActiveJobs = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await adminActions.getActiveJobs();
-      setActiveJobs(data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch active jobs');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchActiveJobs();
-  }, [fetchActiveJobs]);
-
-  return {
-    activeJobs,
-    loading,
-    error,
-    refetch: fetchActiveJobs
-  };
-};
-
-export const useJobManagement = () => {
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const cleanupStaleJobs = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const result = await adminActions.cleanupStaleJobs();
-      return result;
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to cleanup stale jobs');
-      return null;
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  return {
-    loading,
-    error,
-    cleanupStaleJobs
   };
 };
 

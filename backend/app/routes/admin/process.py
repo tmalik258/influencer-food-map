@@ -227,15 +227,10 @@ async def trigger_transcription_nlp(
             except Exception as e:
                 # Check if it's a cancellation
                 if "cancelled" in str(e).lower():
-                    await JobService.cancel_job(task_session, job_id, str(e))
+                    await JobService.cancel_job(task_session, job_id)
                     logger.info(f"Transcription and NLP pipeline cancelled: {str(e)}")
                 else:
-                    # Store detailed error info in job
-                    err_payload = {
-                        "error": str(e),
-                        "hint": "Check errors list and summary for specific causes.",
-                    }
-                    await JobService.fail_job(task_session, job_id, json.dumps(err_payload))
+                    await JobService.fail_job(task_session, job_id, str(e))
                     logger.error(f"Transcription and NLP pipeline failed: {str(e)}")
                 raise
             finally:

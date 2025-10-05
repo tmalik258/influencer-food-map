@@ -24,6 +24,7 @@ export default function VideoManagement() {
   const [selectedVideos, setSelectedVideos] = useState<Video[]>([]);
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
+  const [processedFilter, setProcessedFilter] = useState<"all" | "processed" | "pending">("all");
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -82,10 +83,17 @@ export default function VideoManagement() {
 
   const handleInfluencerChange = (influencer: string) => {
     setInfluencerFilter(influencer);
+    setPage(1); // Reset to first page when changing filters
   };
 
   const handleHasListingsChange = (hasListings: boolean | undefined) => {
     setHasListingsFilter(hasListings);
+    setPage(1); // Reset to first page when changing filters
+  };
+
+  const handleProcessedFilterChange = (processed: "all" | "processed" | "pending") => {
+    setProcessedFilter(processed);
+    setPage(1); // Reset to first page when changing filters
   };
 
   const handleSortChange = (sortBy: string) => {
@@ -215,6 +223,7 @@ export default function VideoManagement() {
     setSearchTerm("");
     setInfluencerFilter("");
     setHasListingsFilter(undefined);
+    setProcessedFilter("all");
     setPage(1); // Reset to first page when clearing filters
   };
 
@@ -239,6 +248,8 @@ export default function VideoManagement() {
         setSelectedInfluencer={handleInfluencerChange}
         hasListings={params.has_listings}
         setHasListings={handleHasListingsChange}
+        processedFilter={processedFilter}
+        setProcessedFilter={handleProcessedFilterChange}
       />
 
       <VideoTable
@@ -247,6 +258,7 @@ export default function VideoManagement() {
         searchTerm={params.title || ""}
         selectedInfluencer={params.influencer_name || ""}
         hasListings={params.has_listings}
+        processedFilter={processedFilter}
         onViewVideo={handleViewVideo}
         onEditVideo={handleEditVideo}
         onDeleteVideo={handleDeleteVideo}
@@ -286,6 +298,7 @@ export default function VideoManagement() {
           newSearchParams.delete("id");
           router.replace(`${window.location.pathname}?${newSearchParams.toString()}`);
         }}
+        refetchVideos={refreshVideos}
       />
 
       <VideoDeleteDialog

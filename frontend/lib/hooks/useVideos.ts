@@ -5,6 +5,7 @@ import { Video } from '@/lib/types';
 import { videoActions } from '@/lib/actions';
 import { adminVideoActions } from '@/lib/actions/admin-video-actions';
 import type { AxiosError } from 'axios';
+import { toast } from 'sonner';
 
 interface PaginatedVideosParams {
   title?: string;
@@ -185,11 +186,13 @@ export const useCreateVideo = () => {
     
     try {
       const video = await adminVideoActions.createVideoFromUrl(data);
+      toast.success('Video created successfully');
       return video;
     } catch (err) {
       const axiosErr = err as AxiosError<{ detail?: string }>;
       const errorMessage = axiosErr.response?.data?.detail || axiosErr.message || 'Failed to create video';
       setError(errorMessage);
+      toast.error(errorMessage);
       throw axiosErr;
     } finally {
       setLoading(false);
@@ -200,5 +203,38 @@ export const useCreateVideo = () => {
     createVideoFromUrl,
     loading,
     error
+  };
+};
+
+/**
+ * Hook for deleting a video by ID
+ */
+export const useDeleteVideo = () => {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const deleteVideo = useCallback(async (videoId: string) => {
+    setLoading(true);
+    setError(null);
+
+    try {
+      await adminVideoActions.deleteVideo(videoId);
+      toast.success('Video deleted successfully');
+      return true;
+    } catch (err) {
+      const axiosErr = err as AxiosError<{ detail?: string }>;
+      const errorMessage = axiosErr.response?.data?.detail || axiosErr.message || 'Failed to delete video';
+      setError(errorMessage);
+      toast.error(errorMessage);
+      return false;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return {
+    deleteVideo,
+    loading,
+    error,
   };
 };

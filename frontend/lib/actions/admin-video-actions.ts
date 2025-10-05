@@ -22,6 +22,7 @@ interface VideoUpdateData {
   video_url?: string;
   published_at?: string;
   transcription?: string;
+  processed?: boolean;
 }
 
 export const adminVideoActions = {
@@ -76,6 +77,7 @@ export const adminVideoActions = {
     influencer_id?: string;
     influencer_name?: string;
     has_listings?: boolean;
+    processed?: boolean;
     skip?: number;
     limit?: number;
   }): Promise<Video[]> => {

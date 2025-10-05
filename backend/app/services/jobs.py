@@ -202,24 +202,26 @@ class JobService:
         return JobService.update_job_sync(db, job_id, update_data)
 
     @staticmethod
-    async def cancel_job(db: AsyncSession, job_id: UUID) -> Optional[Job]:
+    async def cancel_job(db: AsyncSession, job_id: UUID, error_message: Optional[str] = None) -> Optional[Job]:
         """Cancel a job."""
         update_data = JobUpdateRequest(
             status=JobStatus.CANCELLED,
             cancellation_requested=True,
             cancelled_at=datetime.utcnow(),
-            completed_at=datetime.utcnow()
+            completed_at=datetime.utcnow(),
+            error_message=error_message
         )
         return await JobService.update_job(db, job_id, update_data)
 
     @staticmethod
-    def cancel_job_sync(db: Session, job_id: UUID) -> Optional[Job]:
+    def cancel_job_sync(db: Session, job_id: UUID, error_message: Optional[str] = None) -> Optional[Job]:
         """Cancel a job (synchronous version)."""
         update_data = JobUpdateRequest(
             status=JobStatus.CANCELLED,
             cancellation_requested=True,
             cancelled_at=datetime.utcnow(),
-            completed_at=datetime.utcnow()
+            completed_at=datetime.utcnow(),
+            error_message=error_message
         )
         return JobService.update_job_sync(db, job_id, update_data)
 

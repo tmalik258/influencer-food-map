@@ -635,6 +635,13 @@ async def process_video(video: Video):
                 logger.info(
                     f"Stored restaurant, tags, and listing for video {video.youtube_video_id}"
                 )
+                
+                # Mark video as processed
+                video.processed = True
+                db.add(video)
+                await db.flush()
+                logger.info(f"Marked video {video.youtube_video_id} as processed")
+                
                 return True  # Return success value
             except Exception as e:
                 logger.error(f"Error processing video {video.youtube_video_id}: {e}")
@@ -804,15 +811,15 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
             "processing_time_minutes": (time.time() - start_time) / 60,
             "concurrency_limit": 5,
         }
-        if hint:
-            result_data["hint"] = hint
+        # Do not include hint in result_data; put it in error_message
         
         if job_id:
-            # Store raw original error messages in Job.error_message
+            # Store error message as plain text, prefer hint if available
             err_msgs = [er.get("message") for er in errors_list if isinstance(er, dict) and er.get("message")]
+            direct_error = hint if hint else ("; ".join(err_msgs) if err_msgs else None)
             job_data = JobUpdateRequest(
                 result_data=json.dumps(result_data),
-                error_message=("; ".join(err_msgs) if err_msgs else None)
+                error_message=direct_error
             )
             await JobService.update_job(db, job_id, job_data)
             await JobService.update_tracking_stats(db, job_id, items_in_progress=0)

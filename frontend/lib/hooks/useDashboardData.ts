@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { adminApi } from '@/lib/api';
 import type { Job } from '@/lib/types/api';
+import { useDashboardRealtime } from '@/lib/contexts/dashboard-realtime-context';
 
 interface DashboardStats {
   total_restaurants: number;
@@ -42,6 +43,7 @@ export function useDashboardData(): UseDashboardDataReturn {
   });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { version } = useDashboardRealtime();
 
   const fetchData = useCallback(async () => {
     try {
@@ -71,6 +73,11 @@ export function useDashboardData(): UseDashboardDataReturn {
   const refresh = useCallback(async () => {
     await fetchData();
   }, [fetchData]);
+
+  useEffect(() => {
+    // Refresh when any job event occurs
+    refresh();
+  }, [version, refresh]);
 
   return {
     data,

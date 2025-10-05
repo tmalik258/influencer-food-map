@@ -58,6 +58,7 @@ export interface Video {
   video_url: string;
   published_at?: string;
   transcription?: string;
+  processed?: boolean;
   created_at: string;
   updated_at: string;
   listings_count?: number;

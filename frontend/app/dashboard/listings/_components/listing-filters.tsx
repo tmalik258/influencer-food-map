@@ -1,8 +1,15 @@
-import { Search } from 'lucide-react';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { PlusCircle, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-import type { ListingFiltersProps } from '@/lib/types';
+import type { ListingFiltersProps } from "@/lib/types";
+import { Button } from "@/components/ui/button";
 
 export function ListingFilters({
   searchTerm,
@@ -11,6 +18,7 @@ export function ListingFilters({
   setStatusFilter,
   sortBy,
   setSortBy,
+  onCreateClick,
 }: ListingFiltersProps) {
   return (
     <div className="flex flex-col sm:flex-row gap-4 mb-6">
@@ -47,6 +55,12 @@ export function ListingFilters({
             <SelectItem value="confidence_score">Confidence</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          className="ml-auto bg-orange-600 hover:bg-orange-700 focus:ring-orange-500 focus:border-orange-500 cursor-pointer"
+          onClick={onCreateClick}
+        >
+          <PlusCircle className="mr-2 h-4 w-4" /> Create New Listing
+        </Button>
       </div>
     </div>
   );

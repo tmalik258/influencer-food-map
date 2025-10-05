@@ -26,29 +26,6 @@ export interface Job {
   cancelled_at?: string;
 }
 
-export interface JobCreateRequest {
-  job_type: 'scrape_youtube' | 'transcription_nlp';
-  title: string;
-  description?: string;
-  total_items?: number;
-}
-
-export interface JobUpdateRequest {
-  title?: string;
-  description?: string;
-  progress?: number;
-  total_items?: number;
-  processed_items?: number;
-}
-
-export interface JobsSummary {
-  total_jobs: number;
-  pending_jobs: number;
-  running_jobs: number;
-  completed_jobs: number;
-  failed_jobs: number;
-}
-
 export interface TriggerScrapeResponse {
   message: string;
   job_id: string;
@@ -57,28 +34,6 @@ export interface TriggerScrapeResponse {
 export interface TriggerNLPResponse {
   message: string;
   job_id: string;
-}
-
-export interface JobAnalytics {
-  total_jobs: number;
-  jobs_by_status: {
-    pending: number;
-    running: number;
-    completed: number;
-    failed: number;
-    cancelled: number;
-  };
-  jobs_by_type: {
-    scrape_youtube: number;
-    transcription_nlp: number;
-  };
-  average_completion_time: number;
-  success_rate: number;
-  failure_rate: number;
-  cancellation_rate: number;
-  completed_jobs: number;
-  failed_jobs: number;
-  running_jobs: number;
 }
 
 // Search and pagination types

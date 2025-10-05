@@ -2,9 +2,7 @@
 
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { 
-  FileText, 
-} from "lucide-react";
+import { FileText } from "lucide-react";
 import { ListingCard } from "./listing-card";
 import { Listing } from "@/lib/types";
 
@@ -13,9 +11,21 @@ interface VideoListingsTabProps {
   loading: boolean;
   error: string | null;
   refetch: () => Promise<void>;
+  refetchVideos: () => void;
 }
 
-export function VideoListingsTab({ listings, loading, error, refetch }: VideoListingsTabProps) {
+export function VideoListingsTab({
+  listings,
+  loading,
+  error,
+  refetch,
+  refetchVideos,
+}: VideoListingsTabProps) {
+  const handleOnDelete = () => {
+    refetch();
+    refetchVideos();
+  };
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -56,7 +66,9 @@ export function VideoListingsTab({ listings, loading, error, refetch }: VideoLis
           <div className="text-center text-gray-500">
             <FileText className="h-12 w-12 mx-auto mb-4 text-gray-300" />
             <p className="text-lg font-medium">No listings found</p>
-            <p className="text-sm">This video doesn&apos;t have any associated listings yet.</p>
+            <p className="text-sm">
+              This video doesn&apos;t have any associated listings yet.
+            </p>
           </div>
         </CardContent>
       </Card>
@@ -66,7 +78,12 @@ export function VideoListingsTab({ listings, loading, error, refetch }: VideoLis
   return (
     <div className="space-y-6">
       {listings.map((listing) => (
-        <ListingCard key={listing.id} listing={listing} onDeleted={refetch} onUpdate={refetch} />
+        <ListingCard
+          key={listing.id}
+          listing={listing}
+          onDeleted={handleOnDelete}
+          onUpdate={refetch}
+        />
       ))}
     </div>
   );

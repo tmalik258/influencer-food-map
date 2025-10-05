@@ -84,6 +84,9 @@ export function VideoTable({
                 <TableCell>
                   <Skeleton className="h-4 w-20" />
                 </TableCell>
+                <TableCell>
+                  <Skeleton className="h-4 w-20" />
+                </TableCell>
                 <TableCell className="text-right">
                   <div className="flex items-center justify-end gap-2">
                     <Skeleton className="h-8 w-8" />
@@ -163,6 +166,7 @@ export function VideoTable({
                 <TableHead>Influencer</TableHead>
                 <TableHead>Published</TableHead>
                 <TableHead>Created</TableHead>
+                <TableHead>Processing Status</TableHead>
                 <TableHead>Total Listings</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -238,6 +242,17 @@ export function VideoTable({
                       <Clock className="h-4 w-4 text-orange-500" />
                       <span>{new Date(video.created_at).toLocaleDateString()}</span>
                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge 
+                      variant={video.processed ? "default" : "secondary"}
+                      className={video.processed 
+                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" 
+                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
+                      }
+                    >
+                      {video.processed ? "Processed" : "Pending"}
+                    </Badge>
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1 text-sm">
