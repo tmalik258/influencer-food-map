@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from starlette.requests import Request
@@ -33,8 +34,20 @@ from app.routes.geocoding import router as geocoding_router
 # Configure logging
 logger = setup_logger(__name__)
 
+# Create scheduler before app
+scheduler = AsyncIOScheduler()
+scheduler.add_job(refresh_youtube_cookies, 'interval', hours=23)  # Refresh ~daily
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Start scheduler when event loop is running
+    scheduler.start()
+    yield
+    # Shutdown: Clean up scheduler
+    scheduler.shutdown()
+
 # Initialize app
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # Add CORS middleware
 app.add_middleware(
@@ -71,11 +84,6 @@ app.include_router(admin_tags_router, prefix="/admin/tags", tags=["admin"])
 app.include_router(admin_cuisines_router, prefix="/admin/cuisines", tags=["admin"])
 app.include_router(geocoding_router, prefix="/geocoding", tags=["geocoding"])
 app.include_router(dashboard_router, prefix="/admin/dashboard", tags=["admin"])
-
-
-scheduler = AsyncIOScheduler()
-scheduler.add_job(refresh_youtube_cookies, 'interval', hours=23)  # Refresh ~daily
-scheduler.start()
 
 
 # Custom exception handler for validation errors
