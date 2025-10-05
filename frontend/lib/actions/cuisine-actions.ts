@@ -1,6 +1,10 @@
 import { Cuisine, Restaurant } from '@/lib/types';
 import api, { adminApi } from '../api';
 
+// In-memory cache for all cuisines to avoid repeated fetching across mounts
+let allCuisinesCache: Cuisine[] | null = null;
+let allCuisinesCacheKey: string | null = null;
+
 interface PaginatedCuisinesResponse {
   cuisines: Cuisine[];
   total: number;
@@ -91,13 +95,21 @@ export const cuisineActions = {
    */
   async getAllCuisines(limit = 100, city?: string): Promise<Cuisine[]> {
     try {
+      const cacheKey = `${limit}:${city ?? ''}`;
+      if (allCuisinesCache && allCuisinesCacheKey === cacheKey) {
+        return allCuisinesCache;
+      }
       const response = await api.get('/cuisines/', {
         params: {
           limit,
           city,
         },
       });
-      return response.data;
+      const data = response.data;
+      const cuisines = Array.isArray(data) ? data : data?.cuisines ?? [];
+      allCuisinesCache = cuisines;
+      allCuisinesCacheKey = cacheKey;
+      return cuisines;
     } catch (error) {
       console.error('Error fetching all cuisines:', error);
       throw error;

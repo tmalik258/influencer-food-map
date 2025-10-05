@@ -1,6 +1,10 @@
 import { Tag } from '@/lib/types';
 import api, { adminApi } from '../api';
 
+// In-memory cache for all tags to avoid repeated fetching across mounts
+let allTagsCache: Tag[] | null = null;
+let allTagsCacheKey: string | null = null;
+
 interface PaginatedTagsResponse {
   tags: Tag[];
   total: number;
@@ -91,13 +95,21 @@ export const tagActions = {
    */
   async getAllTags(limit = 100, city?: string): Promise<Tag[]> {
     try {
+      const cacheKey = `${limit}:${city ?? ''}`;
+      if (allTagsCache && allTagsCacheKey === cacheKey) {
+        return allTagsCache;
+      }
       const response = await api.get('/tags/', {
         params: {
           limit,
           city,
         },
       });
-      return response.data;
+      const data = response.data;
+      const tags = Array.isArray(data) ? data : data?.tags ?? [];
+      allTagsCache = tags;
+      allTagsCacheKey = cacheKey;
+      return tags;
     } catch (error) {
       console.error('Error fetching all tags:', error);
       throw error;

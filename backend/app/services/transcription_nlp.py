@@ -11,16 +11,18 @@ import time
 import re
 from typing import Optional, Dict, Any, Tuple
 
+from googlemaps import Client as GoogleMapsClient
+from googlemaps.exceptions import ApiError
+from googleapiclient.http import HttpRequest
+from googleapiclient.errors import HttpError
+from googleapiclient.discovery import build
+
 from fastapi import HTTPException
 
 from sqlalchemy import select
 from sqlalchemy.sql import func, case
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from googlemaps import Client as GoogleMapsClient
-from app.api_schema.jobs import JobUpdateRequest
-from googlemaps.exceptions import ApiError
 
 from app.models import Video, Restaurant, Listing, Influencer, Tag, RestaurantTag, Cuisine, RestaurantCuisine, BusinessStatus
 from app.config import (
@@ -30,16 +32,16 @@ from app.config import (
     AUDIO_BASE_DIR,
     YOUTUBE_API_KEY,
     YTDLP_COOKIES_FILE,
+    TOR_PROXY,
 )
 from app.database import AsyncSessionLocal
-from app.utils.logging import setup_logger
-from app.scripts.gpt_food_place_processor import GPTFoodPlaceProcessor
-from app.services.jobs import JobService
-from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
-from googleapiclient.http import HttpRequest
-from app.utils.ytdlp_error_classifier import classify_ytdlp_error
 from app.exceptions import PipelineError
+from app.utils.logging import setup_logger
+from app.services.jobs import JobService
+from app.api_schema.jobs import JobUpdateRequest
+from app.utils.youtube_cookies import get_cookies_age_hours, refresh_youtube_cookies
+from app.utils.ytdlp_error_classifier import classify_ytdlp_error
+from app.scripts.gpt_food_place_processor import GPTFoodPlaceProcessor
 
 # Setup logging
 logger = setup_logger(__name__)
@@ -231,8 +233,6 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
 
     loop = asyncio.get_event_loop()
 
-    tor_proxy = "socks5://tor:9150"
-
     # Two attempts: first without Tor, second with Tor if geo-restricted
     use_tor = False
     max_attempts = 2
@@ -260,6 +260,12 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
                 ],
             }
 
+            if get_cookies_age_hours() > 24:
+                logger.info("Cookies stale; refreshing...")
+                refreshed = await refresh_youtube_cookies()
+                if not refreshed:
+                    logger.warning("Cookie refresh failed; proceeding with existing cookies")
+
             # Cookie file only
             if YTDLP_COOKIES_FILE and os.path.exists(YTDLP_COOKIES_FILE):
                 ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
@@ -269,7 +275,7 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
 
             # Proxy selection: normal proxy if configured; Tor only on geo-restriction fallback
             if use_tor:
-                ydl_opts["proxy"] = tor_proxy
+                ydl_opts["proxy"] = TOR_PROXY
                 logger.info("Using Tor proxy for geo-restricted video")
 
             # Download

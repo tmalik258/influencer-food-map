@@ -16,9 +16,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { Loader2, Plus, X, Tag, Search, Hash } from "lucide-react";
+import { Loader2, Plus, X, Tag, Search } from "lucide-react";
 import { Restaurant, Tag as TagType } from "@/lib/types";
 import { toast } from "sonner";
+import { useTags } from "@/lib/hooks";
+import { tagActions } from "@/lib/actions";
+import { adminApi } from "@/lib/api";
 
 const tagSchema = z.object({
   name: z.string().min(1, "Tag name is required").max(30, "Tag name too long"),
@@ -50,6 +53,8 @@ export function TagsManagementTab({
     },
   });
 
+  const { tags: allTags, loading: tagsLoading, error: tagsError, fetchAllTags } = useTags();
+
   // Check for unsaved changes
   useEffect(() => {
     const originalTagIds = new Set(restaurant.tags?.map((t) => t.id) || []);
@@ -62,49 +67,31 @@ export function TagsManagementTab({
     onUnsavedChanges(hasChanges);
   }, [tags, restaurant.tags, onUnsavedChanges]);
 
-  // Mock function to fetch available tags - replace with actual API call
-  const fetchAvailableTags = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      // Filter out tags already assigned to the restaurant
-      const assignedTagIds = new Set(tags.map((t) => t.id));
-
-      setAvailableTags(prev => prev.filter((t) => !assignedTagIds.has(t.id)));
-    } catch (error) {
-      console.log("Failed to fetch available tags:", error);
-      toast.error("Failed to fetch available tags");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [tags]);
-
+  // Fetch all tags once on mount
   useEffect(() => {
-    fetchAvailableTags();
-  }, [tags, fetchAvailableTags]);
+    fetchAllTags(200);
+  }, [fetchAllTags]);
+  
+  // Derive available tags whenever assigned tags or all tags change
+  useEffect(() => {
+    const assignedTagIds = new Set(tags.map((t) => t.id));
+    const source = Array.isArray(allTags) ? allTags : [];
+    const filtered = source.filter((t) => !assignedTagIds.has(t.id));
+    setAvailableTags(filtered);
+  }, [tags, allTags]);
 
   const handleAddTag = (tag: TagType) => {
     setTags((prev) => [...prev, tag]);
-    setAvailableTags((prev) => prev.filter((t) => t.id !== tag.id));
   };
 
   const handleRemoveTag = (tagId: string) => {
-    const removedTag = tags.find((t) => t.id === tagId);
-    if (removedTag) {
-      setTags((prev) => prev.filter((t) => t.id !== tagId));
-      setAvailableTags((prev) => [...prev, removedTag]);
-    }
+    setTags((prev) => prev.filter((t) => t.id !== tagId));
   };
 
   const handleCreateTag = async (data: TagFormData) => {
     try {
-      // This would be replaced with actual API call to create tag
-      const newTag: TagType = {
-        id: `new-${Date.now()}`,
-        name: data.name,
-        created_at: new Date().toISOString(),
-      };
-
-      setTags((prev) => [...prev, newTag]);
+      const created = await tagActions.createTag({ name: data.name });
+      setTags((prev) => [...prev, created]);
       form.reset();
       toast.success(`Tag "${data.name}" created and added`);
     } catch (error) {
@@ -116,9 +103,8 @@ export function TagsManagementTab({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      // This would be replaced with actual API call to update restaurant tags
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // Mock delay
-
+      const tag_ids = tags.map((t) => t.id);
+      await adminApi.put(`/restaurants/${restaurant.id}/tags/`, { tag_ids });
       toast.success("Tags updated successfully");
       onSuccess();
     } catch (error) {
@@ -178,7 +164,6 @@ export function TagsManagementTab({
                     tag.name
                   )} text-white px-3 py-1 text-sm flex items-center gap-2`}
                 >
-                  <Hash className="h-3 w-3" />
                   {tag.name}
                   <Button
                     variant="ghost"
@@ -216,13 +201,11 @@ export function TagsManagementTab({
             />
           </div>
         </CardHeader>
-        <CardContent>
-          {isLoading ? (
+        <CardContent className="max-h-[300px] overflow-auto">
+          {tagsLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
-              <span className="ml-2 text-muted-foreground">
-                Loading tags...
-              </span>
+              <span className="ml-2 text-muted-foreground">Loading tags...</span>
             </div>
           ) : filteredAvailableTags.length > 0 ? (
             <div className="flex flex-wrap gap-2">
@@ -234,7 +217,6 @@ export function TagsManagementTab({
                   onClick={() => handleAddTag(tag)}
                 >
                   <Plus className="h-3 w-3" />
-                  <Hash className="h-3 w-3" />
                   {tag.name}
                 </Badge>
               ))}
@@ -243,6 +225,8 @@ export function TagsManagementTab({
             <p className="text-muted-foreground text-sm">
               {searchTerm
                 ? "No tags found matching your search."
+                : tagsError
+                ? "Failed to load tags."
                 : "No available tags to add."}
             </p>
           )}

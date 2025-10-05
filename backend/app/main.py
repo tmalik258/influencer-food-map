@@ -1,3 +1,5 @@
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 
@@ -8,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exception_handlers import request_validation_exception_handler
 
 from app.utils.logging import setup_logger
+from app.utils.youtube_cookies import refresh_youtube_cookies
 from app.routes.tags import router as tags_router
 from app.routes.cuisines import router as cuisines_router
 from app.routes.videos import router as videos_router
@@ -68,6 +71,11 @@ app.include_router(admin_tags_router, prefix="/admin/tags", tags=["admin"])
 app.include_router(admin_cuisines_router, prefix="/admin/cuisines", tags=["admin"])
 app.include_router(geocoding_router, prefix="/geocoding", tags=["geocoding"])
 app.include_router(dashboard_router, prefix="/admin/dashboard", tags=["admin"])
+
+
+scheduler = AsyncIOScheduler()
+scheduler.add_job(refresh_youtube_cookies, 'interval', hours=23)  # Refresh ~daily
+scheduler.start()
 
 
 # Custom exception handler for validation errors

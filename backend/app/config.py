@@ -22,6 +22,10 @@ ALGORITHM = "HS256"
 ADMIN_EMAIL = os.getenv("ADMIN_EMAIL")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
+# google
+GOOGLE_EMAIL = os.getenv("GOOGLE_EMAIL")
+GOOGLE_PASSWORD = os.getenv("GOOGLE_PASSWORD")
+
 # API KEYS
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
@@ -60,3 +64,5 @@ YTDLP_BROWSER_PROFILE = os.getenv("YTDLP_BROWSER_PROFILE", "Default")  # optiona
 YTDLP_PROXY = os.getenv("YTDLP_PROXY")  # optional proxy (e.g., http://user:pass@host:port)
 YTDLP_GEO_BYPASS = os.getenv("YTDLP_GEO_BYPASS", "true").lower() == "true"
 YTDLP_GEO_COUNTRY = os.getenv("YTDLP_GEO_COUNTRY")  # e.g., "PK" or "AE"
+
+TOR_PROXY = "socks5://tor:9150"

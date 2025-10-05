@@ -95,7 +95,7 @@ export function CuisinesManagementTab({
 
   useEffect(() => {
     fetchAvailableCuisines();
-  }, [cuisines, fetchAvailableCuisines]);
+  }, [restaurant.id, fetchAvailableCuisines]);
 
   const handleAddCuisine = (cuisine: Cuisine) => {
     setCuisines((prev) => [...prev, cuisine]);
@@ -284,7 +284,7 @@ export function CuisinesManagementTab({
       </div>
 
       {/* Action Buttons - Fixed at bottom */}
-      <div className="flex justify-end gap-3">
+      <div className="flex justify-end pt-4 gap-3">
         <Button
           variant="outline"
           onClick={handleCancel}
