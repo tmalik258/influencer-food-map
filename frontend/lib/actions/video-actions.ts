@@ -13,7 +13,7 @@ export const videoActions = {
     influencer_id?: string;
     influencer_name?: string;
     has_listings?: boolean;
-    processed?: boolean;
+    processed_status?: "all" | "processed" | "pending";
     skip?: number;
     limit?: number;
   }): Promise<VideosResponse> {

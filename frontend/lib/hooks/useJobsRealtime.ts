@@ -88,7 +88,7 @@ export const useJobsRealtime = ({ onJobUpdate, onJobCreate, onJobDelete }: UseJo
       console.log('Unsubscribing from jobs realtime...');
       subscription.unsubscribe();
     };
-  }, [handleJobUpdate, handleJobCreate, handleJobDelete]);
+  }, [handleJobUpdate, handleJobCreate, handleJobDelete, supabase]);
 };
 
 function getStatusChangeMessage(oldStatus: string, newStatus: string): string | null {

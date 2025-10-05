@@ -18,7 +18,7 @@ class Video(Base):
     video_url = Column(String(255), nullable=False)
     published_at = Column(DateTime(timezone=True))
     transcription = Column(Text) # From Whisper
-    processed = Column(Boolean, default=False, server_default="false", nullable=False) # Processing status
+    is_processed = Column(Boolean, default=False, server_default="false", nullable=False) # Processing status
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

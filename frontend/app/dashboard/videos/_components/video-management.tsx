@@ -44,12 +44,14 @@ export default function VideoManagement() {
     setHasListingsFilter,
     setSortBy,
     setSortOrder,
+    setProcessedStatusFilter,
     refetch,
   } = useVideos({
     page: 1,
     limit: 10,
     sort_by: "published_at",
     sort_order: "desc",
+    processed_status: processedFilter,
   });
 
   useEffect(() => {
@@ -93,6 +95,7 @@ export default function VideoManagement() {
 
   const handleProcessedFilterChange = (processed: "all" | "processed" | "pending") => {
     setProcessedFilter(processed);
+    setProcessedStatusFilter(processed);
     setPage(1); // Reset to first page when changing filters
   };
 
@@ -224,6 +227,7 @@ export default function VideoManagement() {
     setInfluencerFilter("");
     setHasListingsFilter(undefined);
     setProcessedFilter("all");
+    setProcessedStatusFilter("all");
     setPage(1); // Reset to first page when clearing filters
   };
 
@@ -244,7 +248,7 @@ export default function VideoManagement() {
         setSortBy={handleSortChange}
         sortOrder={params.sort_order || "desc"}
         setSortOrder={handleSortOrderChange}
-        selectedInfluencer={params.influencer_name || ""}
+        selectedInfluencer={params.influencer_id || ""}
         setSelectedInfluencer={handleInfluencerChange}
         hasListings={params.has_listings}
         setHasListings={handleHasListingsChange}
@@ -256,7 +260,7 @@ export default function VideoManagement() {
         videos={videos}
         loading={loading}
         searchTerm={params.title || ""}
-        selectedInfluencer={params.influencer_name || ""}
+        selectedInfluencer={params.influencer_id || ""}
         hasListings={params.has_listings}
         processedFilter={processedFilter}
         onViewVideo={handleViewVideo}

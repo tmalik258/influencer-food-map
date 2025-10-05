@@ -15,6 +15,7 @@ interface PaginatedVideosParams {
   influencer_id?: string;
   influencer_name?: string;
   has_listings?: boolean;
+  processed_status?: "all" | "processed" | "pending";
   page?: number;
   limit?: number;
   sort_by?: string;
@@ -47,14 +48,25 @@ export const useVideos = (initialParams?: PaginatedVideosParams) => {
 
   const fetchVideos = useCallback(async (searchParams?: PaginatedVideosParams) => {
     const currentParams = searchParams || params;
-    const { page = 1, limit = 12, ...otherParams } = currentParams;
+    const { page = 1, limit = 12, processed_status, influencer_id, influencer_name, ...otherParams } = currentParams;
     
     setLoading(true);
     setError(null);
     
+    // Prefer influencer_id; fallback to normalized influencer_name
+    const normalizedInfluencerName = influencer_id ? undefined : (influencer_name ? influencer_name.trim().toLowerCase() : undefined);
+
+    console.log(
+      'Fetching videos with',
+      influencer_id ? `influencer_id: ${influencer_id}` : `influencer_name: ${normalizedInfluencerName}`
+    );
+
     try {
       const response = await videoActions.getVideos({
         ...otherParams,
+        influencer_id: influencer_id ? influencer_id.trim() : undefined,
+        influencer_name: normalizedInfluencerName,
+        processed_status: processed_status === 'all' ? undefined : processed_status,
         skip: (page - 1) * limit,
         limit
       });
@@ -97,8 +109,8 @@ export const useVideos = (initialParams?: PaginatedVideosParams) => {
     updateParams({ title, page: 1 }); // Reset to first page when searching
   }, [updateParams]);
 
-  const setInfluencerFilter = useCallback((influencer_name: string) => {
-    updateParams({ influencer_name, page: 1 }); // Reset to first page when filtering
+  const setInfluencerFilter = useCallback((influencer_id: string) => {
+    updateParams({ influencer_id: influencer_id.trim(), page: 1 });
   }, [updateParams]);
 
   const setHasListingsFilter = useCallback((has_listings?: boolean) => {
@@ -111,6 +123,10 @@ export const useVideos = (initialParams?: PaginatedVideosParams) => {
 
   const setSortOrder = useCallback((sort_order: 'asc' | 'desc') => {
     updateParams({ sort_order, page: 1 }); // Reset to first page when changing sort order
+  }, [updateParams]);
+
+  const setProcessedStatusFilter = useCallback((processed_status: "all" | "processed" | "pending") => {
+    updateParams({ processed_status, page: 1 }); // Reset to first page when filtering
   }, [updateParams]);
 
   useEffect(() => {
@@ -135,6 +151,7 @@ export const useVideos = (initialParams?: PaginatedVideosParams) => {
     setSearchTerm,
     setInfluencerFilter,
     setHasListingsFilter,
+    setProcessedStatusFilter,
     setSortBy,
     setSortOrder,
     refetch: () => fetchVideos(params)

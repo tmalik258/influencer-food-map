@@ -126,10 +126,18 @@ export function AsyncSearchableSelect({
           </span>
           <div className="flex items-center gap-1">
             {selectedOption && !disabled && (
-              <X
-                className="h-4 w-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 cursor-pointer"
-                onClick={handleClear}
-              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-4 w-4 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  handleClear(e);
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             )}
             <ChevronDown className="h-4 w-4 shrink-0 opacity-50" />
           </div>

@@ -245,13 +245,13 @@ export function VideoTable({
                   </TableCell>
                   <TableCell>
                     <Badge 
-                      variant={video.processed ? "default" : "secondary"}
-                      className={video.processed 
+                      variant={video.is_processed ? "default" : "secondary"}
+                      className={video.is_processed 
                         ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" 
                         : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
                       }
                     >
-                      {video.processed ? "Processed" : "Pending"}
+                      {video.is_processed ? "Processed" : "Pending"}
                     </Badge>
                   </TableCell>
                   <TableCell>

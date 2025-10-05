@@ -2,11 +2,12 @@ from typing import Optional
 
 from fastapi import (APIRouter, Depends, HTTPException)
 
-from sqlalchemy import func
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import select, func
+from sqlalchemy.orm import joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (Video, Influencer, Listing)
-from app.database import get_db
+from app.database import get_async_db
 from app.utils.logging import setup_logger
 from app.api_schema.videos import VideoResponse, VideosResponse
 from app.api_schema.influencers import InfluencerLightResponse
@@ -16,8 +17,8 @@ router = APIRouter()
 logger = setup_logger(__name__)
 
 @router.get("/", response_model=VideosResponse)
-def get_videos(
-    db: Session = Depends(get_db),
+async def get_videos(
+    db: AsyncSession = Depends(get_async_db),
     title: Optional[str] = None,
     youtube_video_id: Optional[str] = None,
     video_title: Optional[str] = None,
@@ -25,6 +26,7 @@ def get_videos(
     influencer_id: Optional[str] = None,
     influencer_name: Optional[str] = None,
     has_listings: Optional[bool] = None,
+    processed_status: Optional[str] = None,
     sort_by: Optional[str] = "created_at",
     sort_order: Optional[str] = "desc",
     skip: int = 0,
@@ -33,30 +35,35 @@ def get_videos(
     """Get videos with filters for title, YouTube video ID, video URL, video title, influencer ID, or influencer name."""
     try:
         # Start with a base query that includes the count of listings
-        query = db.query(Video, func.count(Listing.id).label("listings_count")) \
+        stmt = select(Video, func.count(Listing.id).label("listings_count")) \
             .outerjoin(Listing, Video.id == Listing.video_id) \
             .group_by(Video.id)
 
         # Handle has_listings filter with three options: True, False, or None (all)
         if has_listings is True:
             # Filter videos WITH listings
-            query = query.having(func.count(Listing.id) > 0)
+            stmt = stmt.having(func.count(Listing.id) > 0)
         elif has_listings is False:
             # Filter videos WITHOUT listings
-            query = query.having(func.count(Listing.id) == 0)
+            stmt = stmt.having(func.count(Listing.id) == 0)
+
+        if processed_status == "processed":
+            stmt = stmt.where(Video.is_processed.is_(True))
+        elif processed_status == "pending":
+            stmt = stmt.where(Video.is_processed.is_(False))
 
         if title:
-            query = query.filter(Video.title.ilike(f"%{title}%"))
+            stmt = stmt.where(Video.title.ilike(f"%{title}%"))
         if youtube_video_id:
-            query = query.filter(Video.youtube_video_id == youtube_video_id)
+            stmt = stmt.where(Video.youtube_video_id == youtube_video_id)
         if video_url:
-            query = query.filter(Video.video_url == video_url)
+            stmt = stmt.where(Video.video_url == video_url)
         if video_title:
-            query = query.filter(Video.title.ilike(f"%{video_title}%"))
+            stmt = stmt.where(Video.title.ilike(f"%{video_title}%"))
         if influencer_id:
-            query = query.filter(Video.influencer_id == influencer_id)
+            stmt = stmt.where(Video.influencer_id == influencer_id)
         if influencer_name:
-            query = query.join(Influencer).filter(Influencer.name.ilike(f"%{influencer_name}%"))
+            stmt = stmt.join(Influencer).where(Influencer.name.ilike(f"%{influencer_name}%"))
 
         # Apply sorting
         if sort_by:
@@ -71,28 +78,35 @@ def get_videos(
             
             if sort_column:
                 if sort_order and sort_order.lower() == "asc":
-                    query = query.order_by(sort_column.asc())
+                    stmt = stmt.order_by(sort_column.asc())
                 else:
-                    query = query.order_by(sort_column.desc())
+                    stmt = stmt.order_by(sort_column.desc())
 
         # Get total count before applying pagination
-        total_count = query.count()
+        subq = stmt.subquery()
+        count_stmt = select(func.count()).select_from(subq)
+        count_result = await db.execute(count_stmt)
+        total_count = count_result.scalar()
 
         # Apply pagination
-        query = query.offset(skip).limit(limit)
+        stmt = stmt.offset(skip).limit(limit)
 
-        videos_with_counts = query.all()
+        result = await db.execute(stmt)
+        videos_with_counts = result.all()
 
         # Eager load influencers separately to avoid GROUP BY issues
-        video_ids = [video.id for video, _ in videos_with_counts]
+        video_ids = [row[0].id for row in videos_with_counts]
         influencers_map = {}
         if video_ids:
-            influencers_query = db.query(Video).filter(Video.id.in_(video_ids)).options(joinedload(Video.influencer))
-            for video in influencers_query:
+            inf_stmt = select(Video).where(Video.id.in_(video_ids)).options(joinedload(Video.influencer))
+            inf_result = await db.execute(inf_stmt)
+            videos_inf = inf_result.scalars().all()
+            for video in videos_inf:
                 influencers_map[video.id] = video.influencer
 
         video_responses = []
-        for video, listings_count in videos_with_counts:
+        for row in videos_with_counts:
+            video, listings_count = row
             influencer_response = None
             influencer = influencers_map.get(video.id)
             if influencer:
@@ -118,7 +132,7 @@ def get_videos(
                 video_url=video.video_url,
                 published_at=video.published_at,
                 transcription=video.transcription,
-                processed=video.processed,
+                is_processed=video.is_processed,
                 created_at=video.created_at,
                 updated_at=video.updated_at,
                 listings_count=listings_count
@@ -133,10 +147,12 @@ def get_videos(
         raise HTTPException(status_code=500, detail="Internal server error while fetching videos")
 
 @router.get("/{video_id}/", response_model=VideoResponse)
-def get_video(video_id: str, db: Session = Depends(get_db)):
+async def get_video(video_id: str, db: AsyncSession = Depends(get_async_db)):
     """Get a single video by ID."""
     try:
-        video = db.query(Video).options(joinedload(Video.influencer)).filter(Video.id == video_id).first()
+        stmt = select(Video).options(joinedload(Video.influencer)).where(Video.id == video_id)
+        result = await db.execute(stmt)
+        video = result.scalar_one_or_none()
 
         if not video:
             raise HTTPException(status_code=404, detail="Video not found")
@@ -158,7 +174,9 @@ def get_video(video_id: str, db: Session = Depends(get_db)):
             )
         
         # Calculate listings_count for a single video
-        listings_count = db.query(func.count(Listing.id)).filter(Listing.video_id == video.id).scalar()
+        count_stmt = select(func.count(Listing.id)).where(Listing.video_id == video.id)
+        count_result = await db.execute(count_stmt)
+        listings_count = count_result.scalar()
 
         video_response = VideoResponse(
             id=video.id,
@@ -169,7 +187,7 @@ def get_video(video_id: str, db: Session = Depends(get_db)):
             video_url=video.video_url,
             published_at=video.published_at,
             transcription=video.transcription,
-            processed=video.processed,
+            is_processed=video.is_processed,
             created_at=video.created_at,
             updated_at=video.updated_at,
             listings_count=listings_count

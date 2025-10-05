@@ -1,12 +1,23 @@
-'use client';
+"use client";
 
-import { Card, CardContent } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Card, CardContent } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Search } from "lucide-react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 
-import type { VideoFiltersProps } from '@/lib/types';
+import type { VideoFiltersProps } from "@/lib/types";
+import { useInfluencers } from "@/lib/hooks/useInfluencers";
+import {
+  AsyncSearchableSelect,
+  type SearchableOption,
+} from "@/components/ui/async-searchable-select";
 
 export function VideoFilters({
   searchTerm,
@@ -20,26 +31,47 @@ export function VideoFilters({
   selectedInfluencer,
   setSelectedInfluencer,
   processedFilter,
-  setProcessedFilter
+  setProcessedFilter,
 }: VideoFiltersProps) {
   const [localSearchTerm, setLocalSearchTerm] = useState(searchTerm);
+  const {
+    influencers,
+    loading: influencersLoading,
+    error: influencersError,
+    setSearchQuery,
+  } = useInfluencers({ limit: 100 });
+  const lastQueryRef = useRef<string>("");
 
   // Debounce search term
   useEffect(() => {
-    // Only update if the local term is different from the current search term
     if (localSearchTerm !== searchTerm) {
       const timer = setTimeout(() => {
         setSearchTerm(localSearchTerm);
-      }, 400); // 400ms debounce delay
-      
+      }, 400);
       return () => clearTimeout(timer);
     }
   }, [localSearchTerm, searchTerm, setSearchTerm]);
 
+  const influencerOptions = useMemo<SearchableOption[]>(() => {
+    return (influencers || []).map((inf) => ({ id: inf.id, name: inf.name }));
+  }, [influencers]);
+
+  const fetchInfluencerOptions = useCallback(
+    async (query: string): Promise<SearchableOption[]> => {
+      const trimmed = query.trim();
+      if (trimmed && trimmed !== lastQueryRef.current) {
+        lastQueryRef.current = trimmed;
+        setSearchQuery(trimmed);
+      }
+      return influencerOptions;
+    },
+    [setSearchQuery, influencerOptions]
+  );
+
   return (
     <Card className="border-none shadow-none p-0">
       <CardContent className="space-y-4 p-0">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
@@ -47,7 +79,30 @@ export function VideoFilters({
               placeholder="Search videos..."
               value={localSearchTerm}
               onChange={(e) => setLocalSearchTerm(e.target.value)}
-              className="pl-10 glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
+              className="glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
+            />
+          </div>
+
+          {/* Influencer Filter - searchable combobox */}
+          <div className="w-full">
+            <AsyncSearchableSelect
+              value={selectedInfluencer || ""}
+              onValueChange={(value) =>
+                setSelectedInfluencer(value === "all" ? "" : value)
+              }
+              placeholder={
+                influencersLoading
+                  ? "Loading influencers..."
+                  : selectedInfluencer
+                  ? "Select an influencer"
+                  : "All Influencers"
+              }
+              searchPlaceholder="Search influencers..."
+              fetchOptions={fetchInfluencerOptions}
+              disabled={!!influencersLoading}
+              error={!!influencersError}
+              emptyMessage={influencersError || "No influencers found."}
+              className="glass-effect backdrop-blur-sm"
             />
           </div>
 
@@ -64,7 +119,10 @@ export function VideoFilters({
           </Select>
 
           {/* Sort Order */}
-          <Select value={sortOrder} onValueChange={(value: 'asc' | 'desc') => setSortOrder(value)}>
+          <Select
+            value={sortOrder}
+            onValueChange={(value: "asc" | "desc") => setSortOrder(value)}
+          >
             <SelectTrigger className="w-full glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white">
               <SelectValue placeholder="Sort order" />
             </SelectTrigger>
@@ -74,24 +132,17 @@ export function VideoFilters({
             </SelectContent>
           </Select>
 
-          {/* Influencer Filter */}
-          <div className="relative">
-            <Input
-              placeholder="Filter by influencer..."
-              value={selectedInfluencer}
-              onChange={(e) => setSelectedInfluencer(e.target.value)}
-              className="glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400"
-            />
-          </div>
-
           {/* Has Listings Filter */}
-          <Select value={hasListings?.toString() || 'all'} onValueChange={(value) => {
-            if (value === 'all') {
-              setHasListings(undefined);
-            } else {
-              setHasListings(value === 'true');
-            }
-          }}>
+          <Select
+            value={hasListings?.toString() || "all"}
+            onValueChange={(value) => {
+              if (value === "all") {
+                setHasListings(undefined);
+              } else {
+                setHasListings(value === "true");
+              }
+            }}
+          >
             <SelectTrigger className="w-full glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white">
               <SelectValue placeholder="Filter by listings" />
             </SelectTrigger>
@@ -103,7 +154,12 @@ export function VideoFilters({
           </Select>
 
           {/* Processing Status Filter */}
-          <Select value={processedFilter} onValueChange={(value: "all" | "processed" | "pending") => setProcessedFilter(value)}>
+          <Select
+            value={processedFilter}
+            onValueChange={(value: "all" | "processed" | "pending") =>
+              setProcessedFilter(value)
+            }
+          >
             <SelectTrigger className="w-full glass-effect backdrop-blur-sm bg-white/50 dark:bg-gray-800/50 border-orange-200 dark:border-orange-800 focus:border-orange-500 focus:ring-orange-500/20 text-gray-900 dark:text-white">
               <SelectValue placeholder="Filter by processing status" />
             </SelectTrigger>

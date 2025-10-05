@@ -222,4 +222,4 @@ export interface JobCardProps {
 }
 
 // Import base types
-import type { Listing, Video } from "./index";
+import type { Listing, Video, Influencer } from "./index";

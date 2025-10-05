@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -43,7 +43,6 @@ export function TagsManagementTab({
   const [tags, setTags] = useState<TagType[]>(restaurant.tags || []);
   const [availableTags, setAvailableTags] = useState<TagType[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const form = useForm<TagFormData>({
@@ -124,26 +123,6 @@ export function TagsManagementTab({
     tag.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
-  // Group tags by category for better organization
-  const getTagColor = (tagName: string) => {
-    const lowerName = tagName.toLowerCase();
-    if (lowerName.includes("dining") || lowerName.includes("fine"))
-      return "bg-purple-600 hover:bg-purple-700";
-    if (lowerName.includes("family") || lowerName.includes("friendly"))
-      return "bg-green-600 hover:bg-green-700";
-    if (
-      lowerName.includes("vegetarian") ||
-      lowerName.includes("vegan") ||
-      lowerName.includes("gluten")
-    )
-      return "bg-emerald-600 hover:bg-emerald-700";
-    if (lowerName.includes("delivery") || lowerName.includes("takeout"))
-      return "bg-blue-600 hover:bg-blue-700";
-    if (lowerName.includes("music") || lowerName.includes("happy"))
-      return "bg-pink-600 hover:bg-pink-700";
-    return "bg-orange-600 hover:bg-orange-700";
-  };
-
   return (
     <div className="pt-6 space-y-6">
       {/* Current Tags */}
@@ -160,9 +139,7 @@ export function TagsManagementTab({
               {tags.map((tag) => (
                 <Badge
                   key={tag.id}
-                  className={`${getTagColor(
-                    tag.name
-                  )} text-white px-3 py-1 text-sm flex items-center gap-2`}
+                  className={`bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 text-sm flex items-center gap-2`}
                 >
                   {tag.name}
                   <Button

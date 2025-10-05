@@ -637,7 +637,7 @@ async def process_video(video: Video):
                 )
                 
                 # Mark video as processed
-                video.processed = True
+                video.is_processed = True
                 db.add(video)
                 await db.flush()
                 logger.info(f"Marked video {video.youtube_video_id} as processed")

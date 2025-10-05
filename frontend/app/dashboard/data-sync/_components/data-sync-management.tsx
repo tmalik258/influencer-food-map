@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Play, AlertCircle, CheckCircle, Activity, BarChart3 } from "lucide-react";
+import { RefreshCw, Play, AlertCircle, CheckCircle, Activity } from "lucide-react";
 import { useJobs, useDataSync, useJobActions } from "@/lib/hooks";
 import DashboardLoadingSkeleton from "@/app/dashboard/_components/dashboard-loading-skeleton";
 import JobsTable from "./jobs-table";
