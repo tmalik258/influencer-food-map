@@ -182,10 +182,10 @@ export function JobCard({ job, onTrigger, cancelJob }: JobCardProps & { cancelJo
             </div>
           )}
 
-          {Array.isArray((job as any).error_messages) && (job as any).error_messages.length > 0 && (
+          {Array.isArray(job?.error_messages) && job?.error_messages?.length > 0 && (
             <div className="p-3 bg-orange-50 border border-orange-200 rounded-md">
               <ul className="list-disc list-inside space-y-1">
-                {(job as any).error_messages.map((msg: string, idx: number) => (
+                {job?.error_messages?.map((msg: string, idx: number) => (
                   <li key={idx} className="text-sm text-orange-800">{msg}</li>
                 ))}
               </ul>
