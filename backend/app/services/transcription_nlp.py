@@ -762,17 +762,35 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
                                 "type": e.error_type,
                                 "message": str(e),
                                 "video_id": getattr(video, "youtube_video_id", None),
-                                "details": e.details,
+                                "details": e.details or {},
                             }
+                            # Prefer raw error message from yt-dlp/exception if available
+                            raw_msg = None
+                            try:
+                                raw_msg = (e.details or {}).get("raw") if isinstance(e.details, dict) else None
+                            except Exception:
+                                raw_msg = None
+                            msg_to_append = raw_msg or str(e)
                         else:
                             cls = classify_ytdlp_error(str(e))
                             err_info = {
                                 "type": cls.get("type", "unknown"),
                                 "message": str(e),
                                 "video_id": getattr(video, "youtube_video_id", None),
-                                "details": {"hint": cls.get("hint")},
+                                "details": {
+                                    "hint": cls.get("hint"),
+                                    "raw": str(e)
+                                },
                             }
+                            # Prefer raw error string over classifier hint for actionable detail
+                            msg_to_append = str(e)
                         errors_list.append(err_info)
+                        # Update job with latest error message immediately for visibility
+                        if job_id and msg_to_append:
+                            try:
+                                await JobService.append_error_message(db, job_id, msg_to_append)
+                            except Exception as _update_err:
+                                logger.warning(f"Failed to append error message: {_update_err}")
                     except Exception:
                         # Fallback minimal error record
                         errors_list.append({
@@ -798,32 +816,30 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
         logger.info(f"Transcription and NLP pipeline completed: {successful} successful, {failed} failed")
         
         # Final job update
-        # Build result_data without errors list or summary; keep only hint
-        hint = None
-        if errors_list:
-            h = errors_list[0].get("details", {}).get("hint") if isinstance(errors_list[0], dict) else None
-            if h:
-                hint = h
+        # Build result_data including error summary; errors list returned in result for admin
+        summary: dict[str, int] = {}
+        for er in errors_list:
+            tp = er.get("type", "unknown")
+            summary[tp] = summary.get(tp, 0) + 1
         result_data = {
             "videos_processed": successful,
             "total_videos": total_videos,
             "failed_videos": failed,
             "processing_time_minutes": (time.time() - start_time) / 60,
             "concurrency_limit": 5,
+            "error_summary": summary,
         }
-        # Do not include hint in result_data; put it in error_message
         
         if job_id:
-            # Store error message as plain text, prefer hint if available
-            err_msgs = [er.get("message") for er in errors_list if isinstance(er, dict) and er.get("message")]
-            direct_error = hint if hint else ("; ".join(err_msgs) if err_msgs else None)
+            # Only update result_data and reset items_in_progress; error_messages appended during processing
             job_data = JobUpdateRequest(
-                result_data=json.dumps(result_data),
-                error_message=direct_error
+                result_data=json.dumps(result_data)
             )
             await JobService.update_job(db, job_id, job_data)
             await JobService.update_tracking_stats(db, job_id, items_in_progress=0)
             
+        # Return result with errors for admin route to act upon
+        result_data["errors"] = errors_list
         return result_data
     except Exception as e:
         logger.error(f"Error in pipeline: {e}")

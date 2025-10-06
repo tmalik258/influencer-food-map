@@ -5,12 +5,76 @@ from typing import Optional, List
 
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import Session
-from sqlalchemy import select, update, desc
+from sqlalchemy import select, update, desc, text
 
 from app.models.job import Job, JobStatus, JobType
 from app.api_schema.jobs import JobCreateRequest, JobUpdateRequest
 
 class JobService:
+    @staticmethod
+    async def append_error_message(db: AsyncSession, job_id: UUID, error_message: str) -> Optional[Job]:
+        """Append an error message to job.error_messages (async, DB-level JSONB append)."""
+        try:
+            await db.execute(
+                text(
+                    """
+                    UPDATE jobs
+                    SET error_messages = COALESCE(error_messages, '[]'::jsonb) || jsonb_build_array(:msg)
+                    WHERE id = :job_id
+                    """
+                ),
+                {"msg": error_message, "job_id": str(job_id)},
+            )
+            await db.execute(
+                update(Job).where(Job.id == job_id).values(last_heartbeat=datetime.utcnow())
+            )
+            await db.commit()
+        except Exception:
+            # Fallback to read-modify-write if direct SQL fails
+            job = await JobService.get_job(db, job_id)
+            if not job:
+                return None
+            existing = job.error_messages or []
+            if isinstance(existing, list):
+                existing.append(error_message)
+            else:
+                existing = [str(existing), error_message]
+            update_data = JobUpdateRequest(error_messages=existing, last_heartbeat=datetime.utcnow())
+            return await JobService.update_job(db, job_id, update_data)
+        return await JobService.get_job(db, job_id)
+
+    @staticmethod
+    def append_error_message_sync(db: Session, job_id: UUID, error_message: str) -> Optional[Job]:
+        """Append an error message to job.error_messages (sync, DB-level JSONB append)."""
+        try:
+            db.execute(
+                text(
+                    """
+                    UPDATE jobs
+                    SET error_messages = COALESCE(error_messages, '[]'::jsonb) || jsonb_build_array(:msg)
+                    WHERE id = :job_id
+                    """
+                ),
+                {"msg": error_message, "job_id": str(job_id)},
+            )
+            db.execute(
+                update(Job).where(Job.id == job_id).values(last_heartbeat=datetime.utcnow())
+            )
+            db.commit()
+        except Exception:
+            # Fallback to read-modify-write if direct SQL fails
+            job = JobService.get_job_sync(db, job_id)
+            if not job:
+                return None
+            existing = job.error_messages or []
+            if isinstance(existing, list):
+                existing.append(error_message)
+            else:
+                existing = [str(existing), error_message]
+            update_data = JobUpdateRequest(error_messages=existing, last_heartbeat=datetime.utcnow())
+            return JobService.update_job_sync(db, job_id, update_data)
+        return JobService.get_job_sync(db, job_id)
+
     @staticmethod
     async def create_job(db: AsyncSession, job_data: JobCreateRequest) -> Job:
         """Create a new job."""
@@ -166,20 +230,21 @@ class JobService:
     @staticmethod
     async def fail_job(db: AsyncSession, job_id: UUID, error_message: str) -> Optional[Job]:
         """Mark a job as failed."""
+        # Append the error message to error_messages
+        await JobService.append_error_message(db, job_id, error_message)
         update_data = JobUpdateRequest(
             status=JobStatus.FAILED,
-            completed_at=datetime.utcnow(),
-            error_message=error_message
+            completed_at=datetime.utcnow()
         )
         return await JobService.update_job(db, job_id, update_data)
 
     @staticmethod
     def fail_job_sync(db: Session, job_id: UUID, error_message: str) -> Optional[Job]:
         """Mark a job as failed (synchronous version)."""
+        JobService.append_error_message_sync(db, job_id, error_message)
         update_data = JobUpdateRequest(
             status=JobStatus.FAILED,
-            completed_at=datetime.utcnow(),
-            error_message=error_message
+            completed_at=datetime.utcnow()
         )
         return JobService.update_job_sync(db, job_id, update_data)
 
@@ -204,24 +269,26 @@ class JobService:
     @staticmethod
     async def cancel_job(db: AsyncSession, job_id: UUID, error_message: Optional[str] = None) -> Optional[Job]:
         """Cancel a job."""
+        if error_message:
+            await JobService.append_error_message(db, job_id, error_message)
         update_data = JobUpdateRequest(
             status=JobStatus.CANCELLED,
             cancellation_requested=True,
             cancelled_at=datetime.utcnow(),
-            completed_at=datetime.utcnow(),
-            error_message=error_message
+            completed_at=datetime.utcnow()
         )
         return await JobService.update_job(db, job_id, update_data)
 
     @staticmethod
     def cancel_job_sync(db: Session, job_id: UUID, error_message: Optional[str] = None) -> Optional[Job]:
         """Cancel a job (synchronous version)."""
+        if error_message:
+            JobService.append_error_message_sync(db, job_id, error_message)
         update_data = JobUpdateRequest(
             status=JobStatus.CANCELLED,
             cancellation_requested=True,
             cancelled_at=datetime.utcnow(),
-            completed_at=datetime.utcnow(),
-            error_message=error_message
+            completed_at=datetime.utcnow()
         )
         return JobService.update_job_sync(db, job_id, update_data)
 
@@ -524,9 +591,10 @@ class JobService:
         # Mark stale jobs as failed
         updated_jobs = []
         for job in stale_jobs:
+            msg = f"Job marked as stale - no heartbeat for {stale_threshold_minutes} minutes"
+            await JobService.append_error_message(db, job.id, msg)
             update_data = JobUpdateRequest(
                 status=JobStatus.FAILED,
-                error_message=f"Job marked as stale - no heartbeat for {stale_threshold_minutes} minutes",
                 completed_at=datetime.utcnow()
             )
             updated_job = await JobService.update_job(db, job.id, update_data)
@@ -549,9 +617,10 @@ class JobService:
         # Mark stale jobs as failed
         updated_jobs = []
         for job in stale_jobs:
+            msg = f"Job marked as stale - no heartbeat for {stale_threshold_minutes} minutes"
+            JobService.append_error_message_sync(db, job.id, msg)
             update_data = JobUpdateRequest(
                 status=JobStatus.FAILED,
-                error_message=f"Job marked as stale - no heartbeat for {stale_threshold_minutes} minutes",
                 completed_at=datetime.utcnow()
             )
             updated_job = JobService.update_job_sync(db, job.id, update_data)

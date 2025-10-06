@@ -1,11 +1,13 @@
 # Video Processing Status Implementation Plan
 
 ## Overview
+
 This document outlines the complete implementation plan for adding a `processed` column to track video processing status across the entire application. The changes will affect the database schema, backend services, API schemas, and frontend components.
 
 ## 1. Database Schema Changes
 
 ### 1.1 Add processed column to Video model
+
 **File:** `backend/app/models/video.py`
 
 Add a new boolean column `processed` to the Video model:
@@ -28,6 +30,7 @@ class Video(Base):
 ```
 
 ### 1.2 Database Migration
+
 Create a new Alembic migration to add the column:
 
 ```python
@@ -40,13 +43,17 @@ def downgrade():
 ```
 
 ### 1.3 Existing Data Migration Strategy
-- All existing videos will have `processed = false` by default (using server_default)
-- Videos that have already been processed can be identified by checking if they have listings or completed processing jobs
-- Consider running a one-time script to update `processed = true` for videos that already have listings
+
+* All existing videos will have `processed = false` by default (using server\_default)
+
+* Videos that have already been processed can be identified by checking if they have listings or completed processing jobs
+
+* Consider running a one-time script to update `processed = true` for videos that already have listings
 
 ## 2. Backend Service Updates
 
-### 2.1 Update transcription_nlp.py
+### 2.1 Update transcription\_nlp.py
+
 **File:** `backend/app/services/transcription_nlp.py`
 
 Add logic to mark videos as processed when processing completes successfully:
@@ -70,6 +77,7 @@ async def process_video_transcription(video_id: str, db: AsyncSession):
 ```
 
 ### 2.2 Update Video Processing Jobs Service
+
 **File:** `backend/app/services/video_processing_jobs.py`
 
 Add method to update video processed status based on job completion:
@@ -86,6 +94,7 @@ async def update_video_processed_status(video_id: str, processed: bool, db: Asyn
 ```
 
 ### 2.3 Update Admin Video Actions
+
 **File:** `backend/app/routes/admin/videos.py`
 
 Add processed field to video update endpoints:
@@ -111,6 +120,7 @@ async def update_video(
 ## 3. API Schema Updates
 
 ### 3.1 Update Video Response Schemas
+
 **File:** `backend/app/api_schema/videos.py`
 
 Add processed field to all video response schemas:
@@ -142,6 +152,7 @@ class VideoUpdate(BaseModel):
 ## 4. Frontend Type Definitions
 
 ### 4.1 Update Video Interface
+
 **File:** `frontend/lib/types/index.ts`
 
 Add processed field to Video interface:
@@ -164,6 +175,7 @@ export interface Video {
 ```
 
 ### 4.2 Update Video Validation Schemas
+
 **File:** `frontend/lib/validations/video.ts`
 
 Add processed field to update schema:
@@ -182,6 +194,7 @@ export const updateVideoSchema = z.object({
 ## 5. Frontend Dashboard Updates
 
 ### 5.1 Update Video Table Component
+
 **File:** `frontend/app/dashboard/videos/_components/video-table.tsx`
 
 Add processed status column to the table:
@@ -209,6 +222,7 @@ Add processed status column to the table:
 ```
 
 ### 5.2 Update Edit Video Modal
+
 **File:** `frontend/app/dashboard/videos/_components/edit-video-modal.tsx`
 
 Add processed checkbox to the edit form:
@@ -238,6 +252,7 @@ Add processed checkbox to the edit form:
 ```
 
 ### 5.3 Add Processing Status Filter
+
 **File:** `frontend/app/dashboard/videos/_components/video-filters.tsx`
 
 Add filter option for processed status:
@@ -269,6 +284,7 @@ export interface VideoFiltersProps {
 ```
 
 ### 5.4 Update Video Management Component
+
 **File:** `frontend/app/dashboard/videos/_components/video-management.tsx`
 
 Add processed filter state and pass to components:
@@ -299,6 +315,7 @@ const {
 ## 6. Update API Actions
 
 ### 6.1 Update Video Actions
+
 **File:** `frontend/lib/actions/video-actions.ts`
 
 Add processed parameter to API calls:
@@ -326,6 +343,7 @@ export const videoActions = {
 ```
 
 ### 6.2 Update Admin Video Actions
+
 **File:** `frontend/lib/actions/admin-video-actions.ts`
 
 Add processed field to update actions:
@@ -350,14 +368,20 @@ export const adminVideoActions = {
 ## 7. Testing Considerations
 
 ### 7.1 Backend Tests
-- Test that processed field is properly set when video processing completes
-- Test that processed filter works correctly in API endpoints
-- Test that video update endpoints properly handle processed field
+
+* Test that processed field is properly set when video processing completes
+
+* Test that processed filter works correctly in API endpoints
+
+* Test that video update endpoints properly handle processed field
 
 ### 7.2 Frontend Tests
-- Test that processed status displays correctly in video table
-- Test that processed filter works correctly
-- Test that edit modal properly updates processed status
+
+* Test that processed status displays correctly in video table
+
+* Test that processed filter works correctly
+
+* Test that edit modal properly updates processed status
 
 ## 8. Deployment Strategy
 
@@ -369,13 +393,18 @@ export const adminVideoActions = {
 ## 9. Rollback Plan
 
 If issues arise:
+
 1. Rollback frontend changes first (no data impact)
 2. Rollback backend changes (API will ignore processed field)
 3. Remove database column migration (if necessary)
 
 ## 10. Monitoring and Validation
 
-- Monitor API endpoints for proper processed field handling
-- Validate that video processing jobs correctly update processed status
-- Check that frontend displays are consistent with backend data
-- Monitor for any performance impacts from additional filtering options
+* Monitor API endpoints for proper processed field handling
+
+* Validate that video processing jobs correctly update processed status
+
+* Check that frontend displays are consistent with backend data
+
+* Monitor for any performance impacts from additional filtering options
+

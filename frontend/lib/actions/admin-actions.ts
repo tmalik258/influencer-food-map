@@ -39,7 +39,7 @@ export const adminActions = {
   },
 
   failJob: async (jobId: string, errorMessage: string): Promise<Job> => {
-    const response = await adminApi.post(`/jobs/${jobId}/fail/`, { error_message: errorMessage });
+    const response = await adminApi.post(`/jobs/${jobId}/fail/`, { error_messages: [errorMessage] });
     return response.data;
   },
 

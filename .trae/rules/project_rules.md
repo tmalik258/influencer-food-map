@@ -1,6 +1,3 @@
-Here’s a Markdown document with clear project rules for **Trae** based on your requirements:
-
-````markdown
 # Trae Project Rules
 
 This document outlines the strict rules and guidelines for running the **Trae** project, ensuring consistent port usage and proper backend management.
@@ -9,6 +6,7 @@ This document outlines the strict rules and guidelines for running the **Trae** 
 
 ## Frontend Rules
 
+- **Package Manager:** `pnpm`
 - **Primary Port:** `3000`
 - **Policy:**  
   - The frontend **must always run on port 3000**.  
@@ -24,16 +22,19 @@ This document outlines the strict rules and guidelines for running the **Trae** 
 
 - **Port:** `8030`
 - **Environment:** Runs inside a **Docker container**.
+- Do not run fastapi directly, it should be run inside the docker container.
 
 ### Checking Backend Status
+
 - Use the following command to check if the backend is running:
-  ```bash
+
+```bash
   dclogs backend
-````
+```
 
 ### Starting the Backend
 
-* If the backend is **not running**, start it with:
+- If the backend is **not running**, start it with:
 
   ```bash
   dcu
@@ -41,16 +42,37 @@ This document outlines the strict rules and guidelines for running the **Trae** 
 
 ### Restarting the Backend
 
-* To restart the **entire Docker stack**, use:
+- To restart the **entire Docker stack**, use:
 
     ```bash
     dcr
     ```
 
-* To restart **only the backend container**, use:
+- To restart **only the backend container**, use:
 
   ```bash
   dcr backend
+  ```
+
+### Executing container commands
+
+- To execute a command inside the backend container, use:
+
+  ```bash
+  dce backend <command>
+  ```
+
+  For example, to run a shell inside the backend container:
+
+  ```bash
+  dce backend bash
+  ```
+
+  or to run alembic migrations:
+
+  ```bash
+  dce backend alembic revision --autogenerate -m "Add new column"
+  dce backend alembic upgrade head
   ```
 
 ---
@@ -68,6 +90,6 @@ This document outlines the strict rules and guidelines for running the **Trae** 
 
 ## Important Notes
 
-* **Never modify the ports** specified above for any reason.
-* Ensure Docker is running before executing the commands.
-* Always verify the backend status before attempting to start or restart it.
+- **Never modify the ports** specified above for any reason.
+- Ensure Docker is running before executing the commands.
+- Always verify the backend status before attempting to start or restart it.

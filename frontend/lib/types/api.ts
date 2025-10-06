@@ -10,7 +10,7 @@ export interface Job {
   total_items: number;
   processed_items: number;
   result_data: Record<string, undefined> | null;
-  error_message?: string;
+  error_messages?: string[];
   started_at?: string;
   completed_at?: string;
   redis_lock_key?: string;

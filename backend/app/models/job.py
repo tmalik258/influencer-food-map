@@ -2,6 +2,7 @@ import uuid
 from enum import Enum
 
 from sqlalchemy import (Column, UUID, String, Text, DateTime, Boolean, Integer, Float, Enum as SQLEnum, text)
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.sql import func
 
 from app.database import Base
@@ -38,7 +39,7 @@ class Job(Base):
     total_items = Column(Integer, nullable=True)  # Total items to process
     processed_items = Column(Integer, default=0)  # Items processed so far
     result_data = Column(Text, nullable=True)  # JSON string of result data
-    error_message = Column(Text, nullable=True)  # Error details if failed
+    error_messages = Column(JSONB, nullable=True)  # JSON list of error details
     redis_lock_key = Column(String(255), nullable=True)  # Redis lock key if applicable
     
     # Advanced tracking fields

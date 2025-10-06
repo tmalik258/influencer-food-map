@@ -98,14 +98,16 @@ export default function JobDetailsDialog({
               </div>
             </div>
 
-            {selectedJob.error_message && (
+            {Array.isArray((selectedJob as any)?.error_messages) && (selectedJob as any)?.error_messages.length > 0 && (
               <div>
                 <label className="text-sm font-medium text-red-600">
-                  Error Message
+                  Error Messages
                 </label>
-                <p className="text-sm text-red-700 bg-red-50 p-2 rounded border">
-                  {selectedJob.error_message}
-                </p>
+                <ul className="text-sm text-red-700 bg-red-50 p-2 rounded border list-disc list-inside space-y-1">
+                  {(selectedJob as any).error_messages.map((msg: string, idx: number) => (
+                    <li key={idx}>{msg}</li>
+                  ))}
+                </ul>
               </div>
             )}
 

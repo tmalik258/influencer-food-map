@@ -176,13 +176,19 @@ async def complete_job(
 @router.post("/{job_id}/fail/", response_model=JobResponse)
 async def fail_job(
     job_id: UUID,
-    error_message: str,
+    error_messages: Optional[list[str]] = Body(None),
     db: AsyncSession = Depends(get_async_db),
     admin_user = Depends(get_current_admin)
 ):
-    """Mark a job as failed."""
+    """Mark a job as failed, appending provided error messages."""
     try:
-        job = await JobService.fail_job(db, job_id, error_message)
+        if error_messages:
+            for msg in error_messages:
+                try:
+                    await JobService.append_error_message(db, job_id, msg)
+                except Exception as _:
+                    logger.warning(f"Failed to append error message to job {job_id}")
+        job = await JobService.fail_job(db, job_id, error_message="Job marked failed")
         if not job:
             raise HTTPException(status_code=404, detail="Job not found")
         return job

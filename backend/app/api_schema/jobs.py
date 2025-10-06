@@ -17,7 +17,7 @@ class JobResponse(BaseModel):
     total_items: Optional[int] = None
     processed_items: int
     result_data: Optional[str] = None
-    error_message: Optional[str] = None
+    error_messages: Optional[List[str]] = None
     logs: Optional[str] = None
     redis_lock_key: Optional[str] = None
     
@@ -82,7 +82,7 @@ class JobUpdateRequest(BaseModel):
     progress: Optional[int] = None
     processed_items: Optional[int] = None
     result_data: Optional[str] = None
-    error_message: Optional[str] = None
+    error_messages: Optional[List[str]] = None
     logs: Optional[str] = None
     started_at: Optional[datetime] = None
     completed_at: Optional[datetime] = None

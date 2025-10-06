@@ -8,6 +8,7 @@ from sqlalchemy import select, and_, or_
 
 from app.models.video_processing_job import VideoProcessingJob, VideoProcessingStatus
 from app.models.job import JobStatus
+from app.services.jobs import JobService
 
 class VideoProcessingJobService:
     @staticmethod
@@ -96,6 +97,11 @@ class VideoProcessingJobService:
             video_job.status = status
             if error_message:
                 video_job.error_message = error_message
+                # Also append to the parent job's error_messages list
+                try:
+                    await JobService.append_error_message(db, job_id, error_message)
+                except Exception:
+                    pass
             
             if status == VideoProcessingStatus.PROCESSING:
                 video_job.started_at = datetime.utcnow()
@@ -122,6 +128,11 @@ class VideoProcessingJobService:
             video_job.status = status
             if error_message:
                 video_job.error_message = error_message
+                # Also append to the parent job's error_messages list
+                try:
+                    JobService.append_error_message_sync(db, job_id, error_message)
+                except Exception:
+                    pass
             
             if status == VideoProcessingStatus.PROCESSING:
                 video_job.started_at = datetime.utcnow()
