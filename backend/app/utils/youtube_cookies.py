@@ -25,39 +25,54 @@ REALISTIC_UA = (
     "Chrome/140.0.0.0 Safari/537.36"
 )
 
+def is_docker() -> bool:
+    """Detect if running in Docker."""
+    try:
+        with open('/proc/1/cgroup', 'rt') as f:
+            return 'docker' in f.read()
+    except:
+        return False
+
 def _ensure_cookies_dir():
     try:
         os.makedirs(BASE_COOKIES_DIR, exist_ok=True)
     except Exception as e:
         logger.warning(f"Could not create cookies dir {BASE_COOKIES_DIR}: {e}")
 
-async def _run_refresh(headless: bool) -> bool:
-    """Internal helper to run the refresh logic with given headless mode."""
+async def _run_refresh(headless: bool, channel: Optional[str] = "chrome") -> bool:
+    """Internal helper to run the refresh logic with given headless mode and browser channel."""
     if not GOOGLE_EMAIL or not GOOGLE_PASSWORD:
         logger.error("GOOGLE_EMAIL and GOOGLE_PASSWORD env vars required for cookie refresh")
         return False
 
+    docker = is_docker()
+    if docker:
+        logger.info("Docker detected; using container-optimized args")
+
     try:
         async with Stealth().use_async(async_playwright()) as p:
+            args = [
+                '--no-sandbox',
+                '--disable-dev-shm-usage',
+                '--disable-blink-features=AutomationControlled',
+                '--disable-automation',
+                '--disable-extensions',
+                '--no-first-run',
+                '--no-service-autorun',
+                '--password-store=basic',
+                '--disable-background-networking',
+                '--disable-component-extensions-with-background-pages',
+                '--disable-client-side-phishing-detection',
+                '--disable-default-apps',
+                '--disable-gpu',  # Docker stability
+            ]
+            if headless and not docker:
+                args.append('--virtual-time-budget=5000')
+
             browser = await p.chromium.launch(
                 headless=headless,
-                channel="chrome",  # System Chrome (run `playwright install chrome`)
-                args=[
-                    '--no-sandbox',
-                    '--disable-dev-shm-usage',
-                    '--disable-blink-features=AutomationControlled',
-                    '--disable-automation',
-                    '--disable-extensions',
-                    '--no-first-run',
-                    '--no-service-autorun',
-                    '--password-store=basic',
-                    '--disable-background-networking',
-                    '--disable-component-extensions-with-background-pages',  # Key for auth bypass
-                    '--disable-client-side-phishing-detection',
-                    '--disable-default-apps',
-                    # Headless-specific: Mimic headful viewport/rendering
-                    '--virtual-time-budget=5000' if headless else '',
-                ]
+                channel=channel,
+                args=args,
             )
             context: Optional[BrowserContext] = None
 
@@ -76,7 +91,7 @@ async def _run_refresh(headless: bool) -> bool:
             # If no state or expired, perform login
             if not os.path.exists(STORAGE_STATE_FILE) or await _is_login_needed(page):
                 logger.info("Performing Google/YouTube login")
-                login_success = await _login_to_google_with_retry(page, max_retries=1)  # Limit retries to 1 for server loop
+                login_success = await _login_to_google_with_retry(page, max_retries=1)  # Limit to 1 for loop avoidance
                 if not login_success:
                     logger.error("Login failed after retries; aborting")
                     await browser.close()
@@ -94,11 +109,11 @@ async def _run_refresh(headless: bool) -> bool:
 
             await browser.close()
             _update_last_refresh_timestamp()
-            logger.info(f"Successfully refreshed cookies at {datetime.now()} (headless={headless})")
+            logger.info(f"Successfully refreshed cookies at {datetime.now()} (headless={headless}, channel={channel})")
             return True
 
     except Exception as e:
-        logger.error(f"Cookie refresh failed (headless={headless}): {e}")
+        logger.error(f"Cookie refresh failed (headless={headless}, channel={channel}): {e}")
         return False
 
 async def refresh_youtube_cookies(headless: bool = True) -> bool:
@@ -112,13 +127,24 @@ async def refresh_youtube_cookies(headless: bool = True) -> bool:
     """
     _ensure_cookies_dir()
 
-    # Primary attempt: Use preferred headless mode
-    success = await _run_refresh(headless)
+    # Primary attempt: Use preferred headless mode with system Chrome
+    success = await _run_refresh(headless, channel="chrome")
     
-    # Fallback: If failed and preferred was headless, retry headful
+    # Fallback 1: If failed, retry headless with bundled Chromium (less detection sometimes)
     if not success and headless:
-        logger.warning("Headless refresh failed; falling back to headful mode (requires Xvfb in Docker)")
-        success = await _run_refresh(False)
+        logger.warning("Headless with Chrome failed; retrying with bundled Chromium")
+        success = await _run_refresh(headless, channel=None)
+    
+    # Fallback 2: If still failed, retry headful (warn for Docker/Xvfb)
+    if not success and headless:
+        docker = is_docker()
+        if docker:
+            logger.warning("Headless failed in Docker; falling back to headful (run with 'xvfb-run -a python ...' for display)")
+        else:
+            logger.warning("Headless failed; falling back to headful mode")
+        success = await _run_refresh(False, channel="chrome")
+        if docker and not success:
+            logger.error("Headful failed in Docker—ensure Xvfb installed and use xvfb-run wrapper")
     
     return success
 
