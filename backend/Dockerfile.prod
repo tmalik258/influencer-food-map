@@ -43,7 +43,7 @@ xdg-utils \
 ffmpeg \
 xvfb \
 xauth \
-&& xvfb-run --auto-servernum --server-args="-screen 0 1024x768x24" \
+&& xvfb-run \
 && rm -rf /var/lib/apt/lists/*
 
 COPY requirements.txt .
