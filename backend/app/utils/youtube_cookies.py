@@ -76,7 +76,11 @@ async def _run_refresh(headless: bool) -> bool:
             # If no state or expired, perform login
             if not os.path.exists(STORAGE_STATE_FILE) or await _is_login_needed(page):
                 logger.info("Performing Google/YouTube login")
-                await _login_to_google(page)
+                login_success = await _login_to_google_with_retry(page, max_retries=1)  # Limit retries to 1 for server loop
+                if not login_success:
+                    logger.error("Login failed after retries; aborting")
+                    await browser.close()
+                    return False
                 await _navigate_to_youtube(page)
 
                 # Save new storage state for future runs
@@ -117,6 +121,31 @@ async def refresh_youtube_cookies(headless: bool = True) -> bool:
         success = await _run_refresh(False)
     
     return success
+
+async def _login_to_google_with_retry(page: Page, max_retries: int = 1) -> bool:
+    """Perform login with limited retries on rejection loop."""
+    retry_count = 0
+    while retry_count <= max_retries:
+        try:
+            await _login_to_google(page)
+            return True  # Success
+        except RuntimeError as e:
+            if "Rejection loop detected" in str(e):
+                logger.warning(f"Rejection loop on attempt {retry_count + 1}/{max_retries + 1}; retrying login")
+                retry_count += 1
+                if retry_count > max_retries:
+                    logger.error("Max login retries exceeded due to rejection loop; aborting")
+                    return False
+                # Reset page to start of login for retry
+                await page.goto("https://accounts.google.com/v3/signin/identifier?hl=en&continue=https%3A%2F%2Fwww.youtube.com")
+                await page.wait_for_load_state("domcontentloaded")
+                continue
+            else:
+                raise  # Re-raise non-loop errors
+        except Exception as e:
+            logger.error(f"Unexpected login error: {e}")
+            return False
+    return False
 
 async def _is_login_needed(page) -> bool:
     """Check if login is required by verifying authenticated YouTube elements."""
@@ -269,7 +298,7 @@ async def _handle_rejection_and_retry(page: Page, max_retries: int = 2) -> bool:
 
         current_url = page.url
         if "/signin/identifier" in current_url or "/signin/v2/identifier" in current_url:
-            logger.warning("Looped back to identifier after 'Try again'; aborting to avoid flag escalation")
+            logger.warning("Looped back to identifier after 'Try again'; will retry full login in outer loop")
             raise RuntimeError("Rejection loop detected; run non-headless to refresh state")
 
         try:
