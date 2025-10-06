@@ -43,7 +43,6 @@ xdg-utils \
 ffmpeg \
 xvfb \
 xauth \
-&& xvfb-run \
 && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies
