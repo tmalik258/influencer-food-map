@@ -32,6 +32,80 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
+# Browserless API configuration (for production)
+BROWSERLESS_WS_URL = os.getenv("BROWSERLESS_WS_URL")  # e.g., ws://browserless:3000?token=YOUR_TOKEN
+BROWSERLESS_TOKEN = os.getenv("BROWSERLESS_TOKEN")
+BROWSERLESS_DEBUG = os.getenv("BROWSERLESS_DEBUG", "false").lower() == "true"
+
+# Enhanced browser security configuration
+PRODUCTION_BROWSER_ARGS = [
+    '--no-sandbox',
+    '--disable-dev-shm-usage',
+    '--disable-blink-features=AutomationControlled',
+    '--disable-automation',
+    '--disable-extensions',
+    '--no-first-run',
+    '--no-service-autorun',
+    '--password-store=basic',
+    '--disable-background-networking',
+    '--disable-component-extensions-with-background-pages',
+    '--disable-client-side-phishing-detection',
+    '--disable-default-apps',
+    '--disable-gpu',
+    '--disable-software-rasterizer',
+    '--disable-web-security',
+    '--disable-features=VizDisplayCompositor',
+    '--disable-background-timer-throttling',
+    '--disable-backgrounding-occluded-windows',
+    '--disable-renderer-backgrounding',
+    '--disable-features=TranslateUI',
+    '--disable-ipc-flooding-protection',
+    '--enable-features=NetworkService,NetworkServiceInProcess',
+    '--force-color-profile=srgb',
+    '--metrics-recording-only',
+    '--no-default-browser-check',
+    '--safebrowsing-disable-auto-update',
+    '--ignore-certificate-errors',
+    '--ignore-ssl-errors',
+    '--ignore-certificate-errors-spki-list',
+    '--disable-features=PrivacySandboxSettings4',
+    '--disable-features=PrivacySandboxAdsAPIsM1Override',
+    '--disable-features=PrivacySandboxProactiveTopicsBlocking',
+    '--disable-features=FedCm',
+    '--disable-features=FedCmIdPRegistration',
+    '--disable-features=FedCmIdPSigninStatus',
+    '--disable-features=FedCmAuthz',
+    '--disable-features=FedCmActive',
+    '--disable-features=FedCmWithoutThirdPartyCookies',
+    '--disable-features=FedCmWithoutWellKnownEnforcement',
+    '--disable-features=FedCmMultipleIdentityProviders',
+    '--disable-features=FedCmSelectiveDisclosure',
+    '--disable-features=FedCmUserInfo',
+    '--disable-features=FedCmAutoSelectedFlag',
+]
+
+# Enhanced HTTP headers for security
+SECURITY_HEADERS = {
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Cache-Control': 'no-cache',
+    'Pragma': 'no-cache',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1',
+    'Upgrade-Insecure-Requests': '1',
+    'sec-ch-ua': '"Chromium";v="140", "Not;A=Brand";v="99", "Google Chrome";v="140"',
+    'sec-ch-ua-platform': '"Windows"',
+    'sec-ch-ua-mobile': '?0',
+    'sec-ch-ua-arch': '"x86"',
+    'sec-ch-ua-bitness': '"64"',
+    'sec-ch-ua-full-version': '"140.0.0.0"',
+    'sec-ch-ua-full-version-list': '"Chromium";v="140.0.0.0", "Not;A=Brand";v="99.0.0.0", "Google Chrome";v="140.0.0.0"',
+    'upgrade-insecure-requests': '1',
+    'dnt': '1',
+}
+
 # Influencer channels
 INFLUENCER_CHANNELS = [
     {"url": "https://www.youtube.com/@alexandertheguest", "name": "Alexander The Guest", "region": None},

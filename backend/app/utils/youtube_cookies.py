@@ -2,15 +2,26 @@ import os
 import time
 import asyncio
 import re
-from datetime import datetime
-from typing import Optional, cast
+import json
+from datetime import datetime, timedelta
+from typing import Optional, cast, List, Dict, Any
 from http.cookiejar import MozillaCookieJar, Cookie
 
 from playwright_stealth import Stealth
-from playwright.async_api import async_playwright, BrowserContext, Page, TimeoutError
+from playwright.async_api import async_playwright, Browser, BrowserContext, Page, TimeoutError
 
-from app.config import YTDLP_COOKIES_FILE, GOOGLE_EMAIL, GOOGLE_PASSWORD 
+from app.config import (
+    YTDLP_COOKIES_FILE,
+    GOOGLE_EMAIL,
+    GOOGLE_PASSWORD,
+    BROWSERLESS_WS_URL,
+    BROWSERLESS_TOKEN,
+    BROWSERLESS_DEBUG,
+    PRODUCTION_BROWSER_ARGS,
+    SECURITY_HEADERS,
+)
 from app.utils.logging import setup_logger
+from urllib.parse import urlparse
 
 logger = setup_logger(__name__)
 
@@ -39,6 +50,119 @@ def _ensure_cookies_dir():
     except Exception as e:
         logger.warning(f"Could not create cookies dir {BASE_COOKIES_DIR}: {e}")
 
+def get_browserless_ws_url() -> str:
+    """Get Browserless WebSocket URL with proper formatting."""
+    if not BROWSERLESS_WS_URL:
+        return None
+    
+    ws_url = BROWSERLESS_WS_URL
+    if BROWSERLESS_TOKEN and 'token=' not in ws_url:
+        separator = '&' if '?' in ws_url else '?'
+        ws_url = f"{ws_url}{separator}token={BROWSERLESS_TOKEN}"
+    
+    return ws_url
+
+async def launch_browser_with_browserless(p, headless: bool = True) -> Browser:
+    """Launch browser using Browserless API for production."""
+    ws_url = get_browserless_ws_url()
+    if not ws_url:
+        return None
+    
+    try:
+        logger.info(f"Connecting to Browserless via CDP: {ws_url.split('?')[0]}")
+        
+        # Enhanced browser context options for Browserless
+        browser = await p.chromium.connect_over_cdp(ws_url)
+        
+        if BROWSERLESS_DEBUG:
+            logger.info(f"Browserless connection established")
+        
+        return browser
+    except Exception as e:
+        logger.error(f"Browserless connection failed: {e}")
+        return None
+
+async def launch_browser_locally(p, headless: bool = True, browser_type: str = "chromium", channel: Optional[str] = None) -> Browser:
+    """Launch browser locally for development."""
+    docker = is_docker()
+    
+    # Enhanced browser arguments for local deployment
+    args = PRODUCTION_BROWSER_ARGS.copy()
+    
+    # Add virtual time budget for headless non-docker environments
+    if headless and not docker:
+        args.append('--virtual-time-budget=5000')
+    
+    # Launch appropriate browser type
+    if browser_type == "firefox":
+        browser = await p.firefox.launch(
+            headless=headless,
+            channel=channel,
+            args=args,
+        )
+    else:  # Default to chromium
+        browser = await p.chromium.launch(
+            headless=headless,
+            channel=channel,
+            args=args,
+        )
+    
+    return browser
+
+async def create_secure_browser_context(browser, context_opts: dict) -> BrowserContext:
+    """Create a secure browser context with enhanced security settings."""
+    # Merge security headers with context options
+    enhanced_opts = context_opts.copy()
+    enhanced_opts['extra_http_headers'] = SECURITY_HEADERS.copy()
+    
+    # Add viewport and user agent for realism
+    enhanced_opts.update({
+        'viewport': {"width": 1366, "height": 768},
+        'user_agent': REALISTIC_UA,
+        'locale': 'en-US',
+        'timezone_id': 'UTC',
+        'permissions': ['geolocation'],
+        'geolocation': {'latitude': 37.7749, 'longitude': -122.4194},
+        'color_scheme': 'light',
+        'device_scale_factor': 1,
+        'is_mobile': False,
+        'has_touch': False,
+    })
+    
+    # Try loading persisted state first
+    if os.path.exists(STORAGE_STATE_FILE):
+        logger.info("Loading persisted YouTube storage state")
+        try:
+            context = await browser.new_context(storage_state=STORAGE_STATE_FILE, **enhanced_opts)
+            return context
+        except Exception as e:
+            logger.warning(f"Failed to load storage state: {e}")
+    
+    # Create new context if storage state fails
+    context = await browser.new_context(**enhanced_opts)
+    return context
+
+async def test_browserless_connection() -> bool:
+    """Test Browserless API connectivity."""
+    ws_url = get_browserless_ws_url()
+    if not ws_url:
+        logger.warning("Browserless not configured, skipping connection test")
+        return True
+    
+    try:
+        async with async_playwright() as p:
+            browser = await p.chromium.connect_over_cdp(ws_url)
+            # Try to create a simple page to test connectivity
+            context = await browser.new_context()
+            page = await context.new_page()
+            await page.goto("https://www.google.com", timeout=10000)
+            await browser.close()
+            logger.info("Browserless connection test successful")
+            return True
+    except Exception as e:
+        logger.error(f"Browserless connection test failed: {e}")
+        return False
+
 async def _run_refresh(headless: bool, browser_type: str = "chromium", channel: Optional[str] = None) -> bool:
     """Internal helper to run the refresh logic with given headless mode and browser type/channel."""
     if not GOOGLE_EMAIL or not GOOGLE_PASSWORD:
@@ -65,35 +189,212 @@ async def _run_refresh(headless: bool, browser_type: str = "chromium", channel: 
                 '--disable-client-side-phishing-detection',
                 '--disable-default-apps',
                 '--disable-gpu',  # Docker stability
+                '--disable-features=IsolateOrigins,site-per-process',
+                '--disable-features=TranslateUI',
+                '--metrics-recording-only',
+                '--disable-ipc-flooding-protection',
+                '--enable-features=NetworkService,NetworkServiceInProcess',
+                '--hide-scrollbars',
+                '--mute-audio',
+                # Enhanced security and stealth arguments
+                '--disable-blink-features=AutomationControlled',
+                '--disable-features=InterestFeedContentSuggestions',
+                '--disable-features=TranslateUI',
+                '--disable-component-update',
+                '--disable-default-apps',
+                '--disable-features=PrivacySandboxSettings4',
+                '--disable-features=PrivacySandboxAdsAPIsM1Override',
+                '--disable-features=PrivacySandboxProactiveTopicsBlocking',
+                '--disable-features=FedCm',
+                '--disable-features=FedCmIdPRegistration',
+                '--disable-features=FedCmIdPSigninStatus',
+                '--disable-features=FedCmAuthz',
+                '--disable-features=FedCmActive',
+                '--disable-features=FedCmWithoutThirdPartyCookies',
+                '--disable-features=FedCmWithoutWellKnownEnforcement',
+                '--disable-features=FedCmMultipleIdentityProviders',
+                '--disable-features=FedCmSelectiveDisclosure',
+                '--disable-features=FedCmUserInfo',
+                '--disable-features=FedCmAutoSelectedFlag',
+                '--disable-features=FedCmIdPRegistration',
+                '--disable-features=FedCmIdPSigninStatus',
+                '--disable-features=FedCmAuthz',
+                '--disable-features=FedCmActive',
+                '--disable-features=FedCmWithoutThirdPartyCookies',
+                '--disable-features=FedCmWithoutWellKnownEnforcement',
+                '--disable-features=FedCmMultipleIdentityProviders',
+                '--disable-features=FedCmSelectiveDisclosure',
+                '--disable-features=FedCmUserInfo',
+                '--disable-features=FedCmAutoSelectedFlag',
+                '--disable-features=PrivacySandboxSettings4',
+                '--disable-features=PrivacySandboxAdsAPIsM1Override',
+                '--disable-features=PrivacySandboxProactiveTopicsBlocking',
             ]
             if headless and not docker:
-                args.append('--virtual-time-budget=5000')
+                args.extend([
+                    '--virtual-time-budget=5000',
+                    '--headless=new',
+                ])
 
-            # Launch correct browser type
-            if browser_type == "firefox":
-                browser = await p.firefox.launch(
-                    headless=headless,
-                    channel=channel,
-                    args=args,
-                )
-            else:  # Default to chromium
-                browser = await p.chromium.launch(
-                    headless=headless,
-                    channel=channel,
-                    args=args,
-                )
-            context: Optional[BrowserContext] = None
+            # Enhanced browser launch with Browserless integration
+            browser = None
+            use_browserless = False
+            
+            # Try Browserless first if configured
+            if BROWSERLESS_WS_URL:
+                browser = await launch_browser_with_browserless(p, headless)
+                if browser:
+                    use_browserless = True
+                    logger.info("Successfully connected to Browserless API")
+                else:
+                    logger.warning("Browserless connection failed, falling back to local browser")
+            
+            # Fallback to local browser launch
+            if not browser:
+                browser = await launch_browser_locally(p, headless, browser_type, channel)
 
-            context_opts = dict(locale='en-US', timezone_id='UTC', user_agent=REALISTIC_UA, viewport={"width": 1366, "height": 768})
+            # Enhanced context options with security headers
+            context_opts = dict(
+                locale='en-US',
+                timezone_id='UTC',
+                user_agent=REALISTIC_UA,
+                viewport={"width": 1366, "height": 768},
+                device_scale_factor=1,
+                is_mobile=False,
+                has_touch=False,
+                java_script_enabled=True,
+                bypass_csp=False,
+                ignore_https_errors=False,
+                extra_http_headers=SECURITY_HEADERS.copy(),
+                permissions=[],
+                geolocation=None,
+                color_scheme='light',
+                forced_colors='none',
+                reduced_motion='no-preference',
+            )
 
-            # Try loading persisted state first (skips login if valid)
-            if os.path.exists(STORAGE_STATE_FILE):
-                logger.info("Loading persisted YouTube storage state")
-                context = await browser.new_context(storage_state=STORAGE_STATE_FILE, **context_opts)
-            else:
-                context = await browser.new_context(**context_opts)
+            # Create secure browser context
+            context = await create_secure_browser_context(browser, context_opts)
 
-            await context.add_init_script('Object.defineProperty(navigator, "webdriver", {get: () => undefined})')
+            # Enhanced stealth scripts to avoid detection
+            stealth_scripts = [
+                # Remove webdriver property
+                'Object.defineProperty(navigator, "webdriver", {get: () => undefined})',
+                
+                # Override plugins
+                'Object.defineProperty(navigator, "plugins", {get: () => [1, 2, 3, 4, 5]})',
+                
+                # Override languages
+                'Object.defineProperty(navigator, "languages", {get: () => ["en-US", "en"])',
+                
+                # Override platform
+                'Object.defineProperty(navigator, "platform", {get: () => "Win32"})',
+                
+                # Override userAgentData
+                'Object.defineProperty(navigator, "userAgentData", {get: () => ({brands: [{brand: "Chromium", version: "140"}, {brand: "Not;A=Brand", version: "99"}, {brand: "Google Chrome", version: "140"}], mobile: false, platform: "Windows"})})',
+                
+                # Override permissions
+                'Object.defineProperty(navigator, "permissions", {get: () => ({query: () => Promise.resolve({state: "granted"})})})',
+                
+                # Mock chrome runtime
+                '''
+                window.chrome = {
+                    runtime: {
+                        sendMessage: () => {},
+                        onMessage: {addListener: () => {}},
+                        onConnect: {addListener: () => {}},
+                        connect: () => ({postMessage: () => {}, onMessage: {addListener: () => {}}})
+                    }
+                };
+                ''',
+                
+                # Mock notification API
+                '''
+                window.Notification = function(title, options) {
+                    this.title = title;
+                    this.options = options;
+                };
+                window.Notification.permission = "granted";
+                window.Notification.requestPermission = () => Promise.resolve("granted");
+                ''',
+                
+                # Override device memory
+                'Object.defineProperty(navigator, "deviceMemory", {get: () => 8})',
+                
+                # Override hardware concurrency
+                'Object.defineProperty(navigator, "hardwareConcurrency", {get: () => 4})',
+                
+                # Override screen resolution
+                '''
+                Object.defineProperty(screen, "width", {get: () => 1366});
+                Object.defineProperty(screen, "height", {get: () => 768});
+                Object.defineProperty(screen, "availWidth", {get: () => 1366});
+                Object.defineProperty(screen, "availHeight", {get: () => 738});
+                ''',
+                
+                # Override timezone
+                'Object.defineProperty(Intl, "DateTimeFormat", {value: function(...args) { return new Intl.DateTimeFormat("en-US", ...args); }})',
+                
+                # Enhanced stealth - Override canvas fingerprinting
+                '''
+                const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
+                HTMLCanvasElement.prototype.toDataURL = function(type) {
+                    if (type === 'image/png' || !type) {
+                        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+                    }
+                    return originalToDataURL.apply(this, arguments);
+                };
+                ''',
+                
+                # Override WebGL fingerprinting
+                '''
+                const getParameter = WebGLRenderingContext.prototype.getParameter;
+                WebGLRenderingContext.prototype.getParameter = function(parameter) {
+                    if (parameter === 37445) {
+                        return 'Intel Inc.';
+                    }
+                    if (parameter === 37446) {
+                        return 'Intel Iris OpenGL Engine';
+                    }
+                    return getParameter.apply(this, arguments);
+                };
+                ''',
+                
+                # Mock media devices
+                '''
+                navigator.mediaDevices = {
+                    enumerateDevices: () => Promise.resolve([]),
+                    getUserMedia: () => Promise.reject(new Error('Not allowed')),
+                    getDisplayMedia: () => Promise.reject(new Error('Not allowed'))
+                };
+                ''',
+                
+                # Override battery API
+                '''
+                navigator.getBattery = () => Promise.resolve({
+                    charging: true,
+                    chargingTime: 0,
+                    dischargingTime: Infinity,
+                    level: 1,
+                    addEventListener: () => {},
+                    removeEventListener: () => {}
+                });
+                ''',
+                
+                # Enhanced randomization
+                '''
+                // Add slight randomization to timing
+                const originalSetTimeout = window.setTimeout;
+                window.setTimeout = function(fn, delay) {
+                    const randomDelay = delay + Math.floor(Math.random() * 50);
+                    return originalSetTimeout.call(this, fn, randomDelay);
+                };
+                ''',
+            ]
+            
+            for script in stealth_scripts:
+                await context.add_init_script(script)
+            
             page = await context.new_page()
 
             # If no state or expired, perform login
