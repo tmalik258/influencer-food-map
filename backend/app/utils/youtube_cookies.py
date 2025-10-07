@@ -139,12 +139,12 @@ async def refresh_youtube_cookies(headless: bool = True) -> bool:
     if docker:
         logger.info("Docker detected; recommending xvfb-run wrapper for headful fallback")
 
-    # Primary attempt: Use preferred headless mode with Firefox (better evasion)
-    success = await _run_refresh(headless, browser_type="firefox", channel="firefox")
+    # Primary attempt: Use preferred headless mode with Chrome (better evasion)
+    success = await _run_refresh(headless, browser_type="chrome", channel="chrome")
     
     # Fallback 1: If failed, retry headless with bundled Chromium
     if not success and headless:
-        logger.warning("Headless with Firefox failed; retrying with bundled Chromium")
+        logger.warning("Headless with Chrome failed; retrying with bundled Chromium")
         success = await _run_refresh(headless, browser_type="chromium", channel=None)
     
     # Fallback 2: If still failed, retry with system Chrome (headless)
@@ -158,7 +158,7 @@ async def refresh_youtube_cookies(headless: bool = True) -> bool:
             logger.warning("All headless failed in Docker; falling back to headful (run with 'xvfb-run -a -s \"-screen 0 1024x768x24\" python ...' for display)")
         else:
             logger.warning("All headless failed; falling back to headful mode")
-        success = await _run_refresh(False, browser_type="firefox", channel="firefox")
+        success = await _run_refresh(False, browser_type="chrome", channel="chrome")
         if docker and not success:
             logger.error("Headful failed in Docker—ensure Xvfb installed and use xvfb-run wrapper with screen args")
     

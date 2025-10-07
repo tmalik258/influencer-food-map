@@ -46,7 +46,7 @@ RUN pip install --no-cache-dir --pre "yt-dlp[default]"
 
 # Install Playwright - use ONLY Firefox to save memory
 RUN pip install --no-cache-dir playwright playwright-stealth
-RUN playwright install --with-deps firefox chrome
+RUN playwright install --with-deps chrome
 
 COPY . .
 
