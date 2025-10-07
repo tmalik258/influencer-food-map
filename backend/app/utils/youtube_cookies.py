@@ -39,8 +39,8 @@ def _ensure_cookies_dir():
     except Exception as e:
         logger.warning(f"Could not create cookies dir {BASE_COOKIES_DIR}: {e}")
 
-async def _run_refresh(headless: bool, channel: Optional[str] = "chrome") -> bool:
-    """Internal helper to run the refresh logic with given headless mode and browser channel."""
+async def _run_refresh(headless: bool, browser_type: str = "chromium", channel: Optional[str] = None) -> bool:
+    """Internal helper to run the refresh logic with given headless mode and browser type/channel."""
     if not GOOGLE_EMAIL or not GOOGLE_PASSWORD:
         logger.error("GOOGLE_EMAIL and GOOGLE_PASSWORD env vars required for cookie refresh")
         return False
@@ -69,11 +69,19 @@ async def _run_refresh(headless: bool, channel: Optional[str] = "chrome") -> boo
             if headless and not docker:
                 args.append('--virtual-time-budget=5000')
 
-            browser = await p.chromium.launch(
-                headless=headless,
-                channel=channel,
-                args=args,
-            )
+            # Launch correct browser type
+            if browser_type == "firefox":
+                browser = await p.firefox.launch(
+                    headless=headless,
+                    channel=channel,
+                    args=args,
+                )
+            else:  # Default to chromium
+                browser = await p.chromium.launch(
+                    headless=headless,
+                    channel=channel,
+                    args=args,
+                )
             context: Optional[BrowserContext] = None
 
             context_opts = dict(locale='en-US', timezone_id='UTC', user_agent=REALISTIC_UA, viewport={"width": 1366, "height": 768})
@@ -109,11 +117,11 @@ async def _run_refresh(headless: bool, channel: Optional[str] = "chrome") -> boo
 
             await browser.close()
             _update_last_refresh_timestamp()
-            logger.info(f"Successfully refreshed cookies at {datetime.now()} (headless={headless}, channel={channel})")
+            logger.info(f"Successfully refreshed cookies at {datetime.now()} (headless={headless}, browser={browser_type}, channel={channel})")
             return True
 
     except Exception as e:
-        logger.error(f"Cookie refresh failed (headless={headless}, channel={channel}): {e}")
+        logger.error(f"Cookie refresh failed (headless={headless}, browser={browser_type}, channel={channel}): {e}")
         return False
 
 async def refresh_youtube_cookies(headless: bool = True) -> bool:
@@ -127,24 +135,32 @@ async def refresh_youtube_cookies(headless: bool = True) -> bool:
     """
     _ensure_cookies_dir()
 
-    # Primary attempt: Use preferred headless mode with system Chrome
-    success = await _run_refresh(headless, channel="chrome")
+    docker = is_docker()
+    if docker:
+        logger.info("Docker detected; recommending xvfb-run wrapper for headful fallback")
+
+    # Primary attempt: Use preferred headless mode with Firefox (better evasion)
+    success = await _run_refresh(headless, browser_type="firefox", channel="firefox")
     
-    # Fallback 1: If failed, retry headless with bundled Chromium (less detection sometimes)
+    # Fallback 1: If failed, retry headless with bundled Chromium
     if not success and headless:
-        logger.warning("Headless with Chrome failed; retrying with bundled Chromium")
-        success = await _run_refresh(headless, channel=None)
+        logger.warning("Headless with Firefox failed; retrying with bundled Chromium")
+        success = await _run_refresh(headless, browser_type="chromium", channel=None)
     
-    # Fallback 2: If still failed, retry headful (warn for Docker/Xvfb)
+    # Fallback 2: If still failed, retry with system Chrome (headless)
     if not success and headless:
-        docker = is_docker()
+        logger.warning("Bundled Chromium failed; retrying with system Chrome")
+        success = await _run_refresh(headless, browser_type="chromium", channel="chrome")
+    
+    # Fallback 3: If still failed, retry headful with Firefox
+    if not success and headless:
         if docker:
-            logger.warning("Headless failed in Docker; falling back to headful (run with 'xvfb-run -a python ...' for display)")
+            logger.warning("All headless failed in Docker; falling back to headful (run with 'xvfb-run -a -s \"-screen 0 1024x768x24\" python ...' for display)")
         else:
-            logger.warning("Headless failed; falling back to headful mode")
-        success = await _run_refresh(False, channel="chrome")
+            logger.warning("All headless failed; falling back to headful mode")
+        success = await _run_refresh(False, browser_type="firefox", channel="firefox")
         if docker and not success:
-            logger.error("Headful failed in Docker—ensure Xvfb installed and use xvfb-run wrapper")
+            logger.error("Headful failed in Docker—ensure Xvfb installed and use xvfb-run wrapper with screen args")
     
     return success
 

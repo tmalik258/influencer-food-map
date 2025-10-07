@@ -62,6 +62,7 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearm
 # Install Playwright (browsers will auto-detect Chrome)
 RUN pip install --no-cache-dir playwright playwright-stealth
 RUN playwright install --with-deps chrome  # Installs deps + links to system Chrome
+RUN playwright install --with-deps firefox  # Installs deps + links to system Firefox
 
 # Copy application code
 COPY . .
