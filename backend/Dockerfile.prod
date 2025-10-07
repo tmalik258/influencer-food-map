@@ -63,6 +63,7 @@ RUN pip install --no-cache-dir --pre "yt-dlp[default]"
 # Install Playwright (browsers will auto-detect Chrome)
 RUN pip install --no-cache-dir playwright playwright-stealth
 RUN playwright install --with-deps chrome  # Installs deps + links to system Chrome
+RUN playwright install --with-deps firefox  # Installs deps + links to system Firefox
 
 COPY . .
 
