@@ -25,22 +25,6 @@ libxrandr2 \
 xdg-utils \
 ffmpeg \
 fonts-liberation \
-libasound2 \
-libatk-bridge2.0-0 \
-libatk1.0-0 \
-libatspi2.0-0 \
-libdrm2 \
-libgtk-3-0 \
-libnspr4 \
-libnss3 \
-libx11-xcb1 \
-libxcomposite1 \
-libxdamage1 \
-libxext6 \
-libxfixes3 \
-libxrandr2 \
-xdg-utils \
-ffmpeg \
 xvfb \
 xauth \
 && rm -rf /var/lib/apt/lists/*
@@ -62,7 +46,6 @@ RUN wget -q -O - https://dl.google.com/linux/linux_signing_key.pub | gpg --dearm
 # Install Playwright (browsers will auto-detect Chrome)
 RUN pip install --no-cache-dir playwright playwright-stealth
 RUN playwright install --with-deps chrome  # Installs deps + links to system Chrome
-RUN playwright install --with-deps firefox  # Installs deps + links to system Firefox
 
 # Copy application code
 COPY . .

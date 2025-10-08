@@ -8,9 +8,6 @@ services:
       - "8030:8000"
     environment:
       - REDIS_URL=redis://redis:6379
-      - BROWSERLESS_WS_URL=ws://browserless:3000
-      - BROWSERLESS_TOKEN=${BROWSERLESS_TOKEN}
-      - BROWSERLESS_DEBUG=false
     env_file:
       - ./backend/.env
     volumes:
@@ -19,7 +16,6 @@ services:
     depends_on:
       - redis
       - tor
-      - browserless
     networks:
       - nomtok-network
     restart: always
@@ -30,63 +26,6 @@ services:
       retries: 3
       start_period: 40s
 
-  browserless:
-    image: browserless/chrome:latest
-    container_name: browserless
-    environment:
-      - TOKEN=${BROWSERLESS_TOKEN}
-      - MAX_CONCURRENT=2
-      - CONCURRENT=2
-      - PREBOOT_CHROME=true
-      - ENABLE_DEBUGGER=false
-      - ENABLE_CORS=true
-      - ENABLE_API_GET=true
-      - DISABLE_AUTO_SET_DOWNLOAD_BEHAVIOR=false
-      - DEFAULT_BLOCK_ADS=false
-      - DEFAULT_HEADLESS=true
-      - DEFAULT_IGNORE_HTTPS_ERRORS=false
-      - DEFAULT_IGNORE_DEFAULT_ARGS=false
-      - DEFAULT_STEALTH=true
-      - DEFAULT_USER_AGENT_OVERRIDE=${REALISTIC_UA:-Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0.0.0 Safari/537.36}
-      - DEFAULT_VIEWPORT_WIDTH=1366
-      - DEFAULT_VIEWPORT_HEIGHT=768
-      - DEFAULT_DEVICE_SCALE_FACTOR=1
-      - DEFAULT_DNT=true
-      - DEFAULT_ACCEPT_LANGUAGE=en-US,en;q=0.9
-      - DEFAULT_IGNORE_RESOURCE_TYPES=image,media,font
-      # Enhanced security arguments for production
-      - DEFAULT_LAUNCH_ARGS=--no-sandbox,--disable-dev-shm-usage,--disable-blink-features=AutomationControlled,--disable-automation,--disable-extensions,--no-first-run,--no-service-autorun,--password-store=basic,--disable-background-networking,--disable-component-extensions-with-background-pages,--disable-client-side-phishing-detection,--disable-default-apps,--disable-gpu,--disable-features=IsolateOrigins,site-per-process,--disable-features=TranslateUI,--metrics-recording-only,--disable-ipc-flooding-protection,--enable-features=NetworkService,NetworkServiceInProcess,--hide-scrollbars,--mute-audio,--disable-blink-features=AutomationControlled,--disable-features=InterestFeedContentSuggestions,--disable-component-update,--disable-features=PrivacySandboxSettings4,--disable-features=PrivacySandboxAdsAPIsM1Override,--disable-features=PrivacySandboxProactiveTopicsBlocking,--disable-features=FedCm,--disable-features=FedCmIdPRegistration,--disable-features=FedCmIdPSigninStatus,--disable-features=FedCmAuthz,--disable-features=FedCmActive,--disable-features=FedCmWithoutThirdPartyCookies,--disable-features=FedCmWithoutWellKnownEnforcement,--disable-features=FedCmMultipleIdentityProviders,--disable-features=FedCmSelectiveDisclosure,--disable-features=FedCmUserInfo,--disable-features=FedCmAutoSelectedFlag,--disable-web-security,--disable-features=EnableEphemeralFlashPermission,--disable-blink-features=AutomationControlled,--disable-features=InterestCohortFeaturePolicy
-      # Resource limits for stability
-      - FUNCTION_ENABLE_INCOGNITO=true
-      - FUNCTION_BUILT_IN_HTML=false
-      - KEEP_ALIVE=true
-      - EXIT_ON_HEALTH_FAILURE=false
-      - HEALTH_FAILURE_URL=http://localhost:3000/health
-      # Enhanced stealth settings
-      - DEFAULT_BLOCK_TRACKERS=true
-      - DEFAULT_BLOCK_TRACKING_COOKIES=true
-      - DEFAULT_DISABLE_WEBRTC=true
-    networks:
-      - nomtok-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3333/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    # Uncomment to expose externally if needed
-    ports:
-      - "3333:3333"
-    # Resource limits for production stability
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
   frontend:
     build:
@@ -122,7 +61,7 @@ services:
     networks:
       - nomtok-network
     restart: always
-  
+
   tor:
     image: peterdavehello/tor-socks-proxy:latest  # Or pin a version like :0.4.8.12
     container_name: tor-proxy
