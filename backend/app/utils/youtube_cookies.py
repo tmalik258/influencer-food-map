@@ -3,6 +3,7 @@ import time
 import asyncio
 import re
 import json
+import random
 from datetime import datetime, timedelta
 from typing import Optional, cast, List, Dict, Any
 from http.cookiejar import MozillaCookieJar, Cookie
@@ -449,6 +450,106 @@ async def _is_login_needed(page) -> bool:
     logger.info("[Auth Check] No definitive auth signals; assuming login needed")
     return True  # Assume needed if no auth signals
 
+async def _click_next_button_robust(page: Page):
+    """Robust Next button clicking with multiple strategies"""
+    next_button_selectors = [
+        '#identifierNext',
+        'button[id="identifierNext"]',
+        'input[id="identifierNext"]',
+        'button[type="submit"]',
+        'input[type="submit"]',
+        'button[jsname="LgbsSe"]',  # Google's internal button identifier
+        'div[role="button"][id="identifierNext"]',
+        'span[jsname="V67aGc"]',  # Another Google internal identifier
+    ]
+    
+    # Strategy 1: Try multiple selectors with different click methods
+    for selector in next_button_selectors:
+        try:
+            element = await page.wait_for_selector(selector, timeout=2000)
+            if element and await element.is_visible() and await element.is_enabled():
+                logger.info(f"Found Next button with selector: {selector}")
+                
+                # Log button properties for debugging
+                try:
+                    button_text = await element.text_content()
+                    button_disabled = await element.is_disabled()
+                    button_hidden = await element.is_hidden()
+                    logger.info(f"Button properties - Text: '{button_text}', Disabled: {button_disabled}, Hidden: {button_hidden}")
+                except Exception:
+                    pass
+                
+                # Try different click methods
+                click_methods = [
+                    lambda: element.click(),
+                    lambda: element.click(force=True),
+                    lambda: element.dispatch_event('click'),
+                    lambda: page.evaluate('(element) => element.click()', element),
+                ]
+                
+                for i, click_method in enumerate(click_methods):
+                    try:
+                        await click_method()
+                        logger.info(f"Successfully clicked Next button using method {i+1}")
+                        return
+                    except Exception as e:
+                        logger.debug(f"Click method {i+1} failed: {e}")
+                        continue
+                        
+        except Exception as e:
+            logger.debug(f"Selector {selector} failed: {e}")
+            continue
+    
+    # Strategy 2: Try role-based selection with multiple click methods
+    try:
+        next_button = page.get_by_role("button", name=re.compile("Next|Weiter|Suivant|Avanti|Siguiente|Далее|التالي", re.I))
+        if await next_button.is_visible() and await next_button.is_enabled():
+            logger.info("Found Next button using role-based selector")
+            
+            click_methods = [
+                lambda: next_button.click(),
+                lambda: next_button.click(force=True),
+                lambda: next_button.dispatch_event('click'),
+            ]
+            
+            for i, click_method in enumerate(click_methods):
+                try:
+                    await click_method()
+                    logger.info(f"Successfully clicked Next button using role-based method {i+1}")
+                    return
+                except Exception as e:
+                    logger.debug(f"Role-based click method {i+1} failed: {e}")
+                    continue
+    except Exception as e:
+        logger.debug(f"Role-based selector failed: {e}")
+    
+    # Strategy 3: Try form submission as fallback
+    try:
+        form = await page.wait_for_selector('form', timeout=2000)
+        if form:
+            logger.info("Attempting form submission as fallback")
+            await page.evaluate('(form) => form.submit()', form)
+            return
+    except Exception as e:
+        logger.debug(f"Form submission failed: {e}")
+    
+    # Strategy 4: Try Enter key press on email field
+    try:
+        email_selectors = ['input[name="identifier"]', 'input#identifierId', 'input[type="email"]']
+        for selector in email_selectors:
+            try:
+                email_field = await page.wait_for_selector(selector, timeout=2000)
+                if email_field and await email_field.is_visible():
+                    logger.info(f"Pressing Enter on email field: {selector}")
+                    await email_field.press('Enter')
+                    return
+            except Exception:
+                continue
+    except Exception as e:
+        logger.debug(f"Enter key press failed: {e}")
+    
+    logger.warning("All Next button click strategies failed")
+
 async def _click_consent_if_present(page):
     """Dismiss Google/YouTube consent dialogs, including iframe-based ones."""
     try:
@@ -822,10 +923,7 @@ async def _login_to_google(page):
         raise RuntimeError("Could not locate email/identifier field on Google sign-in")
 
     logger.info("Clicking 'Next' after email")
-    try:
-        await page.locator('#identifierNext').click()
-    except Exception:
-        await page.get_by_role("button", name=re.compile("Next|Weiter|Suivant|Avanti|Siguiente|Далее|التالي", re.I)).click()
+    await _click_next_button_robust(page)
 
     # Wait for navigation to complete after email submission
     logger.info("Waiting for navigation after email submission...")
@@ -841,6 +939,181 @@ async def _login_to_google(page):
         logger.info(f"After email submit - URL: {page.url}, saved screenshot: {screenshot_path}")
     except Exception:
         pass
+    
+    # Enhanced retry logic for Next button after email submission
+    max_retries = 3
+    for retry_attempt in range(max_retries):
+        current_url = page.url
+        
+        # Check if we're still on the identifier page
+        if "/signin/identifier" in current_url or "/signin/v2/identifier" in current_url:
+            logger.info(f"Still on identifier page (attempt {retry_attempt + 1}/{max_retries}): {current_url}")
+            
+            # Check for password field (indicates we've progressed)
+            try:
+                password_field = await page.wait_for_selector('input[name="Passwd"]', timeout=1000)
+                if password_field and await password_field.is_visible():
+                    logger.info("Password field found, successfully progressed past identifier page")
+                    break
+            except Exception:
+                pass
+            
+            # Check if email input and Next button are still present
+            try:
+                email_input_present = False
+                next_button_present = False
+                
+                # Check for email input field
+                for sel in ['input[name="identifier"]', 'input#identifierId']:
+                    try:
+                        element = await page.wait_for_selector(sel, timeout=2000)
+                        if element and await element.is_visible():
+                            email_input_present = True
+                            break
+                    except Exception:
+                        continue
+                
+                # Check for Next button
+                try:
+                    next_button = await page.wait_for_selector('#identifierNext', timeout=2000)
+                    if next_button and await next_button.is_visible():
+                        next_button_present = True
+                except Exception:
+                    try:
+                        next_button = page.get_by_role("button", name=re.compile("Next|Weiter|Suivant|Avanti|Siguiente|Далее|التالي", re.I))
+                        if await next_button.is_visible():
+                            next_button_present = True
+                    except Exception:
+                        pass
+                
+                if email_input_present and next_button_present:
+                    logger.info(f"Email input and Next button still present, clicking Next again (attempt {retry_attempt + 1})")
+                    
+                    # Add random sleep to simulate human behavior
+                    sleep_time = random.uniform(1, 3)
+                    logger.info(f"Sleeping for {sleep_time:.2f} seconds before clicking Next")
+                    await asyncio.sleep(sleep_time)
+                    
+                    # Use robust Next button clicking
+                    try:
+                        await _click_next_button_robust(page)
+                        logger.info(f"Attempted robust Next button click on retry {retry_attempt + 1}")
+                    except Exception as e:
+                        logger.warning(f"Failed to click Next button on retry {retry_attempt + 1}: {e}")
+                        continue
+                    
+                    # Enhanced validation after clicking - wait for actual changes
+                    validation_success = False
+                    
+                    # Wait for URL change
+                    try:
+                        await page.wait_for_function(
+                            f'() => window.location.href !== "{current_url}"',
+                            timeout=5000
+                        )
+                        logger.info("URL changed after Next button click")
+                        validation_success = True
+                    except Exception:
+                        logger.debug("URL did not change after Next button click")
+                    
+                    # Wait for loading indicators to appear and disappear
+                    try:
+                        # Look for loading spinner or progress indicator
+                        loading_selectors = [
+                            '[role="progressbar"]',
+                            '.loading',
+                            '[aria-label*="Loading"]',
+                            '[data-testid*="loading"]'
+                        ]
+                        
+                        for selector in loading_selectors:
+                            try:
+                                # Wait for loading to appear
+                                await page.wait_for_selector(selector, timeout=2000)
+                                logger.info(f"Loading indicator appeared: {selector}")
+                                # Wait for loading to disappear
+                                await page.wait_for_selector(selector, state='hidden', timeout=10000)
+                                logger.info(f"Loading indicator disappeared: {selector}")
+                                validation_success = True
+                                break
+                            except Exception:
+                                continue
+                    except Exception:
+                        pass
+                    
+                    # Wait for network activity to settle
+                    try:
+                        await page.wait_for_load_state('networkidle', timeout=8000)
+                        logger.info("Network activity settled")
+                    except Exception:
+                        logger.debug("Network activity did not settle within timeout")
+                    
+                    # Check for error messages
+                    try:
+                        error_selectors = [
+                            '[role="alert"]',
+                            '.error',
+                            '[aria-live="assertive"]',
+                            '[data-testid*="error"]'
+                        ]
+                        
+                        for selector in error_selectors:
+                            try:
+                                error_element = await page.wait_for_selector(selector, timeout=1000)
+                                if error_element and await error_element.is_visible():
+                                    error_text = await error_element.text_content()
+                                    logger.warning(f"Error message found: {error_text}")
+                            except Exception:
+                                continue
+                    except Exception:
+                        pass
+                    
+                    await _click_consent_if_present(page)
+                    
+                    # Take screenshot after retry
+                    try:
+                        retry_screenshot_path = os.path.join("logs", f"after-next-retry-{retry_attempt + 1}-{int(time.time())}.png")
+                        await page.screenshot(path=retry_screenshot_path, full_page=True)
+                        logger.info(f"After Next retry {retry_attempt + 1} - URL: {page.url}, saved screenshot: {retry_screenshot_path}")
+                    except Exception:
+                        pass
+                    
+                    # If validation was successful, break early
+                    if validation_success:
+                        logger.info(f"Validation successful after retry {retry_attempt + 1}")
+                        break
+                else:
+                    logger.info(f"Email input or Next button not present, breaking retry loop")
+                    break
+                    
+            except Exception as e:
+                logger.warning(f"Error during Next button retry attempt {retry_attempt + 1}: {e}")
+                break
+        else:
+            logger.info(f"No longer on identifier page, breaking retry loop: {current_url}")
+            break
+    
+    # Final comprehensive check
+    current_url = page.url
+    password_field_present = False
+    
+    try:
+        password_field = await page.wait_for_selector('input[name="Passwd"]', timeout=2000)
+        password_field_present = password_field and await password_field.is_visible()
+    except Exception:
+        pass
+    
+    if ("/signin/identifier" in current_url or "/signin/v2/identifier" in current_url) and not password_field_present:
+        logger.warning("Still on identifier page after all retries - login flow may be blocked")
+        # Take final diagnostic screenshot
+        try:
+            final_screenshot = os.path.join("logs", f"final-identifier-stuck-{int(time.time())}.png")
+            await page.screenshot(path=final_screenshot, full_page=True)
+            logger.info(f"Final diagnostic screenshot: {final_screenshot}")
+        except Exception:
+            pass
+    else:
+        logger.info("Successfully progressed past identifier page")
     
     await _ensure_password_input(page)
 
