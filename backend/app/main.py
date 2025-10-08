@@ -13,7 +13,6 @@ from fastapi.exception_handlers import request_validation_exception_handler
 
 from app.utils.logging import setup_logger
 from app.utils.youtube_cookies import refresh_youtube_cookies
-from app.config import BROWSERLESS_WS_URL, BROWSERLESS_TOKEN
 from app.routes.tags import router as tags_router
 from app.routes.cuisines import router as cuisines_router
 from app.routes.videos import router as videos_router
@@ -116,73 +115,3 @@ async def custom_validation_exception_handler(
 @app.get("/")
 def root():
     return {"message": "Influencer Food Map API is live!"}
-
-
-@app.get("/health")
-async def health_check():
-    """Comprehensive health check including Browserless API connectivity."""
-    from playwright.async_api import async_playwright
-    
-    health_status = {
-        "status": "healthy",
-        "timestamp": datetime.now().isoformat(),
-        "services": {
-            "api": "healthy",
-            "browserless": "unknown",
-            "youtube_cookies": "unknown"
-        },
-        "config": {
-            "browserless_enabled": bool(BROWSERLESS_WS_URL),
-            "browserless_url": BROWSERLESS_WS_URL if BROWSERLESS_WS_URL else None
-        }
-    }
-    
-    # Test Browserless connectivity
-    if BROWSERLESS_WS_URL:
-        try:
-            async with async_playwright() as p:
-                ws_url = BROWSERLESS_WS_URL
-                if BROWSERLESS_TOKEN and ('token=' not in ws_url):
-                    ws_url = ws_url + (('&' if '?' in ws_url else '?') + f"token={BROWSERLESS_TOKEN}")
-                
-                browser = await p.chromium.connect_over_cdp(ws_url)
-                context = await browser.new_context()
-                page = await context.new_page()
-                
-                # Test basic page navigation
-                await page.goto("https://www.google.com", timeout=10000)
-                await page.wait_for_load_state("networkidle", timeout=5000)
-                
-                await browser.close()
-                health_status["services"]["browserless"] = "healthy"
-                logger.info("Browserless API health check passed")
-                
-        except Exception as e:
-            health_status["services"]["browserless"] = f"unhealthy: {str(e)}"
-            health_status["status"] = "degraded"
-            logger.error(f"Browserless API health check failed: {e}")
-    else:
-        health_status["services"]["browserless"] = "disabled"
-    
-    # Test YouTube cookie functionality
-    try:
-        # Check if cookies file exists and is recent (within 24 hours)
-        from app.utils.youtube_cookies import get_cookies_age_hours
-        age_hours = get_cookies_age_hours()
-        if age_hours is not None and age_hours < 24:
-            health_status["services"]["youtube_cookies"] = "healthy"
-        elif age_hours is not None:
-            health_status["services"]["youtube_cookies"] = f"stale ({age_hours:.1f}h old)"
-        else:
-            health_status["services"]["youtube_cookies"] = "not found"
-            
-    except Exception as e:
-        health_status["services"]["youtube_cookies"] = f"error: {str(e)}"
-    
-    # Determine overall status
-    if any(service == "unhealthy" for service in health_status["services"].values()):
-        health_status["status"] = "unhealthy"
-    elif any("stale" in str(service) or "error" in str(service) for service in health_status["services"].values()):
-        health_status["status"] = "degraded"
-    
-    return health_status
