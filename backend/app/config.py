@@ -32,10 +32,9 @@ YOUTUBE_API_KEY = os.getenv("YOUTUBE_API_KEY")
 GOOGLE_MAPS_API_KEY = os.getenv("GOOGLE_MAPS_API_KEY")
 PEXELS_API_KEY = os.getenv("PEXELS_API_KEY")
 
-# Browserless API configuration (for production)
-BROWSERLESS_WS_URL = os.getenv("BROWSERLESS_WS_URL")  # e.g., ws://browserless:3000?token=YOUR_TOKEN
-BROWSERLESS_TOKEN = os.getenv("BROWSERLESS_TOKEN")
-BROWSERLESS_DEBUG = os.getenv("BROWSERLESS_DEBUG", "false").lower() == "true"
+# Headful mode configuration
+HEADFUL_MODE = os.getenv("HEADFUL_MODE", "true").lower() == "true"
+HEADFUL_DISPLAY = os.getenv("HEADFUL_DISPLAY", ":99")  # For Xvfb in Docker
 
 # Enhanced browser security configuration
 PRODUCTION_BROWSER_ARGS = [

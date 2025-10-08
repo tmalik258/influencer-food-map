@@ -7,16 +7,16 @@ from datetime import datetime, timedelta
 from typing import Optional, cast, List, Dict, Any
 from http.cookiejar import MozillaCookieJar, Cookie
 
-from playwright_stealth import Stealth
+
 from playwright.async_api import async_playwright, Browser, BrowserContext, Page, TimeoutError
+from playwright_stealth import Stealth
 
 from app.config import (
     YTDLP_COOKIES_FILE,
     GOOGLE_EMAIL,
     GOOGLE_PASSWORD,
-    BROWSERLESS_WS_URL,
-    BROWSERLESS_TOKEN,
-    BROWSERLESS_DEBUG,
+    HEADFUL_MODE,
+    HEADFUL_DISPLAY,
     PRODUCTION_BROWSER_ARGS,
     SECURITY_HEADERS,
 )
@@ -24,6 +24,21 @@ from app.utils.logging import setup_logger
 from urllib.parse import urlparse
 
 logger = setup_logger(__name__)
+
+# Utility helpers for timestamped logging and screenshots
+def _ts() -> str:
+    return datetime.now().strftime("%Y%m%d-%H%M%S")
+
+async def _save_screenshot(page: Page, stage: str) -> str:
+    try:
+        os.makedirs("logs", exist_ok=True)
+        fname = os.path.join("logs", f"{stage}-{_ts()}.png")
+        await page.screenshot(path=fname, full_page=True)
+        logger.info(f"Screenshot [{stage}] saved: {fname} (URL: {page.url})")
+        return fname
+    except Exception as e:
+        logger.warning(f"Screenshot [{stage}] failed: {e}")
+        return ""
 
 # Paths for persisted state (mount these in Docker volumes for persistence)
 BASE_COOKIES_DIR = os.path.dirname(cast(str, YTDLP_COOKIES_FILE))
@@ -44,127 +59,147 @@ def is_docker() -> bool:
     except:
         return False
 
+def get_enhanced_browser_args(headless: bool, docker: bool) -> List[str]:
+    """Generate enhanced browser arguments for stealth mode."""
+    args = PRODUCTION_BROWSER_ARGS.copy()
+    
+    # Add headful-specific arguments for better stealth
+    if not headless:
+        args.extend([
+            '--start-maximized',
+            '--window-size=1366,768',
+            '--window-position=0,0',
+            '--no-first-run',
+            '--no-default-browser-check',
+            '--disable-blink-features=AutomationControlled',
+            '--disable-features=TranslateUI',
+            '--disable-component-extensions-with-background-pages',
+            '--disable-background-timer-throttling',
+            '--disable-backgrounding-occluded-windows',
+            '--disable-renderer-backgrounding',
+            '--disable-features=PrivacySandboxSettings4',
+            '--disable-features=PrivacySandboxAdsAPIsM1Override',
+            '--disable-features=PrivacySandboxProactiveTopicsBlocking',
+            '--disable-features=FedCm',
+            '--disable-features=FedCmIdPRegistration',
+            '--disable-features=FedCmIdPSigninStatus',
+        ])
+    
+    # Docker-specific arguments
+    if docker:
+        args.extend([
+            '--no-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--disable-software-rasterizer',
+        ])
+        
+        # Add virtual display for headful mode in Docker
+        if not headless:
+            args.extend([
+                '--virtual-time-budget=5000',
+                '--use-gl=swiftshader',
+            ])
+    
+    return args
+
+async def launch_browser_with_stealth(
+    p, 
+    headless: bool, 
+    browser_type: str = "chromium", 
+    channel: Optional[str] = None,
+    args: List[str] = None
+) -> Optional[Browser]:
+    """Launch browser with enhanced stealth configuration."""
+    try:
+        logger.info(f"Launching {browser_type} browser (headless={headless}, channel={channel})")
+        
+        # Choose browser type
+        if browser_type == "firefox":
+            browser = await p.firefox.launch(
+                headless=headless,
+                channel=channel,
+                args=args or [],
+                firefox_user_prefs={
+                    'dom.webdriver.enabled': False,
+                    'useAutomationExtension': False,
+                    'devtools.jsonview.enabled': False,
+                }
+            )
+        else:  # Default to chromium/chrome
+            browser = await p.chromium.launch(
+                headless=headless,
+                channel=channel,
+                args=args or [],
+                chromium_sandbox=False,  # Disable sandbox for better compatibility
+            )
+        
+        logger.info(f"Browser launched successfully: {browser_type}")
+        return browser
+        
+    except Exception as e:
+        logger.error(f"Failed to launch browser: {e}")
+        return None
+
+async def create_stealth_browser_context(browser: Browser, docker: bool) -> BrowserContext:
+    """Create browser context with enhanced stealth settings."""
+    
+    # Enhanced viewport settings for headful mode
+    viewport = {"width": 1366, "height": 768}
+    if not HEADFUL_MODE:
+        viewport["width"] = 1366
+        viewport["height"] = 768
+    
+    context_opts = {
+        'viewport': viewport,
+        'user_agent': REALISTIC_UA,
+        'locale': 'en-US',
+        'timezone_id': 'UTC',
+        'device_scale_factor': 1,
+        'is_mobile': False,
+        'has_touch': False,
+        'java_script_enabled': True,
+        'bypass_csp': False,
+        'ignore_https_errors': False,
+        'extra_http_headers': SECURITY_HEADERS.copy(),
+        'permissions': ['geolocation'],
+        'geolocation': {'latitude': 37.7749, 'longitude': -122.4194},
+        'color_scheme': 'light',
+        'forced_colors': 'none',
+        'reduced_motion': 'no-preference',
+        'screen': {
+            'width': 1366,
+            'height': 768,
+        },
+    }
+    
+    # Add storage state if available
+    if os.path.exists(STORAGE_STATE_FILE):
+        logger.info("Loading persisted YouTube storage state")
+        try:
+            context = await browser.new_context(
+                storage_state=STORAGE_STATE_FILE, 
+                **context_opts
+            )
+            return context
+        except Exception as e:
+            logger.warning(f"Failed to load storage state: {e}")
+    
+    # Create new context
+    context = await browser.new_context(**context_opts)
+    return context
+
+
 def _ensure_cookies_dir():
     try:
         os.makedirs(BASE_COOKIES_DIR, exist_ok=True)
     except Exception as e:
         logger.warning(f"Could not create cookies dir {BASE_COOKIES_DIR}: {e}")
 
-def get_browserless_ws_url() -> str:
-    """Get Browserless WebSocket URL with proper formatting."""
-    if not BROWSERLESS_WS_URL:
-        return None
-    
-    ws_url = BROWSERLESS_WS_URL
-    if BROWSERLESS_TOKEN and 'token=' not in ws_url:
-        separator = '&' if '?' in ws_url else '?'
-        ws_url = f"{ws_url}{separator}token={BROWSERLESS_TOKEN}"
-    
-    return ws_url
 
-async def launch_browser_with_browserless(p, headless: bool = True) -> Browser:
-    """Launch browser using Browserless API for production."""
-    ws_url = get_browserless_ws_url()
-    if not ws_url:
-        return None
-    
-    try:
-        logger.info(f"Connecting to Browserless via CDP: {ws_url.split('?')[0]}")
-        
-        # Enhanced browser context options for Browserless
-        browser = await p.chromium.connect_over_cdp(ws_url)
-        
-        if BROWSERLESS_DEBUG:
-            logger.info(f"Browserless connection established")
-        
-        return browser
-    except Exception as e:
-        logger.error(f"Browserless connection failed: {e}")
-        return None
-
-async def launch_browser_locally(p, headless: bool = True, browser_type: str = "chromium", channel: Optional[str] = None) -> Browser:
-    """Launch browser locally for development."""
-    docker = is_docker()
-    
-    # Enhanced browser arguments for local deployment
-    args = PRODUCTION_BROWSER_ARGS.copy()
-    
-    # Add virtual time budget for headless non-docker environments
-    if headless and not docker:
-        args.append('--virtual-time-budget=5000')
-    
-    # Launch appropriate browser type
-    if browser_type == "firefox":
-        browser = await p.firefox.launch(
-            headless=headless,
-            channel=channel,
-            args=args,
-        )
-    else:  # Default to chromium
-        browser = await p.chromium.launch(
-            headless=headless,
-            channel=channel,
-            args=args,
-        )
-    
-    return browser
-
-async def create_secure_browser_context(browser, context_opts: dict) -> BrowserContext:
-    """Create a secure browser context with enhanced security settings."""
-    # Merge security headers with context options
-    enhanced_opts = context_opts.copy()
-    enhanced_opts['extra_http_headers'] = SECURITY_HEADERS.copy()
-    
-    # Add viewport and user agent for realism
-    enhanced_opts.update({
-        'viewport': {"width": 1366, "height": 768},
-        'user_agent': REALISTIC_UA,
-        'locale': 'en-US',
-        'timezone_id': 'UTC',
-        'permissions': ['geolocation'],
-        'geolocation': {'latitude': 37.7749, 'longitude': -122.4194},
-        'color_scheme': 'light',
-        'device_scale_factor': 1,
-        'is_mobile': False,
-        'has_touch': False,
-    })
-    
-    # Try loading persisted state first
-    if os.path.exists(STORAGE_STATE_FILE):
-        logger.info("Loading persisted YouTube storage state")
-        try:
-            context = await browser.new_context(storage_state=STORAGE_STATE_FILE, **enhanced_opts)
-            return context
-        except Exception as e:
-            logger.warning(f"Failed to load storage state: {e}")
-    
-    # Create new context if storage state fails
-    context = await browser.new_context(**enhanced_opts)
-    return context
-
-async def test_browserless_connection() -> bool:
-    """Test Browserless API connectivity."""
-    ws_url = get_browserless_ws_url()
-    if not ws_url:
-        logger.warning("Browserless not configured, skipping connection test")
-        return True
-    
-    try:
-        async with async_playwright() as p:
-            browser = await p.chromium.connect_over_cdp(ws_url)
-            # Try to create a simple page to test connectivity
-            context = await browser.new_context()
-            page = await context.new_page()
-            await page.goto("https://www.google.com", timeout=10000)
-            await browser.close()
-            logger.info("Browserless connection test successful")
-            return True
-    except Exception as e:
-        logger.error(f"Browserless connection test failed: {e}")
-        return False
 
 async def _run_refresh(headless: bool, browser_type: str = "chromium", channel: Optional[str] = None) -> bool:
-    """Internal helper to run the refresh logic with given headless mode and browser type/channel."""
+    """Internal helper to run the refresh logic with enhanced headful Playwright implementation."""
     if not GOOGLE_EMAIL or not GOOGLE_PASSWORD:
         logger.error("GOOGLE_EMAIL and GOOGLE_PASSWORD env vars required for cookie refresh")
         return False
@@ -172,9 +207,14 @@ async def _run_refresh(headless: bool, browser_type: str = "chromium", channel: 
     docker = is_docker()
     if docker:
         logger.info("Docker detected; using container-optimized args")
+        
+        # Set up virtual display for headful mode in Docker
+        if not headless and HEADFUL_MODE:
+            logger.info(f"Setting up virtual display: {HEADFUL_DISPLAY}")
+            os.environ['DISPLAY'] = HEADFUL_DISPLAY
 
     try:
-        async with Stealth().use_async(async_playwright()) as p:
+        async with async_playwright() as p:
             args = [
                 '--no-sandbox',
                 '--disable-dev-shm-usage',
@@ -236,22 +276,8 @@ async def _run_refresh(headless: bool, browser_type: str = "chromium", channel: 
                     '--headless=new',
                 ])
 
-            # Enhanced browser launch with Browserless integration
-            browser = None
-            use_browserless = False
-            
-            # Try Browserless first if configured
-            if BROWSERLESS_WS_URL:
-                browser = await launch_browser_with_browserless(p, headless)
-                if browser:
-                    use_browserless = True
-                    logger.info("Successfully connected to Browserless API")
-                else:
-                    logger.warning("Browserless connection failed, falling back to local browser")
-            
-            # Fallback to local browser launch
-            if not browser:
-                browser = await launch_browser_locally(p, headless, browser_type, channel)
+            # Launch browser with enhanced stealth settings
+            browser = await launch_browser_with_stealth(p, headless, browser_type, channel)
 
             # Enhanced context options with security headers
             context_opts = dict(
@@ -273,129 +299,13 @@ async def _run_refresh(headless: bool, browser_type: str = "chromium", channel: 
                 reduced_motion='no-preference',
             )
 
-            # Create secure browser context
-            context = await create_secure_browser_context(browser, context_opts)
+            # Create browser context with stealth settings
+            context = await browser.new_context(**context_opts)
 
-            # Enhanced stealth scripts to avoid detection
-            stealth_scripts = [
-                # Remove webdriver property
-                'Object.defineProperty(navigator, "webdriver", {get: () => undefined})',
-                
-                # Override plugins
-                'Object.defineProperty(navigator, "plugins", {get: () => [1, 2, 3, 4, 5]})',
-                
-                # Override languages
-                'Object.defineProperty(navigator, "languages", {get: () => ["en-US", "en"])',
-                
-                # Override platform
-                'Object.defineProperty(navigator, "platform", {get: () => "Win32"})',
-                
-                # Override userAgentData
-                'Object.defineProperty(navigator, "userAgentData", {get: () => ({brands: [{brand: "Chromium", version: "140"}, {brand: "Not;A=Brand", version: "99"}, {brand: "Google Chrome", version: "140"}], mobile: false, platform: "Windows"})})',
-                
-                # Override permissions
-                'Object.defineProperty(navigator, "permissions", {get: () => ({query: () => Promise.resolve({state: "granted"})})})',
-                
-                # Mock chrome runtime
-                '''
-                window.chrome = {
-                    runtime: {
-                        sendMessage: () => {},
-                        onMessage: {addListener: () => {}},
-                        onConnect: {addListener: () => {}},
-                        connect: () => ({postMessage: () => {}, onMessage: {addListener: () => {}}})
-                    }
-                };
-                ''',
-                
-                # Mock notification API
-                '''
-                window.Notification = function(title, options) {
-                    this.title = title;
-                    this.options = options;
-                };
-                window.Notification.permission = "granted";
-                window.Notification.requestPermission = () => Promise.resolve("granted");
-                ''',
-                
-                # Override device memory
-                'Object.defineProperty(navigator, "deviceMemory", {get: () => 8})',
-                
-                # Override hardware concurrency
-                'Object.defineProperty(navigator, "hardwareConcurrency", {get: () => 4})',
-                
-                # Override screen resolution
-                '''
-                Object.defineProperty(screen, "width", {get: () => 1366});
-                Object.defineProperty(screen, "height", {get: () => 768});
-                Object.defineProperty(screen, "availWidth", {get: () => 1366});
-                Object.defineProperty(screen, "availHeight", {get: () => 738});
-                ''',
-                
-                # Override timezone
-                'Object.defineProperty(Intl, "DateTimeFormat", {value: function(...args) { return new Intl.DateTimeFormat("en-US", ...args); }})',
-                
-                # Enhanced stealth - Override canvas fingerprinting
-                '''
-                const originalToDataURL = HTMLCanvasElement.prototype.toDataURL;
-                HTMLCanvasElement.prototype.toDataURL = function(type) {
-                    if (type === 'image/png' || !type) {
-                        return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-                    }
-                    return originalToDataURL.apply(this, arguments);
-                };
-                ''',
-                
-                # Override WebGL fingerprinting
-                '''
-                const getParameter = WebGLRenderingContext.prototype.getParameter;
-                WebGLRenderingContext.prototype.getParameter = function(parameter) {
-                    if (parameter === 37445) {
-                        return 'Intel Inc.';
-                    }
-                    if (parameter === 37446) {
-                        return 'Intel Iris OpenGL Engine';
-                    }
-                    return getParameter.apply(this, arguments);
-                };
-                ''',
-                
-                # Mock media devices
-                '''
-                navigator.mediaDevices = {
-                    enumerateDevices: () => Promise.resolve([]),
-                    getUserMedia: () => Promise.reject(new Error('Not allowed')),
-                    getDisplayMedia: () => Promise.reject(new Error('Not allowed'))
-                };
-                ''',
-                
-                # Override battery API
-                '''
-                navigator.getBattery = () => Promise.resolve({
-                    charging: true,
-                    chargingTime: 0,
-                    dischargingTime: Infinity,
-                    level: 1,
-                    addEventListener: () => {},
-                    removeEventListener: () => {}
-                });
-                ''',
-                
-                # Enhanced randomization
-                '''
-                // Add slight randomization to timing
-                const originalSetTimeout = window.setTimeout;
-                window.setTimeout = function(fn, delay) {
-                    const randomDelay = delay + Math.floor(Math.random() * 50);
-                    return originalSetTimeout.call(this, fn, randomDelay);
-                };
-                ''',
-            ]
-            
-            for script in stealth_scripts:
-                await context.add_init_script(script)
-            
+            # Apply stealth via playwright-stealth; custom scripts removed
             page = await context.new_page()
+            # Apply playwright-stealth to the page
+            await Stealth().apply_stealth_async(page)
 
             # If no state or expired, perform login
             if not os.path.exists(STORAGE_STATE_FILE) or await _is_login_needed(page):
@@ -418,11 +328,11 @@ async def _run_refresh(headless: bool, browser_type: str = "chromium", channel: 
 
             await browser.close()
             _update_last_refresh_timestamp()
-            logger.info(f"Successfully refreshed cookies at {datetime.now()} (headless={headless}, browser={browser_type}, channel={channel})")
+            logger.info(f"Successfully refreshed cookies at {datetime.now()} (headless={headless}, browser={browser_type}, channel={channel}, stealth=playwright-stealth)")
             return True
 
     except Exception as e:
-        logger.error(f"Cookie refresh failed (headless={headless}, browser={browser_type}, channel={channel}): {e}")
+        logger.error(f"Cookie refresh failed (headless={headless}, browser={browser_type}, channel={channel}, stealth=playwright-stealth): {e}")
         return False
 
 async def refresh_youtube_cookies(headless: bool = True) -> bool:
@@ -492,9 +402,24 @@ async def _login_to_google_with_retry(page: Page, max_retries: int = 1) -> bool:
 
 async def _is_login_needed(page) -> bool:
     """Check if login is required by verifying authenticated YouTube elements."""
-    await page.goto("https://www.youtube.com")
-    await page.wait_for_load_state("networkidle", timeout=10000)
-    
+    start = time.time()
+    logger.info(f"[Auth Check] Navigating to YouTube home (attempting auth detection)")
+    try:
+        await page.goto("https://www.youtube.com", timeout=45000)
+        await page.wait_for_load_state("domcontentloaded", timeout=20000)
+        await page.wait_for_load_state("networkidle", timeout=30000)
+        elapsed = int((time.time() - start) * 1000)
+        logger.info(f"[Auth Check] YouTube home loaded (elapsed={elapsed}ms)")
+        await _save_screenshot(page, "auth-check-youtube-home")
+    except TimeoutError as te:
+        elapsed = int((time.time() - start) * 1000)
+        logger.error(f"[Auth Check] Timeout loading YouTube (elapsed={elapsed}ms): {te}")
+        await _save_screenshot(page, "auth-check-youtube-timeout")
+        # Proceed to checks; some elements may still be present
+    except Exception as e:
+        logger.error(f"[Auth Check] Error loading YouTube: {e}")
+        await _save_screenshot(page, "auth-check-youtube-error")
+
     # Multi-check: Avatar + dashboard indicators (more robust than single selector)
     auth_selectors = [
         'a#avatar-link, button#avatar-btn',  # Avatar
@@ -502,24 +427,26 @@ async def _is_login_needed(page) -> bool:
         'div#endpoint[title*="Subscriptions"]',  # Dashboard presence
         'ytd-rich-grid-renderer',  # Home feed (logged-in only)
     ]
-    
     for selector in auth_selectors:
         try:
             await page.wait_for_selector(selector, timeout=3000)
-            logger.info(f"Auth confirmed via: {selector}")
+            logger.info(f"[Auth Check] Auth confirmed via: {selector}")
+            await _save_screenshot(page, "auth-confirmed")
             return False  # Logged in
         except Exception:
             continue
-    
+
     # Fallback: Explicit sign-in prompt
     try:
         signin = page.locator('tp-yt-iron-button:has-text("Sign in")')
         if await signin.is_visible(timeout=2000):
-            logger.warning("Sign-in prompt detected")
+            logger.warning("[Auth Check] Sign-in prompt detected")
+            await _save_screenshot(page, "signin-prompt-detected")
             return True
     except Exception:
         pass
-    
+
+    logger.info("[Auth Check] No definitive auth signals; assuming login needed")
     return True  # Assume needed if no auth signals
 
 async def _click_consent_if_present(page):
@@ -972,8 +899,27 @@ async def _login_to_google(page):
     await asyncio.sleep(3)
 
 async def _navigate_to_youtube(page):
-    await page.goto("https://www.youtube.com")
-    await page.wait_for_load_state("networkidle")
+    """Navigate to YouTube with retries and detailed timing logs."""
+    for attempt in range(1, 3):  # up to 2 attempts
+        start = time.time()
+        logger.info(f"[Nav] Attempt {attempt}/2: goto YouTube")
+        try:
+            await page.goto("https://www.youtube.com", timeout=45000)
+            await page.wait_for_load_state("domcontentloaded", timeout=20000)
+            await page.wait_for_load_state("networkidle", timeout=30000)
+            elapsed = int((time.time() - start) * 1000)
+            logger.info(f"[Nav] YouTube loaded (elapsed={elapsed}ms)")
+            await _save_screenshot(page, "nav-youtube-home")
+            return
+        except TimeoutError as te:
+            elapsed = int((time.time() - start) * 1000)
+            logger.warning(f"[Nav] Timeout navigating to YouTube (elapsed={elapsed}ms): {te}")
+            await _save_screenshot(page, "nav-youtube-timeout")
+        except Exception as e:
+            logger.warning(f"[Nav] Error navigating to YouTube: {e}")
+            await _save_screenshot(page, "nav-youtube-error")
+        await asyncio.sleep(2)
+    raise TimeoutError("Failed to navigate to YouTube after retries")
 
 async def _export_cookies_to_netscape(cookies: list[dict]):
     _ensure_cookies_dir()
