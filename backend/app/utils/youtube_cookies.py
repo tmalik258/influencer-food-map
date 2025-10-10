@@ -1,45 +1,20 @@
 import os
+from pathlib import Path
+import random
 import time
 import asyncio
 import re
-import json
-import random
-from datetime import datetime, timedelta
-from typing import Optional, cast, List, Dict, Any
+from datetime import datetime
+from typing import Optional, cast
 from http.cookiejar import MozillaCookieJar, Cookie
 
-
-from playwright.async_api import async_playwright, Browser, BrowserContext, Page, TimeoutError
 from playwright_stealth import Stealth
+from playwright.async_api import async_playwright, BrowserContext, Page, TimeoutError
 
-from app.config import (
-    YTDLP_COOKIES_FILE,
-    GOOGLE_EMAIL,
-    GOOGLE_PASSWORD,
-    HEADFUL_MODE,
-    HEADFUL_DISPLAY,
-    PRODUCTION_BROWSER_ARGS,
-    SECURITY_HEADERS,
-)
+from app.config import YTDLP_COOKIES_FILE, GOOGLE_EMAIL, GOOGLE_PASSWORD 
 from app.utils.logging import setup_logger
-from urllib.parse import urlparse
 
 logger = setup_logger(__name__)
-
-# Utility helpers for timestamped logging and screenshots
-def _ts() -> str:
-    return datetime.now().strftime("%Y%m%d-%H%M%S")
-
-async def _save_screenshot(page: Page, stage: str) -> str:
-    try:
-        os.makedirs("logs", exist_ok=True)
-        fname = os.path.join("logs", f"{stage}-{_ts()}.png")
-        await page.screenshot(path=fname, full_page=True)
-        logger.info(f"Screenshot [{stage}] saved: {fname} (URL: {page.url})")
-        return fname
-    except Exception as e:
-        logger.warning(f"Screenshot [{stage}] failed: {e}")
-        return ""
 
 # Paths for persisted state (mount these in Docker volumes for persistence)
 BASE_COOKIES_DIR = os.path.dirname(cast(str, YTDLP_COOKIES_FILE))
@@ -60,147 +35,14 @@ def is_docker() -> bool:
     except:
         return False
 
-def get_enhanced_browser_args(headless: bool, docker: bool) -> List[str]:
-    """Generate enhanced browser arguments for stealth mode."""
-    args = PRODUCTION_BROWSER_ARGS.copy()
-    
-    # Add headful-specific arguments for better stealth
-    if not headless:
-        args.extend([
-            '--start-maximized',
-            '--window-size=1366,768',
-            '--window-position=0,0',
-            '--no-first-run',
-            '--no-default-browser-check',
-            '--disable-blink-features=AutomationControlled',
-            '--disable-features=TranslateUI',
-            '--disable-component-extensions-with-background-pages',
-            '--disable-background-timer-throttling',
-            '--disable-backgrounding-occluded-windows',
-            '--disable-renderer-backgrounding',
-            '--disable-features=PrivacySandboxSettings4',
-            '--disable-features=PrivacySandboxAdsAPIsM1Override',
-            '--disable-features=PrivacySandboxProactiveTopicsBlocking',
-            '--disable-features=FedCm',
-            '--disable-features=FedCmIdPRegistration',
-            '--disable-features=FedCmIdPSigninStatus',
-        ])
-    
-    # Docker-specific arguments
-    if docker:
-        args.extend([
-            '--no-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--disable-software-rasterizer',
-        ])
-        
-        # Add virtual display for headful mode in Docker
-        if not headless:
-            args.extend([
-                '--virtual-time-budget=5000',
-                '--use-gl=swiftshader',
-            ])
-    
-    return args
-
-async def launch_browser_with_stealth(
-    p, 
-    headless: bool, 
-    browser_type: str = "chromium", 
-    channel: Optional[str] = None,
-    args: List[str] = None
-) -> Optional[Browser]:
-    """Launch browser with enhanced stealth configuration."""
-    try:
-        logger.info(f"Launching {browser_type} browser (headless={headless}, channel={channel})")
-        
-        # Choose browser type
-        if browser_type == "firefox":
-            browser = await p.firefox.launch(
-                headless=headless,
-                channel=channel,
-                args=args or [],
-                firefox_user_prefs={
-                    'dom.webdriver.enabled': False,
-                    'useAutomationExtension': False,
-                    'devtools.jsonview.enabled': False,
-                }
-            )
-        else:  # Default to chromium/chrome
-            browser = await p.chromium.launch(
-                headless=headless,
-                channel=channel,
-                args=args or [],
-                chromium_sandbox=False,  # Disable sandbox for better compatibility
-            )
-        
-        logger.info(f"Browser launched successfully: {browser_type}")
-        return browser
-        
-    except Exception as e:
-        logger.error(f"Failed to launch browser: {e}")
-        return None
-
-async def create_stealth_browser_context(browser: Browser, docker: bool) -> BrowserContext:
-    """Create browser context with enhanced stealth settings."""
-    
-    # Enhanced viewport settings for headful mode
-    viewport = {"width": 1366, "height": 768}
-    if not HEADFUL_MODE:
-        viewport["width"] = 1366
-        viewport["height"] = 768
-    
-    context_opts = {
-        'viewport': viewport,
-        'user_agent': REALISTIC_UA,
-        'locale': 'en-US',
-        'timezone_id': 'UTC',
-        'device_scale_factor': 1,
-        'is_mobile': False,
-        'has_touch': False,
-        'java_script_enabled': True,
-        'bypass_csp': False,
-        'ignore_https_errors': False,
-        'extra_http_headers': SECURITY_HEADERS.copy(),
-        'permissions': ['geolocation'],
-        'geolocation': {'latitude': 37.7749, 'longitude': -122.4194},
-        'color_scheme': 'light',
-        'forced_colors': 'none',
-        'reduced_motion': 'no-preference',
-        'screen': {
-            'width': 1366,
-            'height': 768,
-        },
-    }
-    
-    # Add storage state if available
-    if os.path.exists(STORAGE_STATE_FILE):
-        logger.info("Loading persisted YouTube storage state")
-        try:
-            context = await browser.new_context(
-                storage_state=STORAGE_STATE_FILE, 
-                **context_opts
-            )
-            return context
-        except Exception as e:
-            logger.warning(f"Failed to load storage state: {e}")
-    
-    # Create new context
-    context = await browser.new_context(**context_opts)
-    return context
-
-
 def _ensure_cookies_dir():
     try:
         os.makedirs(BASE_COOKIES_DIR, exist_ok=True)
     except Exception as e:
         logger.warning(f"Could not create cookies dir {BASE_COOKIES_DIR}: {e}")
 
-
-
-async def _run_refresh(headless: bool, browser_type: str = "chromium", channel: Optional[str] = None) -> bool:
-    """Internal helper to run the refresh logic with enhanced headful Playwright implementation."""
+async def _run_refresh(headless: bool, channel: Optional[str] = "chrome") -> bool:
+    """Internal helper to run the refresh logic with given headless mode and browser channel."""
     if not GOOGLE_EMAIL or not GOOGLE_PASSWORD:
         logger.error("GOOGLE_EMAIL and GOOGLE_PASSWORD env vars required for cookie refresh")
         return False
@@ -208,105 +50,91 @@ async def _run_refresh(headless: bool, browser_type: str = "chromium", channel: 
     docker = is_docker()
     if docker:
         logger.info("Docker detected; using container-optimized args")
-        
-        # Set up virtual display for headful mode in Docker
-        if not headless and HEADFUL_MODE:
-            logger.info(f"Setting up virtual display: {HEADFUL_DISPLAY}")
-            os.environ['DISPLAY'] = HEADFUL_DISPLAY
 
     try:
-        async with async_playwright() as p:
+        async with Stealth().use_async(async_playwright()) as p:
             args = [
                 '--no-sandbox',
                 '--disable-dev-shm-usage',
                 '--disable-blink-features=AutomationControlled',
-                '--disable-automation',
-                '--disable-extensions',
+                '--disable-infobars',
                 '--no-first-run',
-                '--no-service-autorun',
-                '--password-store=basic',
-                '--disable-background-networking',
-                '--disable-component-extensions-with-background-pages',
-                '--disable-client-side-phishing-detection',
-                '--disable-default-apps',
-                '--disable-gpu',  # Docker stability
-                '--disable-features=IsolateOrigins,site-per-process',
-                '--disable-features=TranslateUI',
-                '--metrics-recording-only',
-                '--disable-ipc-flooding-protection',
-                '--enable-features=NetworkService,NetworkServiceInProcess',
-                '--hide-scrollbars',
-                '--mute-audio',
-                # Enhanced security and stealth arguments
-                '--disable-blink-features=AutomationControlled',
-                '--disable-features=InterestFeedContentSuggestions',
-                '--disable-features=TranslateUI',
-                '--disable-component-update',
-                '--disable-default-apps',
-                '--disable-features=PrivacySandboxSettings4',
-                '--disable-features=PrivacySandboxAdsAPIsM1Override',
-                '--disable-features=PrivacySandboxProactiveTopicsBlocking',
-                '--disable-features=FedCm',
-                '--disable-features=FedCmIdPRegistration',
-                '--disable-features=FedCmIdPSigninStatus',
-                '--disable-features=FedCmAuthz',
-                '--disable-features=FedCmActive',
-                '--disable-features=FedCmWithoutThirdPartyCookies',
-                '--disable-features=FedCmWithoutWellKnownEnforcement',
-                '--disable-features=FedCmMultipleIdentityProviders',
-                '--disable-features=FedCmSelectiveDisclosure',
-                '--disable-features=FedCmUserInfo',
-                '--disable-features=FedCmAutoSelectedFlag',
-                '--disable-features=FedCmIdPRegistration',
-                '--disable-features=FedCmIdPSigninStatus',
-                '--disable-features=FedCmAuthz',
-                '--disable-features=FedCmActive',
-                '--disable-features=FedCmWithoutThirdPartyCookies',
-                '--disable-features=FedCmWithoutWellKnownEnforcement',
-                '--disable-features=FedCmMultipleIdentityProviders',
-                '--disable-features=FedCmSelectiveDisclosure',
-                '--disable-features=FedCmUserInfo',
-                '--disable-features=FedCmAutoSelectedFlag',
-                '--disable-features=PrivacySandboxSettings4',
-                '--disable-features=PrivacySandboxAdsAPIsM1Override',
-                '--disable-features=PrivacySandboxProactiveTopicsBlocking',
+                '--no-default-browser-check',
+                '--window-size=1920,1080',  # Larger, more common resolution
             ]
             if headless and not docker:
-                args.extend([
-                    '--virtual-time-budget=5000',
-                    '--headless=new',
-                ])
+                args.append('--virtual-time-budget=5000')
+            
+            if docker:
+                args.extend(['--disable-gpu', '--single-process'])
 
-            # Launch browser with enhanced stealth settings
-            browser = await launch_browser_with_stealth(p, headless, browser_type, channel)
+            profile_path = Path.home() / "AppData" / "Local" / "Google" / "Chrome" / "User Data"
 
-            # Enhanced context options with security headers
-            context_opts = dict(
-                locale='en-US',
-                timezone_id='UTC',
-                user_agent=REALISTIC_UA,
-                viewport={"width": 1366, "height": 768},
-                device_scale_factor=1,
-                is_mobile=False,
-                has_touch=False,
-                java_script_enabled=True,
-                bypass_csp=False,
-                ignore_https_errors=False,
-                extra_http_headers=SECURITY_HEADERS.copy(),
-                permissions=[],
-                geolocation=None,
-                color_scheme='light',
-                forced_colors='none',
-                reduced_motion='no-preference',
+            browser = await p.chromium.launch(
+                headless=headless,
+                channel="chrome",
+                args=args,
             )
 
-            # Create browser context with stealth settings
-            context = await browser.new_context(**context_opts)
+            context: Optional[BrowserContext] = None
 
-            # Apply stealth via playwright-stealth; custom scripts removed
+            context_opts = dict(
+                locale='en-PK',  # or 'ur-PK' if you want Urdu as the browser language
+                timezone_id='Asia/Karachi',  # Pakistan timezone
+                user_agent=REALISTIC_UA,
+                viewport={"width": 1366, "height": 768}
+            )
+
+            # Try loading persisted state first (skips login if valid)
+            if os.path.exists(STORAGE_STATE_FILE):
+                logger.info("Loading persisted YouTube storage state")
+                context = await browser.new_context(storage_state=STORAGE_STATE_FILE, **context_opts)
+            else:
+                context = await browser.new_context(**context_opts)
+
+            if not context:
+                logger.error("Failed to create browser context")
+                return False
+            
+            await context.add_init_script('''
+                // Remove webdriver traces
+                Object.defineProperty(navigator, 'webdriver', {get: () => undefined});
+                delete navigator.__proto__.webdriver;
+                
+                // Add chrome object
+                window.chrome = {
+                    runtime: {},
+                    loadTimes: function() {},
+                    csi: function() {},
+                    app: {}
+                };
+                
+                // Mock plugins
+                Object.defineProperty(navigator, 'plugins', {
+                    get: () => [
+                        {name: 'Chrome PDF Plugin', filename: 'internal-pdf-viewer'},
+                        {name: 'Chrome PDF Viewer', filename: 'mhjfbmdgcfjbbpaeojofohoefgiehjai'},
+                        {name: 'Native Client', filename: 'internal-nacl-plugin'}
+                    ]
+                });
+                
+                // Override permissions
+                const originalQuery = window.navigator.permissions.query;
+                window.navigator.permissions.query = (parameters) => (
+                    parameters.name === 'notifications' ?
+                        Promise.resolve({state: Notification.permission}) :
+                        originalQuery(parameters)
+                );
+                
+                // Random mouse movements (human-like)
+                setInterval(() => {
+                    window.dispatchEvent(new MouseEvent('mousemove', {
+                        clientX: Math.random() * window.innerWidth,
+                        clientY: Math.random() * window.innerHeight
+                    }));
+                }, Math.random() * 5000 + 2000);
+            ''')
             page = await context.new_page()
-            # Apply playwright-stealth to the page
-            await Stealth().apply_stealth_async(page)
 
             # If no state or expired, perform login
             if not os.path.exists(STORAGE_STATE_FILE) or await _is_login_needed(page):
@@ -329,11 +157,11 @@ async def _run_refresh(headless: bool, browser_type: str = "chromium", channel: 
 
             await browser.close()
             _update_last_refresh_timestamp()
-            logger.info(f"Successfully refreshed cookies at {datetime.now()} (headless={headless}, browser={browser_type}, channel={channel}, stealth=playwright-stealth)")
+            logger.info(f"Successfully refreshed cookies at {datetime.now()} (headless={headless}, channel={channel})")
             return True
 
     except Exception as e:
-        logger.error(f"Cookie refresh failed (headless={headless}, browser={browser_type}, channel={channel}, stealth=playwright-stealth): {e}")
+        logger.error(f"Cookie refresh failed (headless={headless}, channel={channel}): {e}")
         return False
 
 async def refresh_youtube_cookies(headless: bool = True) -> bool:
@@ -347,32 +175,24 @@ async def refresh_youtube_cookies(headless: bool = True) -> bool:
     """
     _ensure_cookies_dir()
 
-    docker = is_docker()
-    if docker:
-        logger.info("Docker detected; recommending xvfb-run wrapper for headful fallback")
-
-    # Primary attempt: Use preferred headless mode with Chrome (better evasion)
-    success = await _run_refresh(headless, browser_type="chrome", channel="chrome")
+    # Primary attempt: Use preferred headless mode with system Chrome
+    success = await _run_refresh(headless, channel="chrome")
     
-    # Fallback 1: If failed, retry headless with bundled Chromium
+    # Fallback 1: If failed, retry headless with bundled Chromium (less detection sometimes)
     if not success and headless:
         logger.warning("Headless with Chrome failed; retrying with bundled Chromium")
-        success = await _run_refresh(headless, browser_type="chromium", channel=None)
+        success = await _run_refresh(headless, channel=None)
     
-    # Fallback 2: If still failed, retry with system Chrome (headless)
+    # Fallback 2: If still failed, retry headful (warn for Docker/Xvfb)
     if not success and headless:
-        logger.warning("Bundled Chromium failed; retrying with system Chrome")
-        success = await _run_refresh(headless, browser_type="chromium", channel="chrome")
-    
-    # Fallback 3: If still failed, retry headful with Firefox
-    if not success and headless:
+        docker = is_docker()
         if docker:
-            logger.warning("All headless failed in Docker; falling back to headful (run with 'xvfb-run -a -s \"-screen 0 1024x768x24\" python ...' for display)")
+            logger.warning("Headless failed in Docker; falling back to headful (run with 'xvfb-run -a python ...' for display)")
         else:
-            logger.warning("All headless failed; falling back to headful mode")
-        success = await _run_refresh(False, browser_type="chrome", channel="chrome")
+            logger.warning("Headless failed; falling back to headful mode")
+        success = await _run_refresh(False, channel="chrome")
         if docker and not success:
-            logger.error("Headful failed in Docker—ensure Xvfb installed and use xvfb-run wrapper with screen args")
+            logger.error("Headful failed in Docker—ensure Xvfb installed and use xvfb-run wrapper")
     
     return success
 
@@ -391,7 +211,7 @@ async def _login_to_google_with_retry(page: Page, max_retries: int = 1) -> bool:
                     logger.error("Max login retries exceeded due to rejection loop; aborting")
                     return False
                 # Reset page to start of login for retry
-                await page.goto("https://accounts.google.com/v3/signin/identifier?hl=en&continue=https%3A%2F%2Fwww.youtube.com")
+                await page.goto("https://accounts.google.com/v2/signin/identifier?continue=https%3A%2F%2Fwww.youtube.com%2F&dsh=S-2147279974%3A1759988436171692&followup=https%3A%2F%2Faccounts.google.com%2F&ifkv=AfYwgwXSrxGEIClHmM1YYF3IUQnqFv6KRohiAa4gNIchCV-z6eJ4CZypirCLzgqFfDqKVaqnveYRig&passive=1209600&flowName=GlifWebSignIn&flowEntry=ServiceLogin")
                 await page.wait_for_load_state("domcontentloaded")
                 continue
             else:
@@ -403,24 +223,9 @@ async def _login_to_google_with_retry(page: Page, max_retries: int = 1) -> bool:
 
 async def _is_login_needed(page) -> bool:
     """Check if login is required by verifying authenticated YouTube elements."""
-    start = time.time()
-    logger.info(f"[Auth Check] Navigating to YouTube home (attempting auth detection)")
-    try:
-        await page.goto("https://www.youtube.com", timeout=45000)
-        await page.wait_for_load_state("domcontentloaded", timeout=20000)
-        await page.wait_for_load_state("networkidle", timeout=30000)
-        elapsed = int((time.time() - start) * 1000)
-        logger.info(f"[Auth Check] YouTube home loaded (elapsed={elapsed}ms)")
-        await _save_screenshot(page, "auth-check-youtube-home")
-    except TimeoutError as te:
-        elapsed = int((time.time() - start) * 1000)
-        logger.error(f"[Auth Check] Timeout loading YouTube (elapsed={elapsed}ms): {te}")
-        await _save_screenshot(page, "auth-check-youtube-timeout")
-        # Proceed to checks; some elements may still be present
-    except Exception as e:
-        logger.error(f"[Auth Check] Error loading YouTube: {e}")
-        await _save_screenshot(page, "auth-check-youtube-error")
-
+    await page.goto("https://www.youtube.com")
+    await page.wait_for_load_state("networkidle", timeout=10000)
+    
     # Multi-check: Avatar + dashboard indicators (more robust than single selector)
     auth_selectors = [
         'a#avatar-link, button#avatar-btn',  # Avatar
@@ -428,127 +233,25 @@ async def _is_login_needed(page) -> bool:
         'div#endpoint[title*="Subscriptions"]',  # Dashboard presence
         'ytd-rich-grid-renderer',  # Home feed (logged-in only)
     ]
+    
     for selector in auth_selectors:
         try:
             await page.wait_for_selector(selector, timeout=3000)
-            logger.info(f"[Auth Check] Auth confirmed via: {selector}")
-            await _save_screenshot(page, "auth-confirmed")
+            logger.info(f"Auth confirmed via: {selector}")
             return False  # Logged in
         except Exception:
             continue
-
+    
     # Fallback: Explicit sign-in prompt
     try:
         signin = page.locator('tp-yt-iron-button:has-text("Sign in")')
         if await signin.is_visible(timeout=2000):
-            logger.warning("[Auth Check] Sign-in prompt detected")
-            await _save_screenshot(page, "signin-prompt-detected")
+            logger.warning("Sign-in prompt detected")
             return True
     except Exception:
         pass
-
-    logger.info("[Auth Check] No definitive auth signals; assuming login needed")
+    
     return True  # Assume needed if no auth signals
-
-async def _click_next_button_robust(page: Page):
-    """Robust Next button clicking with multiple strategies"""
-    next_button_selectors = [
-        '#identifierNext',
-        'button[id="identifierNext"]',
-        'input[id="identifierNext"]',
-        'button[type="submit"]',
-        'input[type="submit"]',
-        'button[jsname="LgbsSe"]',  # Google's internal button identifier
-        'div[role="button"][id="identifierNext"]',
-        'span[jsname="V67aGc"]',  # Another Google internal identifier
-    ]
-    
-    # Strategy 1: Try multiple selectors with different click methods
-    for selector in next_button_selectors:
-        try:
-            element = await page.wait_for_selector(selector, timeout=2000)
-            if element and await element.is_visible() and await element.is_enabled():
-                logger.info(f"Found Next button with selector: {selector}")
-                
-                # Log button properties for debugging
-                try:
-                    button_text = await element.text_content()
-                    button_disabled = await element.is_disabled()
-                    button_hidden = await element.is_hidden()
-                    logger.info(f"Button properties - Text: '{button_text}', Disabled: {button_disabled}, Hidden: {button_hidden}")
-                except Exception:
-                    pass
-                
-                # Try different click methods
-                click_methods = [
-                    lambda: element.click(),
-                    lambda: element.click(force=True),
-                    lambda: element.dispatch_event('click'),
-                    lambda: page.evaluate('(element) => element.click()', element),
-                ]
-                
-                for i, click_method in enumerate(click_methods):
-                    try:
-                        await click_method()
-                        logger.info(f"Successfully clicked Next button using method {i+1}")
-                        return
-                    except Exception as e:
-                        logger.debug(f"Click method {i+1} failed: {e}")
-                        continue
-                        
-        except Exception as e:
-            logger.debug(f"Selector {selector} failed: {e}")
-            continue
-    
-    # Strategy 2: Try role-based selection with multiple click methods
-    try:
-        next_button = page.get_by_role("button", name=re.compile("Next|Weiter|Suivant|Avanti|Siguiente|Далее|التالي", re.I))
-        if await next_button.is_visible() and await next_button.is_enabled():
-            logger.info("Found Next button using role-based selector")
-            
-            click_methods = [
-                lambda: next_button.click(),
-                lambda: next_button.click(force=True),
-                lambda: next_button.dispatch_event('click'),
-            ]
-            
-            for i, click_method in enumerate(click_methods):
-                try:
-                    await click_method()
-                    logger.info(f"Successfully clicked Next button using role-based method {i+1}")
-                    return
-                except Exception as e:
-                    logger.debug(f"Role-based click method {i+1} failed: {e}")
-                    continue
-    except Exception as e:
-        logger.debug(f"Role-based selector failed: {e}")
-    
-    # Strategy 3: Try form submission as fallback
-    try:
-        form = await page.wait_for_selector('form', timeout=2000)
-        if form:
-            logger.info("Attempting form submission as fallback")
-            await page.evaluate('(form) => form.submit()', form)
-            return
-    except Exception as e:
-        logger.debug(f"Form submission failed: {e}")
-    
-    # Strategy 4: Try Enter key press on email field
-    try:
-        email_selectors = ['input[name="identifier"]', 'input#identifierId', 'input[type="email"]']
-        for selector in email_selectors:
-            try:
-                email_field = await page.wait_for_selector(selector, timeout=2000)
-                if email_field and await email_field.is_visible():
-                    logger.info(f"Pressing Enter on email field: {selector}")
-                    await email_field.press('Enter')
-                    return
-            except Exception:
-                continue
-    except Exception as e:
-        logger.debug(f"Enter key press failed: {e}")
-    
-    logger.warning("All Next button click strategies failed")
 
 async def _click_consent_if_present(page):
     """Dismiss Google/YouTube consent dialogs, including iframe-based ones."""
@@ -567,132 +270,6 @@ async def _click_consent_if_present(page):
                 break
         except Exception:
             continue
-
-async def _handle_rejection_and_retry(page: Page, max_retries: int = 2) -> bool:
-    """
-    Detect Google's 'Couldn't sign you in' rejection page and attempt to retry by clicking 'Try again'.
-    
-    Args:
-        page: The Playwright page object.
-        max_retries: Maximum number of retry attempts (default: 2 to avoid infinite loops).
-    
-    Returns:
-        bool: True if a successful retry was performed (rejection detected and 'Try again' clicked),
-              False otherwise (no rejection or retry failed).
-    """
-    rejection_text_selectors = [
-        'text="Couldn’t sign you in"',
-        'text=/browser or app may not be secure/i',
-        'h1:has-text("Couldn’t sign you in")',
-    ]
-    try_again_selectors = [
-        'button:has-text("Try again")',  # CSS text match
-        'tp-yt-paper-button:has-text("Try again")',  # Google's custom elements (if Material Design)
-        'div[role="button"]:has-text("Try again")',  # Fallback for div-as-button
-    ]
-    
-    retry_count = 0
-    while retry_count < max_retries:
-        # Check for rejection page
-        rejection_detected = False
-        for selector in rejection_text_selectors:
-            try:
-                if await page.locator(selector).is_visible(timeout=3000):
-                    rejection_detected = True
-                    break
-            except Exception:
-                continue
-        
-        if not rejection_detected:
-            return False  # No rejection; proceed normally
-        
-        logger.warning(f"Hit rejection page on attempt {retry_count + 1}/{max_retries}; attempting 'Try again'")
-        
-        # Wait explicitly for the button to appear (give JS time to render)
-        try:
-            await page.wait_for_selector('text="Try again"', timeout=5000, state="visible")
-        except TimeoutError:
-            logger.debug("Explicit wait for 'Try again' text timed out; trying fallbacks")
-        
-        # Try multiple click methods
-        clicked = False
-        for selector in try_again_selectors:
-            try:
-                button = page.locator(selector)
-                if await button.is_visible(timeout=3000) and await button.is_enabled(timeout=3000):
-                    await button.click(delay=200)  # Human-like mouse delay
-                    clicked = True
-                    logger.info(f"Successfully clicked 'Try again' with selector: {selector}")
-                    break
-            except Exception as e:
-                logger.debug(f"Selector '{selector}' failed: {e}")
-                continue
-        
-        # Fallback: Direct text-based click if CSS fails
-        if not clicked:
-            try:
-                # Use get_by_text for exact/partial match (case-insensitive via regex if needed)
-                await page.get_by_text("Try again", exact=False).click(timeout=5000, delay=200)
-                clicked = True
-                logger.info("Successfully clicked 'Try again' via get_by_text")
-            except Exception as e:
-                logger.debug(f"get_by_text fallback failed: {e}")
-        
-        # Ultimate fallback: JS click on any element containing the text
-        if not clicked:
-            try:
-                button_elements = await page.query_selector_all('button, [role="button"], div[jsaction*="click"]')
-                for elem in button_elements:
-                    text = await elem.text_content()
-                    if text and "Try again" in text:
-                        await page.evaluate('el => el.click()', elem)
-                        clicked = True
-                        logger.info("Successfully JS-clicked 'Try again' element")
-                        break
-            except Exception as e:
-                logger.debug(f"JS fallback failed: {e}")
-        
-        if not clicked:
-            logger.error("Could not locate or click 'Try again' button with any method")
-            # Diagnostic: Save current page state
-            try:
-                os.makedirs("logs", exist_ok=True)
-                diag_path = os.path.join("logs", f"rejection-click-fail-{int(time.time())}.png")
-                await page.screenshot(path=diag_path, full_page=True)
-                logger.warning(f"Saved diagnostic screenshot: {diag_path}")
-            except Exception:
-                pass
-            return False
-        
-        await page.wait_for_load_state("domcontentloaded", timeout=10000)
-        await asyncio.sleep(3)  # Settle time for redirects
-
-        current_url = page.url
-        if "/signin/identifier" in current_url or "/signin/v2/identifier" in current_url:
-            logger.warning("Looped back to identifier after 'Try again'; will retry full login in outer loop")
-            raise RuntimeError("Rejection loop detected; run non-headless to refresh state")
-
-        try:
-            os.makedirs("logs", exist_ok=True)
-            post_click_path = os.path.join("logs", f"post-try-again-click-{int(time.time())}.png")
-            await page.screenshot(path=post_click_path, full_page=True)
-            logger.info(f"Post-'Try again' screenshot saved: {post_click_path} (URL: {page.url})")
-        except Exception as e:
-            logger.warning(f"Screenshot failed: {e}")
-
-        retry_count += 1
-        
-        # Re-attempt password flow post-click
-        try:
-            await _ensure_password_input(page)
-        except Exception as e:
-            logger.warning(f"Password flow retry failed after rejection: {e}")
-    
-    if retry_count >= max_retries:
-        logger.error("Max retries exceeded on rejection page")
-        return False
-    
-    return True
 
 async def _ensure_identifier_input(page) -> None:
     selector_any = 'input[name="identifier"], input#identifierId, text=/Choose an account/i, text=/Use another account|Add account/i'
@@ -721,8 +298,7 @@ async def _ensure_identifier_input(page) -> None:
 
     def endpoints():
         return [
-            "https://accounts.google.com/signin/v2/identifier?hl=en&passive=false&continue=https%3A%2F%2Fwww.youtube.com&flowName=GlifWebSignIn&flowEntry=ServiceLogin",
-            "https://accounts.google.com/ServiceLogin?hl=en&passive=false&continue=https%3A%2F%2Fwww.youtube.com&service=youtube",
+            "https://accounts.google.com/v2/signin/identifier?continue=https%3A%2F%2Fwww.youtube.com%2F&dsh=S-2147279974%3A1759988436171692&followup=https%3A%2F%2Faccounts.google.com%2F&ifkv=AfYwgwXSrxGEIClHmM1YYF3IUQnqFv6KRohiAa4gNIchCV-z6eJ4CZypirCLzgqFfDqKVaqnveYRig&passive=1209600&flowName=GlifWebSignIn&flowEntry=ServiceLogin",
         ]
 
     for url in endpoints():
@@ -735,7 +311,7 @@ async def _ensure_identifier_input(page) -> None:
         except Exception:
             continue
 
-    await page.goto("https://accounts.google.com/v3/signin/identifier?hl=en&continue=https%3A%2F%2Fwww.youtube.com")
+    await page.goto("https://accounts.google.com/v2/signin/identifier?continue=https%3A%2F%2Fwww.youtube.com%2F&dsh=S-2147279974%3A1759988436171692&followup=https%3A%2F%2Faccounts.google.com%2F&ifkv=AfYwgwXSrxGEIClHmM1YYF3IUQnqFv6KRohiAa4gNIchCV-z6eJ4CZypirCLzgqFfDqKVaqnveYRig&passive=1209600&flowName=GlifWebSignIn&flowEntry=ServiceLogin")
     await page.wait_for_load_state("domcontentloaded")
     await _click_consent_if_present(page)
 
@@ -851,9 +427,6 @@ async def _ensure_password_input(page) -> None:
         # 3) Clean up overlays/consent and wait for network to settle
         await page.wait_for_load_state("networkidle", timeout=10000)
 
-        if await _handle_rejection_and_retry(page):
-            continue  # Retry the password search after handling rejection
-
         await _click_consent_if_present(page)
 
         # 4) Small backoff before next probe
@@ -886,7 +459,7 @@ async def _ensure_password_input(page) -> None:
 
 async def _login_to_google(page):
     """Automate Google login flow with robust selectors and consent handling."""
-    await page.goto("https://accounts.google.com/v3/signin/identifier?hl=en&continue=https%3A%2F%2Fwww.youtube.com")
+    await page.goto("https://accounts.google.com/v2/signin/identifier?continue=https%3A%2F%2Fwww.youtube.com%2F&dsh=S-2147279974%3A1759988436171692&followup=https%3A%2F%2Faccounts.google.com%2F&ifkv=AfYwgwXSrxGEIClHmM1YYF3IUQnqFv6KRohiAa4gNIchCV-z6eJ4CZypirCLzgqFfDqKVaqnveYRig&passive=1209600&flowName=GlifWebSignIn&flowEntry=ServiceLogin")
     await page.wait_for_load_state("domcontentloaded")
     await _click_consent_if_present(page)
 
@@ -898,7 +471,9 @@ async def _login_to_google(page):
     for sel in ['input[name="identifier"]', 'input#identifierId']:
         try:
             await page.wait_for_selector(sel, timeout=10000)
+            await asyncio.sleep(random.uniform(0.5, 1.5))
             await page.focus(sel)
+            await asyncio.sleep(random.uniform(0.5, 1.5))
             await page.fill(sel, email_value)
             filled = True
             break
@@ -922,8 +497,14 @@ async def _login_to_google(page):
     if not filled:
         raise RuntimeError("Could not locate email/identifier field on Google sign-in")
 
+    await asyncio.sleep(random.uniform(0.5, 1.5))
+    
     logger.info("Clicking 'Next' after email")
-    await _click_next_button_robust(page)
+    try:
+        await page.keyboard.press("Enter")
+        # await page.locator('#identifierNext').click()
+    except Exception:
+        await page.get_by_role("button", name=re.compile("Next|Weiter|Suivant|Avanti|Siguiente|Далее|التالي", re.I)).click()
 
     # Wait for navigation to complete after email submission
     logger.info("Waiting for navigation after email submission...")
@@ -939,181 +520,6 @@ async def _login_to_google(page):
         logger.info(f"After email submit - URL: {page.url}, saved screenshot: {screenshot_path}")
     except Exception:
         pass
-    
-    # Enhanced retry logic for Next button after email submission
-    max_retries = 3
-    for retry_attempt in range(max_retries):
-        current_url = page.url
-        
-        # Check if we're still on the identifier page
-        if "/signin/identifier" in current_url or "/signin/v2/identifier" in current_url:
-            logger.info(f"Still on identifier page (attempt {retry_attempt + 1}/{max_retries}): {current_url}")
-            
-            # Check for password field (indicates we've progressed)
-            try:
-                password_field = await page.wait_for_selector('input[name="Passwd"]', timeout=1000)
-                if password_field and await password_field.is_visible():
-                    logger.info("Password field found, successfully progressed past identifier page")
-                    break
-            except Exception:
-                pass
-            
-            # Check if email input and Next button are still present
-            try:
-                email_input_present = False
-                next_button_present = False
-                
-                # Check for email input field
-                for sel in ['input[name="identifier"]', 'input#identifierId']:
-                    try:
-                        element = await page.wait_for_selector(sel, timeout=2000)
-                        if element and await element.is_visible():
-                            email_input_present = True
-                            break
-                    except Exception:
-                        continue
-                
-                # Check for Next button
-                try:
-                    next_button = await page.wait_for_selector('#identifierNext', timeout=2000)
-                    if next_button and await next_button.is_visible():
-                        next_button_present = True
-                except Exception:
-                    try:
-                        next_button = page.get_by_role("button", name=re.compile("Next|Weiter|Suivant|Avanti|Siguiente|Далее|التالي", re.I))
-                        if await next_button.is_visible():
-                            next_button_present = True
-                    except Exception:
-                        pass
-                
-                if email_input_present and next_button_present:
-                    logger.info(f"Email input and Next button still present, clicking Next again (attempt {retry_attempt + 1})")
-                    
-                    # Add random sleep to simulate human behavior
-                    sleep_time = random.uniform(1, 3)
-                    logger.info(f"Sleeping for {sleep_time:.2f} seconds before clicking Next")
-                    await asyncio.sleep(sleep_time)
-                    
-                    # Use robust Next button clicking
-                    try:
-                        await _click_next_button_robust(page)
-                        logger.info(f"Attempted robust Next button click on retry {retry_attempt + 1}")
-                    except Exception as e:
-                        logger.warning(f"Failed to click Next button on retry {retry_attempt + 1}: {e}")
-                        continue
-                    
-                    # Enhanced validation after clicking - wait for actual changes
-                    validation_success = False
-                    
-                    # Wait for URL change
-                    try:
-                        await page.wait_for_function(
-                            f'() => window.location.href !== "{current_url}"',
-                            timeout=5000
-                        )
-                        logger.info("URL changed after Next button click")
-                        validation_success = True
-                    except Exception:
-                        logger.debug("URL did not change after Next button click")
-                    
-                    # Wait for loading indicators to appear and disappear
-                    try:
-                        # Look for loading spinner or progress indicator
-                        loading_selectors = [
-                            '[role="progressbar"]',
-                            '.loading',
-                            '[aria-label*="Loading"]',
-                            '[data-testid*="loading"]'
-                        ]
-                        
-                        for selector in loading_selectors:
-                            try:
-                                # Wait for loading to appear
-                                await page.wait_for_selector(selector, timeout=2000)
-                                logger.info(f"Loading indicator appeared: {selector}")
-                                # Wait for loading to disappear
-                                await page.wait_for_selector(selector, state='hidden', timeout=10000)
-                                logger.info(f"Loading indicator disappeared: {selector}")
-                                validation_success = True
-                                break
-                            except Exception:
-                                continue
-                    except Exception:
-                        pass
-                    
-                    # Wait for network activity to settle
-                    try:
-                        await page.wait_for_load_state('networkidle', timeout=8000)
-                        logger.info("Network activity settled")
-                    except Exception:
-                        logger.debug("Network activity did not settle within timeout")
-                    
-                    # Check for error messages
-                    try:
-                        error_selectors = [
-                            '[role="alert"]',
-                            '.error',
-                            '[aria-live="assertive"]',
-                            '[data-testid*="error"]'
-                        ]
-                        
-                        for selector in error_selectors:
-                            try:
-                                error_element = await page.wait_for_selector(selector, timeout=1000)
-                                if error_element and await error_element.is_visible():
-                                    error_text = await error_element.text_content()
-                                    logger.warning(f"Error message found: {error_text}")
-                            except Exception:
-                                continue
-                    except Exception:
-                        pass
-                    
-                    await _click_consent_if_present(page)
-                    
-                    # Take screenshot after retry
-                    try:
-                        retry_screenshot_path = os.path.join("logs", f"after-next-retry-{retry_attempt + 1}-{int(time.time())}.png")
-                        await page.screenshot(path=retry_screenshot_path, full_page=True)
-                        logger.info(f"After Next retry {retry_attempt + 1} - URL: {page.url}, saved screenshot: {retry_screenshot_path}")
-                    except Exception:
-                        pass
-                    
-                    # If validation was successful, break early
-                    if validation_success:
-                        logger.info(f"Validation successful after retry {retry_attempt + 1}")
-                        break
-                else:
-                    logger.info(f"Email input or Next button not present, breaking retry loop")
-                    break
-                    
-            except Exception as e:
-                logger.warning(f"Error during Next button retry attempt {retry_attempt + 1}: {e}")
-                break
-        else:
-            logger.info(f"No longer on identifier page, breaking retry loop: {current_url}")
-            break
-    
-    # Final comprehensive check
-    current_url = page.url
-    password_field_present = False
-    
-    try:
-        password_field = await page.wait_for_selector('input[name="Passwd"]', timeout=2000)
-        password_field_present = password_field and await password_field.is_visible()
-    except Exception:
-        pass
-    
-    if ("/signin/identifier" in current_url or "/signin/v2/identifier" in current_url) and not password_field_present:
-        logger.warning("Still on identifier page after all retries - login flow may be blocked")
-        # Take final diagnostic screenshot
-        try:
-            final_screenshot = os.path.join("logs", f"final-identifier-stuck-{int(time.time())}.png")
-            await page.screenshot(path=final_screenshot, full_page=True)
-            logger.info(f"Final diagnostic screenshot: {final_screenshot}")
-        except Exception:
-            pass
-    else:
-        logger.info("Successfully progressed past identifier page")
     
     await _ensure_password_input(page)
 
@@ -1172,27 +578,8 @@ async def _login_to_google(page):
     await asyncio.sleep(3)
 
 async def _navigate_to_youtube(page):
-    """Navigate to YouTube with retries and detailed timing logs."""
-    for attempt in range(1, 3):  # up to 2 attempts
-        start = time.time()
-        logger.info(f"[Nav] Attempt {attempt}/2: goto YouTube")
-        try:
-            await page.goto("https://www.youtube.com", timeout=45000)
-            await page.wait_for_load_state("domcontentloaded", timeout=20000)
-            await page.wait_for_load_state("networkidle", timeout=30000)
-            elapsed = int((time.time() - start) * 1000)
-            logger.info(f"[Nav] YouTube loaded (elapsed={elapsed}ms)")
-            await _save_screenshot(page, "nav-youtube-home")
-            return
-        except TimeoutError as te:
-            elapsed = int((time.time() - start) * 1000)
-            logger.warning(f"[Nav] Timeout navigating to YouTube (elapsed={elapsed}ms): {te}")
-            await _save_screenshot(page, "nav-youtube-timeout")
-        except Exception as e:
-            logger.warning(f"[Nav] Error navigating to YouTube: {e}")
-            await _save_screenshot(page, "nav-youtube-error")
-        await asyncio.sleep(2)
-    raise TimeoutError("Failed to navigate to YouTube after retries")
+    await page.goto("https://www.youtube.com")
+    await page.wait_for_load_state("networkidle")
 
 async def _export_cookies_to_netscape(cookies: list[dict]):
     _ensure_cookies_dir()
