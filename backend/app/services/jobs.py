@@ -30,6 +30,8 @@ class JobService:
             )
             await db.commit()
         except Exception:
+            # Rollback the transaction to clean up the session state
+            await db.rollback()
             # Fallback to read-modify-write if direct SQL fails
             job = await JobService.get_job(db, job_id)
             if not job:
@@ -164,10 +166,14 @@ class JobService:
         update_data = {k: v for k, v in job_data.model_dump().items() if v is not None}
         
         if update_data:
-            await db.execute(
-                update(Job).where(Job.id == job_id).values(**update_data)
-            )
-            await db.commit()
+            try:
+                await db.execute(
+                    update(Job).where(Job.id == job_id).values(**update_data)
+                )
+                await db.commit()
+            except Exception:
+                await db.rollback()
+                raise
             
         return await JobService.get_job(db, job_id)
 

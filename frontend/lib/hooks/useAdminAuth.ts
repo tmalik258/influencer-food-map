@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import axios from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8020";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8030";
 
 interface AdminUser {
   id: number;

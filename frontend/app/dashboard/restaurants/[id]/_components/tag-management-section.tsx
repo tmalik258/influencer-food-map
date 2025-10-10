@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit, Save, X } from "lucide-react";
 import { TagSelection } from "./tag-selection";
 import { Tag } from "@/lib/types";
-import axios from "axios";
+import { tagActions } from "@/lib/actions/tag-actions";
 import { toast } from "sonner";
 
 interface TagManagementSectionProps {
@@ -40,23 +40,8 @@ export function TagManagementSection({
   const handleSave = async () => {
     setIsLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("Authentication required");
-        return;
-      }
-
-      await axios.put(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/restaurants/${restaurantId}/tags/`,
-        { tag_ids: selectedTagIds },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
+      await tagActions.adminUpdateRestaurantTags(restaurantId, selectedTagIds);
+      
       toast.success("Tags updated successfully");
       setIsEditing(false);
       onTagsUpdated();

@@ -7,7 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Edit, Save, X } from "lucide-react";
 import { CuisineSelection } from "./cuisine-selection";
 import { Cuisine } from "@/lib/types";
-import axios from "axios";
+import { cuisineActions } from "@/lib/actions/cuisine-actions";
 import { toast } from "sonner";
 
 interface CuisineManagementSectionProps {
@@ -38,36 +38,15 @@ export function CuisineManagementSection({
   };
 
   const handleSave = async () => {
-    setIsLoading(true);
     try {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        toast.error("Authentication required");
-        return;
-      }
-
-      await axios.put(
-        `${process.env.NEXT_PUBLIC_API_URL}/admin/restaurants/${restaurantId}/cuisines/`,
-        { cuisine_ids: selectedCuisineIds },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      toast.success("Cuisines updated successfully");
+      await cuisineActions.adminUpdateRestaurantCuisines(restaurantId, selectedCuisineIds);
+      
       setIsEditing(false);
+      toast.success("Cuisines updated successfully");
       onCuisinesUpdated();
-    } catch (error: unknown) {
+    } catch (error) {
       console.error("Error updating cuisines:", error);
-      const apiError = error as { response?: { data?: { detail?: string } } };
-      toast.error(
-        apiError.response?.data?.detail || "Failed to update cuisines"
-      );
-    } finally {
-      setIsLoading(false);
+      toast.error("Failed to update cuisines");
     }
   };
 

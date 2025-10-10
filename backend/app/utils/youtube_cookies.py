@@ -585,6 +585,16 @@ async def _export_cookies_to_netscape(cookies: list[dict]):
     _ensure_cookies_dir()
     jar = MozillaCookieJar()
     for cookie in cookies:
+        # Handle expires field properly to avoid invalid format warnings
+        expires_value = None
+        if 'expires' in cookie and cookie['expires'] is not None:
+            if cookie['expires'] == -1:
+                # Session cookie - no expiration
+                expires_value = None
+            else:
+                # Convert to integer timestamp
+                expires_value = int(float(cookie['expires']))
+        
         jar.set_cookie(Cookie(
             version=0,
             name=cookie['name'],
@@ -597,8 +607,8 @@ async def _export_cookies_to_netscape(cookies: list[dict]):
             path=cookie.get('path', '/'),
             path_specified=True,
             secure=cookie.get('secure', False),
-            expires=int(cookie.get('expires', 0)) if 'expires' in cookie and cookie['expires'] else None,
-            discard=False,
+            expires=expires_value,
+            discard=expires_value is None,  # Mark as discard if no expiration
             comment=None,
             comment_url=None,
             rest={},

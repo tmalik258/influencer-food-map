@@ -186,4 +186,20 @@ export const cuisineActions = {
       throw error;
     }
   },
+
+  // Admin Restaurant Cuisine Management
+  /**
+   * Update restaurant cuisines (admin only)
+   */
+  async adminUpdateRestaurantCuisines(restaurantId: string, cuisineIds: number[]): Promise<any> {
+    try {
+      const response = await adminApi.put(`/restaurants/${restaurantId}/cuisines/`, {
+        cuisine_ids: cuisineIds
+      });
+      return response.data;
+    } catch (error) {
+      console.error(`Error updating cuisines for restaurant ${restaurantId}:`, error);
+      throw error;
+    }
+  },
 };

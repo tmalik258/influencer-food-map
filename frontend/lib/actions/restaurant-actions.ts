@@ -1,4 +1,4 @@
-import api from '../api';
+import api, { adminApi } from '../api';
 import { Restaurant, SearchParams, PaginatedRestaurantsResponse, OptimizedFeaturedResponse } from '@/lib/types';
 
 export const restaurantActions = {
@@ -68,7 +68,12 @@ export const restaurantActions = {
   },
 
   updateRestaurant: async (id: string, data: Partial<Restaurant>): Promise<Restaurant> => {
-    const response = await api.put(`/restaurants/${id}/`, data);
+    const response = await adminApi.put(`/restaurants/${id}/`, data);
+    return response.data;
+  },
+
+  adminDeleteRestaurant: async (restaurantId: string) => {
+    const response = await adminApi.delete(`/restaurants/${restaurantId}/`);
     return response.data;
   },
 };
