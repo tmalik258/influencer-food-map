@@ -191,12 +191,11 @@ export const cuisineActions = {
   /**
    * Update restaurant cuisines (admin only)
    */
-  async adminUpdateRestaurantCuisines(restaurantId: string, cuisineIds: number[]): Promise<any> {
+  async adminUpdateRestaurantCuisines(restaurantId: string, cuisineIds: string[]): Promise<void> {
     try {
-      const response = await adminApi.put(`/restaurants/${restaurantId}/cuisines/`, {
+      await adminApi.put(`/restaurants/${restaurantId}/cuisines/`, {
         cuisine_ids: cuisineIds
       });
-      return response.data;
     } catch (error) {
       console.error(`Error updating cuisines for restaurant ${restaurantId}:`, error);
       throw error;

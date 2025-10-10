@@ -38,6 +38,7 @@ export function CuisineManagementSection({
   };
 
   const handleSave = async () => {
+    setIsLoading(true);
     try {
       await cuisineActions.adminUpdateRestaurantCuisines(restaurantId, selectedCuisineIds);
       
@@ -47,6 +48,8 @@ export function CuisineManagementSection({
     } catch (error) {
       console.error("Error updating cuisines:", error);
       toast.error("Failed to update cuisines");
+    } finally {
+      setIsLoading(false);
     }
   };
 

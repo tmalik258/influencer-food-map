@@ -170,12 +170,11 @@ export const tagActions = {
   /**
    * Update restaurant tags (admin only)
    */
-  async adminUpdateRestaurantTags(restaurantId: string, tagIds: string[]): Promise<any> {
+  async adminUpdateRestaurantTags(restaurantId: string, tagIds: string[]): Promise<void> {
     try {
-      const response = await adminApi.put(`/restaurants/${restaurantId}/tags/`, {
+      await adminApi.put(`/restaurants/${restaurantId}/tags/`, {
         tag_ids: tagIds
       });
-      return response.data;
     } catch (error) {
       console.error(`Error updating tags for restaurant ${restaurantId}:`, error);
       throw error;
