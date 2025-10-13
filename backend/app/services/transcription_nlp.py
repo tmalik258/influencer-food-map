@@ -218,7 +218,7 @@ async def store_influencer_from_video(db: AsyncSession, video: Video) -> Tuple[I
             return new_influencer, True
     except Exception as e:
         logger.error(f"Error storing influencer from video {video.youtube_video_id}: {e}")
-        raise
+        return None, False  # type: ignore
 
 async def download_audio(video_url: str, video: Video) -> Optional[str]:
     """Download audio from a YouTube video using PO tokens and cookie files.
