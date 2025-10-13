@@ -44,6 +44,7 @@ from app.config import (
     YTDLP_GEO_BYPASS,
     YTDLP_GEO_COUNTRY,
 )
+from app.database import AsyncSessionLocal
 from app.services.jobs import JobService
 from app.utils.logging import setup_logger
 from app.api_schema.jobs import JobUpdateRequest
