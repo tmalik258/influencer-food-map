@@ -45,6 +45,7 @@ from app.config import (
     YTDLP_GEO_COUNTRY,
 )
 from app.services.jobs import JobService
+from app.utils.logging import setup_logger
 from app.api_schema.jobs import JobUpdateRequest
 from app.utils.youtube_cookies import get_cookies_age_hours, refresh_youtube_cookies
 from app.utils.ytdlp_error_classifier import classify_ytdlp_error
