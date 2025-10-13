@@ -1,7 +1,7 @@
 // Admin actions types
 export interface Job {
   id: string;
-  job_type: 'scrape_youtube' | 'transcription_nlp';
+  job_type: 'scrape_youtube' | 'transcription_nlp' | 'refresh_youtube_cookies';
   trigger_type: 'manual' | 'system';
   status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
   title: string;
