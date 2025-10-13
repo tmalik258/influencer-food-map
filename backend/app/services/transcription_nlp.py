@@ -259,9 +259,11 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
             ydl_opts = {
                 "format": "bestaudio/best",
                 "outtmpl": temp_output_template,
-                "quiet": True,
+                "quiet": False,  # Enable verbose output to see what's happening
+                "verbose": True,  # Enable verbose logging
                 "retries": 3,
                 "fragment_retries": 10,
+                # Re-enable postprocessors now that we've identified the real issue
                 "postprocessors": [
                     {
                         "key": "FFmpegExtractAudio",
@@ -269,6 +271,9 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
                         "preferredquality": "192",
                     }
                 ],
+                # Add error handling for postprocessors
+                "ignoreerrors": False,
+                "no_warnings": False,
             }
 
             # Configure PO tokens and cookies
@@ -302,9 +307,14 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
             if YTDLP_COOKIES_FILE and os.path.exists(YTDLP_COOKIES_FILE):
                 ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
                 logger.info(f"Using cookie file: {YTDLP_COOKIES_FILE}")
-            elif YTDLP_COOKIES_FROM_BROWSER:
-                ydl_opts["cookiesfrombrowser"] = (YTDLP_COOKIES_FROM_BROWSER, YTDLP_BROWSER_PROFILE)
-                logger.info(f"Using cookies from browser: {YTDLP_COOKIES_FROM_BROWSER}")
+            # elif YTDLP_COOKIES_FROM_BROWSER:
+            #     # Handle browser profile properly - if None or empty, use just the browser name
+            #     if YTDLP_BROWSER_PROFILE and YTDLP_BROWSER_PROFILE.strip():
+            #         ydl_opts["cookiesfrombrowser"] = (YTDLP_COOKIES_FROM_BROWSER, YTDLP_BROWSER_PROFILE)
+            #         logger.info(f"Using cookies from browser: {YTDLP_COOKIES_FROM_BROWSER} with profile: {YTDLP_BROWSER_PROFILE}")
+            #     else:
+            #         ydl_opts["cookiesfrombrowser"] = (YTDLP_COOKIES_FROM_BROWSER,)
+            #         logger.info(f"Using cookies from browser: {YTDLP_COOKIES_FROM_BROWSER} (default profile)")
             
             # Add proxy configuration
             if use_tor and TOR_PROXY:
@@ -314,26 +324,78 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
                 ydl_opts["proxy"] = YTDLP_PROXY
                 logger.info(f"Using proxy: {YTDLP_PROXY}")
             
-            # Add geo-bypass configuration
-            if YTDLP_GEO_BYPASS:
-                ydl_opts["geo_bypass"] = True
-                if YTDLP_GEO_COUNTRY:
-                    ydl_opts["geo_bypass_country"] = YTDLP_GEO_COUNTRY
-                    logger.info(f"Using geo-bypass for country: {YTDLP_GEO_COUNTRY}")
+            # Disable geo-bypass configuration to fix tuple unpacking error
+            # The error occurs in yt-dlp's GeoUtils.random_ipv4 function when parsing IP blocks
+            ydl_opts["geo_bypass"] = False
+            # if YTDLP_GEO_BYPASS:
+            #     ydl_opts["geo_bypass"] = True
+            #     if YTDLP_GEO_COUNTRY:
+            #         ydl_opts["geo_bypass_country"] = YTDLP_GEO_COUNTRY
+            #         logger.info(f"Using geo-bypass for country: {YTDLP_GEO_COUNTRY}")
             
             logger.info(f"yt-dlp options configured: format={ydl_opts.get('format')}, cookies={'cookiefile' in ydl_opts or 'cookiesfrombrowser' in ydl_opts}, proxy={'proxy' in ydl_opts}")
             
             # Download the audio
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                info = await loop.run_in_executor(None, lambda: ydl.extract_info(video_url, download=True))
-                downloaded_file = ydl.prepare_filename(info).replace(".%(ext)s", ".mp3")
+                logger.info(f"Starting yt-dlp extract_info for {video_url}")
+                logger.info(f"ydl_opts configuration: {ydl_opts}")
+                
+                def extract_info_wrapper():
+                    logger.info("Inside extract_info_wrapper, about to call ydl.extract_info")
+                    try:
+                        # Try with download=False first to see if it's a download-related issue
+                        logger.info("First attempting extract_info with download=False")
+                        info_no_download = ydl.extract_info(video_url, download=False)
+                        logger.info(f"extract_info (no download) succeeded, info type: {type(info_no_download)}")
+                        
+                        # Now try with download=True
+                        logger.info("Now attempting extract_info with download=True")
+                        result = ydl.extract_info(video_url, download=True)
+                        logger.info(f"extract_info (with download) returned successfully, result type: {type(result)}")
+                        return result
+                    except Exception as wrapper_e:
+                        logger.error(f"Exception inside extract_info_wrapper: {wrapper_e}")
+                        logger.error(f"Exception type: {type(wrapper_e)}")
+                        import traceback
+                        logger.error(f"Full traceback: {traceback.format_exc()}")
+                        raise
+                
+                try:
+                    info = await loop.run_in_executor(None, extract_info_wrapper)
+                    logger.info(f"yt-dlp extract_info completed successfully, info type: {type(info)}")
+                    logger.info(f"Info keys: {list(info.keys()) if isinstance(info, dict) else 'Not a dict'}")
+                except Exception as e:
+                    logger.error(f"Error in yt-dlp extract_info executor: {e}")
+                    logger.error(f"Exception type: {type(e)}")
+                    import traceback
+                    logger.error(f"Full traceback: {traceback.format_exc()}")
+                    raise
+                
+                logger.info(f"Calling ydl.prepare_filename with info type: {type(info)}")
+                try:
+                    filename_result = ydl.prepare_filename(info)
+                    logger.info(f"prepare_filename result: {filename_result}, type: {type(filename_result)}")
+                    downloaded_file = filename_result.replace(".%(ext)s", ".mp3")
+                    logger.info(f"Downloaded file path after replace: {downloaded_file}")
+                except Exception as e:
+                    logger.error(f"Error in prepare_filename: {e}")
+                    raise
+                
                 if not os.path.exists(downloaded_file):
+                    logger.info(f"Downloaded file {downloaded_file} does not exist, trying alternative extensions")
                     # Try other possible extensions
                     for ext in [".m4a", ".webm", ".mp4"]:
-                        alt_file = ydl.prepare_filename(info).replace(".%(ext)s", ext)
-                        if os.path.exists(alt_file):
-                            downloaded_file = alt_file
-                            break
+                        try:
+                            alt_filename_result = ydl.prepare_filename(info)
+                            logger.info(f"Alternative prepare_filename result for {ext}: {alt_filename_result}")
+                            alt_file = alt_filename_result.replace(".%(ext)s", ext)
+                            logger.info(f"Checking alternative file: {alt_file}")
+                            if os.path.exists(alt_file):
+                                downloaded_file = alt_file
+                                logger.info(f"Found alternative file: {alt_file}")
+                                break
+                        except Exception as e:
+                            logger.error(f"Error checking alternative extension {ext}: {e}")
                     else:
                         raise Exception("Downloaded file not found")
 
@@ -619,11 +681,29 @@ async def process_video(video: Video):
                 # Retrieve influencer data if not already linked
                 if not video.influencer_id:
                     logger.info(f"No influencer linked to video {video.youtube_video_id}, retrieving channel data...")
-                    influencer, is_new = await store_influencer_from_video(db, video)
-                    if influencer:
-                        logger.info(f"{'Created new' if is_new else 'Linked existing'} influencer {influencer.name} for video {video.youtube_video_id}")
-                    else:
-                        logger.warning(f"Could not retrieve influencer data for video {video.youtube_video_id}")
+                    try:
+                        logger.info(f"Calling store_influencer_from_video for video {video.youtube_video_id}")
+                        result = await store_influencer_from_video(db, video)
+                        logger.info(f"store_influencer_from_video returned: {result}, type: {type(result)}")
+                        
+                        # Check if result is a tuple before unpacking
+                        if isinstance(result, tuple) and len(result) == 2:
+                            influencer, is_new = result
+                            logger.info(f"Successfully unpacked tuple: influencer={influencer}, is_new={is_new}")
+                        else:
+                            logger.error(f"store_influencer_from_video returned unexpected format: {result}")
+                            influencer, is_new = None, False
+                        
+                        if influencer:
+                            logger.info(f"{'Created new' if is_new else 'Linked existing'} influencer {influencer.name} for video {video.youtube_video_id}")
+                        else:
+                            logger.warning(f"Could not retrieve influencer data for video {video.youtube_video_id}")
+                    except Exception as e:
+                        logger.error(f"Failed to store influencer for video {video.youtube_video_id}: {e}")
+                        logger.error(f"Exception type: {type(e)}")
+                        import traceback
+                        logger.error(f"Traceback: {traceback.format_exc()}")
+                        # Continue processing without influencer data
 
                 transcription = video.transcription or ""
 
