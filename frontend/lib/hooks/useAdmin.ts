@@ -207,11 +207,53 @@ export const useDataSync = () => {
     }
   }, []);
 
+  const refreshYouTubeCookies = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminActions.refreshYouTubeCookies();
+      return response;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to refresh YouTube cookies');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const getYouTubeCookiesStatus = useCallback(async () => {
+    setError(null);
+    try {
+      const response = await adminActions.getYouTubeCookiesStatus();
+      return response;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch cookies status');
+      return null;
+    }
+  }, []);
+
+  const uploadYouTubeCookies = useCallback(async (file: File) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await adminActions.uploadYouTubeCookies(file);
+      return response;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to upload cookies');
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   return {
     loading,
     error,
     triggerYouTubeScraping,
-    triggerNLPProcessing
+    triggerNLPProcessing,
+    refreshYouTubeCookies,
+    getYouTubeCookiesStatus,
+    uploadYouTubeCookies,
   };
 };
 

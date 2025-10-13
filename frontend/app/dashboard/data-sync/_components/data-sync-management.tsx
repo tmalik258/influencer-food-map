@@ -4,40 +4,86 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { RefreshCw, Play, AlertCircle, CheckCircle, Activity } from "lucide-react";
+import { RefreshCw, Play, AlertCircle, CheckCircle, Activity, Upload, Clock } from "lucide-react";
 import { useJobs, useDataSync, useJobActions } from "@/lib/hooks";
 import DashboardLoadingSkeleton from "@/app/dashboard/_components/dashboard-loading-skeleton";
 import JobsTable from "./jobs-table";
+import { toast } from "sonner";
 
 import { JobCard } from "./job-card";
 import { useDashboardRealtime } from "@/lib/contexts/dashboard-realtime-context";
 
 export function DataSyncManagement() {
   const { data: jobs, isLoading, error, refetch } = useJobs();
-  const { triggerYouTubeScraping, triggerNLPProcessing } = useDataSync();
+  const { triggerYouTubeScraping, triggerNLPProcessing, refreshYouTubeCookies, getYouTubeCookiesStatus, uploadYouTubeCookies } = useDataSync();
   const { cancelJob } = useJobActions();
   const [triggering, setTriggering] = useState<string | null>(null);
   const { version } = useDashboardRealtime();
+  const [cookiesAge, setCookiesAge] = useState<number | null>(null);
+  const [cookieFile, setCookieFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
 
   // Refresh jobs when any realtime job event occurs
   useEffect(() => {
     refetch();
   }, [version, refetch]);
 
+  useEffect(() => {
+    (async () => {
+      const status = await getYouTubeCookiesStatus();
+      if (status) setCookiesAge(status.age_hours);
+    })();
+  }, [getYouTubeCookiesStatus]);
+
   const handleTriggerJob = async (type: string) => {
     setTriggering(type);
     try {
       if (type === "youtube_scraping") {
         await triggerYouTubeScraping();
+        toast.success("YouTube scraping job started");
       } else if (type === "nlp_processing") {
         await triggerNLPProcessing();
+        toast.success("NLP processing job started");
       }
       // Refetch jobs after triggering
       setTimeout(() => refetch(), 1000);
     } catch (error) {
       console.error("Failed to trigger job:", error);
+      toast.error("Failed to trigger job", { description: error instanceof Error ? error.message : String(error) });
     } finally {
       setTriggering(null);
+    }
+  };
+
+  const handleRefreshCookies = async () => {
+    setTriggering("refresh_cookies");
+    try {
+      await refreshYouTubeCookies();
+      toast.success("Refresh YouTube cookies job started");
+      setTimeout(() => refetch(), 1000);
+      const status = await getYouTubeCookiesStatus();
+      if (status) setCookiesAge(status.age_hours);
+    } catch (error) {
+      console.error("Failed to refresh cookies:", error);
+      toast.error("Failed to refresh cookies", { description: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setTriggering(null);
+    }
+  };
+
+  const handleUploadCookies = async () => {
+    if (!cookieFile) return;
+    setUploading(true);
+    try {
+      await uploadYouTubeCookies(cookieFile);
+      toast.success("Cookies uploaded successfully");
+      const status = await getYouTubeCookiesStatus();
+      if (status) setCookiesAge(status.age_hours);
+    } catch (error) {
+      console.error("Failed to upload cookies:", error);
+      toast.error("Failed to upload cookies", { description: error instanceof Error ? error.message : String(error) });
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -66,6 +112,16 @@ export function DataSyncManagement() {
   const completedJobs = jobs?.filter(job => job.status === "completed") || [];
   const failedJobs = jobs?.filter(job => job.status === "failed") || [];
 
+  const cookiesAgeDisplay = cookiesAge !== null && isFinite(cookiesAge) ? `${cookiesAge.toFixed(1)}h` : "Unknown";
+
+  // Latest refresh cookies job info
+  const refreshCookieJobs = (jobs || []).filter((job) => job.job_type === "refresh_youtube_cookies");
+  const latestRefreshCookiesJob = refreshCookieJobs.sort((a, b) => {
+    const ad = new Date(a.completed_at || a.started_at || a.created_at || 0).getTime();
+    const bd = new Date(b.completed_at || b.started_at || b.created_at || 0).getTime();
+    return bd - ad;
+  })[0];
+
   return (
     <div className="space-y-6">
       {/* Quick Actions */}
@@ -77,7 +133,7 @@ export function DataSyncManagement() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Button 
               onClick={() => handleTriggerJob("youtube_scraping")}
               disabled={triggering === "youtube_scraping"}
@@ -99,7 +155,7 @@ export function DataSyncManagement() {
             <Button 
               onClick={() => handleTriggerJob("nlp_processing")}
               disabled={triggering === "nlp_processing"}
-              className="h-auto p-4 flex flex-col items-start shadow-lg bg-white/70 border-orange-200/50 hover:bg-orange-600 cursor-pointer focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-gray-900 hover:text-white dark:text-gray-100 group"
+              className="h-auto p-4 flex flex-col items-start shadow-lg bg白/70 border-orange-200/50 hover:bg-orange-600 cursor-pointer focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-gray-900 hover:text-white dark:text-gray-100 group"
             >
               <div className="flex items-center gap-2 mb-2">
                 {triggering === "nlp_processing" ? (
@@ -113,6 +169,59 @@ export function DataSyncManagement() {
                 Process video content and extract insights
               </span>
             </Button>
+
+            <Button 
+              onClick={handleRefreshCookies}
+              disabled={triggering === "refresh_cookies"}
+              className="h-auto p-4 flex flex-col items-start shadow-lg bg-white/70 border-orange-200/50 hover:bg-orange-600 cursor-pointer focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-gray-900 hover:text-white dark:text-gray-100 group"
+            >
+              <div className="flex items-center gap-2 mb-2">
+                {triggering === "refresh_cookies" ? (
+                  <RefreshCw className="h-5 w-5 animate-spin" />
+                ) : (
+                  <Clock className="h-5 w-5 text-orange-600 group-hover:text-white" />
+                )}
+                <span className="font-semibold">Refresh YouTube Cookies</span>
+              </div>
+              <span className="text-sm text-gray-600 group-hover:text-orange-100 dark:text-gray-400 text-left">
+                Refresh auth cookies used for scraping
+              </span>
+            </Button>
+          </div>
+
+          <div className="mt-4 flex flex-col md:flex-row gap-4 items-start md:items-center">
+            <div className="flex items-center gap-2 text-gray-700 dark:text-gray-300">
+              <Clock className="h-4 w-4" />
+              <span className="text-sm">Cookies age: <span className="font-semibold">{cookiesAgeDisplay}</span></span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                type="file"
+                accept=".txt"
+                onChange={(e) => setCookieFile(e.target.files?.[0] ?? null)}
+                className="text-sm"
+                disabled={uploading}
+              />
+              <Button
+                onClick={handleUploadCookies}
+                disabled={!cookieFile || uploading}
+                className="bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                {uploading ? "Uploading..." : "Upload Cookies"}
+              </Button>
+            </div>
+          </div>
+
+          <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+            {latestRefreshCookiesJob ? (
+              <span>
+                Latest refresh job: <span className="font-medium">{latestRefreshCookiesJob.status}</span>
+                {typeof latestRefreshCookiesJob.progress === "number" ? ` · ${latestRefreshCookiesJob.progress}%` : ""}
+              </span>
+            ) : (
+              <span>No refresh job has run yet</span>
+            )}
           </div>
         </CardContent>
       </Card>

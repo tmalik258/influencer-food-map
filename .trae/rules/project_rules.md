@@ -1,6 +1,6 @@
 # Trae Project Rules
 
-This document outlines the strict rules and guidelines for running the **Trae** project, ensuring consistent port usage and proper backend management.
+This document outlines the strict rules and guidelines for running the **Nomtok** project, ensuring consistent port usage and proper backend management. Use Docker for backend.
 
 ---
 

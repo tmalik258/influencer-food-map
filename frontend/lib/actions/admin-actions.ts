@@ -84,6 +84,26 @@ export const adminActions = {
     return response.data;
   },
 
+  // YouTube Cookies Management
+  refreshYouTubeCookies: async (): Promise<{ message: string; job_id: string; task_id: number }> => {
+    const response = await adminApi.post('/process/refresh-youtube-cookies/');
+    return response.data;
+  },
+
+  getYouTubeCookiesStatus: async (): Promise<{ age_hours: number }> => {
+    const response = await adminApi.get('/process/youtube-cookies-status/');
+    return response.data;
+  },
+
+  uploadYouTubeCookies: async (file: File): Promise<{ message: string; target_path: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await adminApi.post('/process/upload-youtube-cookies/', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    });
+    return response.data;
+  },
+
   // Admin Listings Management
   getAdminListings: async (params?: {
     approved_status?: 'Approved' | 'Pending' | 'Rejected';

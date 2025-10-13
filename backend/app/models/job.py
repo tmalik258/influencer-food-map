@@ -17,6 +17,7 @@ class JobStatus(str, Enum):
 class JobType(str, Enum):
     SCRAPE_YOUTUBE = "scrape_youtube"
     TRANSCRIPTION_NLP = "transcription_nlp"
+    REFRESH_YOUTUBE_COOKIES = "refresh_youtube_cookies"
 
 class LockType(str, Enum):
     """Enum for different types of processing locks."""

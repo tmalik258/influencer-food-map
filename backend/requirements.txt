@@ -6,6 +6,7 @@ asyncpg==0.30.0
 audioop-lts==0.2.1
 audioread==3.0.1
 av==15.0.0
+bgutil-ytdlp-pot-provider==1.2.2
 Brotli==1.1.0
 cachetools==5.5.2
 certifi==2025.7.14
@@ -84,6 +85,7 @@ pytest==8.4.2
 python-dateutil==2.9.0.post0
 python-dotenv==1.1.1
 python-jose==3.5.0
+python-multipart==0.0.20
 PyYAML==6.0.2
 realtime==2.6.0
 redis==6.2.0

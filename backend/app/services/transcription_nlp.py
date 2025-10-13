@@ -33,15 +33,23 @@ from app.config import (
     YOUTUBE_API_KEY,
     YTDLP_COOKIES_FILE,
     TOR_PROXY,
+    POT_PROVIDER_METHOD,
+    POT_PROVIDER_BASE_URL,
+    POT_SCRIPT_PATH,
+    POT_DISABLE_INNERTUBE,
+    YTDLP_PLAYER_CLIENT,
+    YTDLP_COOKIES_FROM_BROWSER,
+    YTDLP_BROWSER_PROFILE,
+    YTDLP_PROXY,
+    YTDLP_GEO_BYPASS,
+    YTDLP_GEO_COUNTRY,
 )
-from app.database import AsyncSessionLocal
-from app.exceptions import PipelineError
-from app.utils.logging import setup_logger
 from app.services.jobs import JobService
 from app.api_schema.jobs import JobUpdateRequest
 from app.utils.youtube_cookies import get_cookies_age_hours, refresh_youtube_cookies
 from app.utils.ytdlp_error_classifier import classify_ytdlp_error
 from app.scripts.gpt_food_place_processor import GPTFoodPlaceProcessor
+from app.exceptions import PipelineError
 
 # Setup logging
 logger = setup_logger(__name__)
@@ -211,8 +219,9 @@ async def store_influencer_from_video(db: AsyncSession, video: Video) -> Tuple[I
         raise
 
 async def download_audio(video_url: str, video: Video) -> Optional[str]:
-    """Download audio from a YouTube video using cookie file only.
-    Fallback to Tor proxy only when geo-restriction error is detected.
+    """Download audio from a YouTube video using PO tokens and cookie files.
+    PO tokens bypass bot detection, cookies handle authentication, 
+    with Tor proxy fallback for geo-restrictions.
     """
     os.makedirs(AUDIO_BASE_DIR, exist_ok=True)
 
@@ -260,39 +269,71 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
                 ],
             }
 
+            # Configure PO tokens and cookies
+            extractor_args = {}
+            
+            # Add PO token configuration
+            if POT_PROVIDER_METHOD == "http":
+                logger.info(f"Using PO token HTTP provider: {POT_PROVIDER_BASE_URL}")
+                extractor_args["youtubepot-bgutilhttp"] = f"base_url={POT_PROVIDER_BASE_URL}"
+                if POT_DISABLE_INNERTUBE:
+                    extractor_args["youtubepot-bgutilhttp"] += ";disable_innertube=1"
+            elif POT_PROVIDER_METHOD == "script" and POT_SCRIPT_PATH:
+                logger.info(f"Using PO token script provider: {POT_SCRIPT_PATH}")
+                extractor_args["youtubepot-bgutilscript"] = f"script_path={POT_SCRIPT_PATH}"
+                if POT_DISABLE_INNERTUBE:
+                    extractor_args["youtubepot-bgutilscript"] += ";disable_innertube=1"
+            
+            # Add player client configuration
+            if YTDLP_PLAYER_CLIENT:
+                extractor_args["youtube"] = f"player-client={YTDLP_PLAYER_CLIENT}"
+            
+            if extractor_args:
+                ydl_opts["extractor_args"] = extractor_args
+                logger.info(f"PO token extractor args: {extractor_args}")
+            
+            # Add cookie configuration
             if get_cookies_age_hours() > 24:
                 logger.info("Cookies stale; refreshing...")
-                refreshed = await refresh_youtube_cookies()
-                if not refreshed:
-                    logger.warning("Cookie refresh failed; proceeding with existing cookies")
-
-            # Cookie file only
+                await refresh_youtube_cookies()
+            
             if YTDLP_COOKIES_FILE and os.path.exists(YTDLP_COOKIES_FILE):
                 ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
-                logger.info(f"Using yt-dlp cookies file: {YTDLP_COOKIES_FILE}")
-            else:
-                logger.info("Cookie file not set or not found; proceeding without cookies")
-
-            # Proxy selection: normal proxy if configured; Tor only on geo-restriction fallback
-            if use_tor:
+                logger.info(f"Using cookie file: {YTDLP_COOKIES_FILE}")
+            elif YTDLP_COOKIES_FROM_BROWSER:
+                ydl_opts["cookiesfrombrowser"] = (YTDLP_COOKIES_FROM_BROWSER, YTDLP_BROWSER_PROFILE)
+                logger.info(f"Using cookies from browser: {YTDLP_COOKIES_FROM_BROWSER}")
+            
+            # Add proxy configuration
+            if use_tor and TOR_PROXY:
                 ydl_opts["proxy"] = TOR_PROXY
-                logger.info("Using Tor proxy for geo-restricted video")
-
-            # Download
+                logger.info(f"Using Tor proxy: {TOR_PROXY}")
+            elif YTDLP_PROXY:
+                ydl_opts["proxy"] = YTDLP_PROXY
+                logger.info(f"Using proxy: {YTDLP_PROXY}")
+            
+            # Add geo-bypass configuration
+            if YTDLP_GEO_BYPASS:
+                ydl_opts["geo_bypass"] = True
+                if YTDLP_GEO_COUNTRY:
+                    ydl_opts["geo_bypass_country"] = YTDLP_GEO_COUNTRY
+                    logger.info(f"Using geo-bypass for country: {YTDLP_GEO_COUNTRY}")
+            
+            logger.info(f"yt-dlp options configured: format={ydl_opts.get('format')}, cookies={'cookiefile' in ydl_opts or 'cookiesfrombrowser' in ydl_opts}, proxy={'proxy' in ydl_opts}")
+            
+            # Download the audio
             with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-                await loop.run_in_executor(None, lambda: ydl.download([video_url]))
-
-            # Find the downloaded file
-            temp_dir = os.path.dirname(temp_output_template)
-            temp_base = os.path.splitext(os.path.basename(temp_output_template))[0]
-            downloaded_file = None
-            for file in os.listdir(temp_dir):
-                if file.startswith(temp_base) and file.endswith(".mp3"):
-                    downloaded_file = os.path.join(temp_dir, file)
-                    break
-
-            if not downloaded_file or not os.path.exists(downloaded_file):
-                raise Exception("Downloaded file not found")
+                info = await loop.run_in_executor(None, lambda: ydl.extract_info(video_url, download=True))
+                downloaded_file = ydl.prepare_filename(info).replace(".%(ext)s", ".mp3")
+                if not os.path.exists(downloaded_file):
+                    # Try other possible extensions
+                    for ext in [".m4a", ".webm", ".mp4"]:
+                        alt_file = ydl.prepare_filename(info).replace(".%(ext)s", ext)
+                        if os.path.exists(alt_file):
+                            downloaded_file = alt_file
+                            break
+                    else:
+                        raise Exception("Downloaded file not found")
 
             logger.info(f"Downloaded temporary file: {downloaded_file}")
 

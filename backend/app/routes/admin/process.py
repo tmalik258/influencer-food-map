@@ -2,12 +2,14 @@ import json
 import time
 import redis
 import asyncio
+import os
+from pathlib import Path
 
-from fastapi import (APIRouter, Depends, HTTPException, status)
+from fastapi import (APIRouter, Depends, HTTPException, status, UploadFile, File)
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import (REDIS_URL, SCRAPE_YOUTUBE_LOCK, TRANSCRIPTION_NLP_LOCK, INFLUENCER_CHANNELS)
+from app.config import (REDIS_URL, SCRAPE_YOUTUBE_LOCK, TRANSCRIPTION_NLP_LOCK, REFRESH_YOUTUBE_COOKIES_LOCK, INFLUENCER_CHANNELS, YTDLP_COOKIES_FILE)
 from app.database import (AsyncSessionLocal, get_async_db)
 from app.services import (scrape_youtube, transcription_nlp_pipeline, JobService)
 from app.models.job import JobType, LockType
@@ -15,6 +17,7 @@ from app.dependencies import get_current_admin
 from app.utils.logging import setup_logger
 from app.api_schema.jobs import JobCreateRequest
 from app.api_schema.process import ScrapeRequest
+from app.utils.youtube_cookies import refresh_youtube_cookies, get_cookies_age_hours
 
 router = APIRouter()
 
@@ -250,3 +253,103 @@ async def trigger_transcription_nlp(
         "job_id": str(job_id),
         "video_count": len(request.video_ids) if request.video_ids else None
     }
+
+@router.post("/refresh-youtube-cookies/")
+async def trigger_refresh_youtube_cookies(
+    db: AsyncSession = Depends(get_async_db),
+    admin_user = Depends(get_current_admin)
+):
+    """Trigger YouTube cookies refresh with Redis lock and job tracking."""
+    # Try to acquire the lock (non-blocking)
+    if redis_client.get(REFRESH_YOUTUBE_COOKIES_LOCK):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="YouTube cookies refresh is already running. Please wait until the current task completes."
+        )
+
+    job_description = "Refreshing YouTube cookies via automated login"
+    job_data = JobCreateRequest(
+        job_type=JobType.REFRESH_YOUTUBE_COOKIES,
+        title="YouTube Cookies Refresh",
+        description=job_description,
+        redis_lock_key=REFRESH_YOUTUBE_COOKIES_LOCK,
+        trigger_type=LockType.SYSTEM
+    )
+
+    job = await JobService.create_job(db, job_data)
+    job_id = job.id
+
+    # Set the lock with a 30-minute TTL (cookie refresh should be quicker)
+    redis_client.setex(REFRESH_YOUTUBE_COOKIES_LOCK, 1800, "locked")
+
+    async def run_refresh_task():
+        start_time = time.time()
+        async with AsyncSessionLocal() as task_session:
+            try:
+                await JobService.start_job(task_session, job_id)
+                await JobService.update_progress(task_session, job_id, 0, 0)
+
+                success = await refresh_youtube_cookies(headless=True)
+
+                if not success:
+                    await JobService.fail_job(task_session, job_id, "Failed to refresh YouTube cookies")
+                    raise Exception("Failed to refresh YouTube cookies")
+
+                elapsed_time = time.time() - start_time
+                result_data = json.dumps({
+                    "message": "YouTube cookies refreshed successfully",
+                    "elapsed_time": elapsed_time,
+                })
+                await JobService.complete_job(task_session, job_id, result_data)
+            except Exception as e:
+                if "cancelled" in str(e).lower():
+                    await JobService.cancel_job(task_session, job_id, str(e))
+                    logger.info(f"YouTube cookies refresh cancelled: {e}")
+                else:
+                    await JobService.fail_job(task_session, job_id, str(e))
+                    logger.error(f"YouTube cookies refresh failed: {e}")
+                raise
+            finally:
+                redis_client.delete(REFRESH_YOUTUBE_COOKIES_LOCK)
+
+    task = asyncio.create_task(run_refresh_task())
+
+    return {
+        "message": "YouTube cookies refresh started in the background",
+        "task_id": id(task),
+        "job_id": str(job_id),
+    }
+
+@router.get("/youtube-cookies-status/")
+async def youtube_cookies_status(
+    admin_user = Depends(get_current_admin)
+):
+    """Return the age in hours since the last cookies refresh."""
+    age_hours = get_cookies_age_hours()
+    return {"age_hours": age_hours}
+
+@router.post("/upload-youtube-cookies/")
+async def upload_youtube_cookies(
+    file: UploadFile = File(...),
+    admin_user = Depends(get_current_admin)
+):
+    """Upload a cookies.txt file and save to configured path."""
+    if not YTDLP_COOKIES_FILE:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="YTDLP_COOKIES_FILE is not configured")
+
+    # Ensure directory exists
+    target_dir = os.path.dirname(str(YTDLP_COOKIES_FILE))
+    try:
+        os.makedirs(target_dir, exist_ok=True)
+    except Exception as e:
+        logger.warning(f"Could not create directory {target_dir}: {e}")
+
+    # Save the uploaded file
+    try:
+        content = await file.read()
+        with open(str(YTDLP_COOKIES_FILE), "wb") as f:
+            f.write(content)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to save uploaded cookies: {e}")
+
+    return {"message": "Cookies uploaded successfully", "target_path": str(YTDLP_COOKIES_FILE)}

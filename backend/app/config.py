@@ -11,6 +11,7 @@ ASYNC_DATABASE_URL = os.getenv("ASYNC_DATABASE_URL", None)
 # Redis lock keys
 SCRAPE_YOUTUBE_LOCK = "lock:scrape_youtube"
 TRANSCRIPTION_NLP_LOCK = "lock:transcription_nlp"
+REFRESH_YOUTUBE_COOKIES_LOCK = "lock:refresh_youtube_cookies"
 
 # supabase
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -137,5 +138,12 @@ YTDLP_BROWSER_PROFILE = os.getenv("YTDLP_BROWSER_PROFILE", "Default")  # optiona
 YTDLP_PROXY = os.getenv("YTDLP_PROXY")  # optional proxy (e.g., http://user:pass@host:port)
 YTDLP_GEO_BYPASS = os.getenv("YTDLP_GEO_BYPASS", "true").lower() == "true"
 YTDLP_GEO_COUNTRY = os.getenv("YTDLP_GEO_COUNTRY")  # e.g., "PK" or "AE"
+
+# PO Token provider configuration
+POT_PROVIDER_METHOD = os.getenv("POT_PROVIDER_METHOD", "http")  # "http" or "script"
+POT_PROVIDER_BASE_URL = os.getenv("POT_PROVIDER_BASE_URL", "http://127.0.0.1:4416")
+POT_SCRIPT_PATH = os.getenv("POT_SCRIPT_PATH")  # path to bgutil script build/generate_once.js
+POT_DISABLE_INNERTUBE = os.getenv("POT_DISABLE_INNERTUBE", "false").lower() == "true"
+YTDLP_PLAYER_CLIENT = os.getenv("YTDLP_PLAYER_CLIENT", "default,mweb")
 
 TOR_PROXY = "socks5://tor:9150"
