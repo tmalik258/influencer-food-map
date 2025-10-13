@@ -117,8 +117,8 @@ export function DataSyncManagement() {
   // Latest refresh cookies job info
   const refreshCookieJobs = (jobs || []).filter((job) => job.job_type === "refresh_youtube_cookies");
   const latestRefreshCookiesJob = refreshCookieJobs.sort((a, b) => {
-    const ad = new Date(a.completed_at || a.started_at || a.created_at || 0).getTime();
-    const bd = new Date(b.completed_at || b.started_at || b.created_at || 0).getTime();
+    const ad = new Date(a.completed_at || a.started_at || 0).getTime();
+    const bd = new Date(b.completed_at || b.started_at || 0).getTime();
     return bd - ad;
   })[0];
 
