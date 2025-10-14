@@ -115,12 +115,12 @@ export function DataSyncManagement() {
   const cookiesAgeDisplay = cookiesAge !== null && isFinite(cookiesAge) ? `${cookiesAge.toFixed(1)}h` : "Unknown";
 
   // Latest refresh cookies job info
-  const refreshCookieJobs = (jobs || []).filter((job) => job.job_type === "refresh_youtube_cookies");
-  const latestRefreshCookiesJob = refreshCookieJobs.sort((a, b) => {
-    const ad = new Date(a.completed_at || a.started_at || 0).getTime();
-    const bd = new Date(b.completed_at || b.started_at || 0).getTime();
-    return bd - ad;
-  })[0];
+  // const refreshCookieJobs = (jobs || []).filter((job) => job.job_type === "refresh_youtube_cookies");
+  // const latestRefreshCookiesJob = refreshCookieJobs.sort((a, b) => {
+  //   const ad = new Date(a.completed_at || a.started_at || 0).getTime();
+  //   const bd = new Date(b.completed_at || b.started_at || 0).getTime();
+  //   return bd - ad;
+  // })[0];
 
   return (
     <div className="space-y-6">
@@ -161,7 +161,7 @@ export function DataSyncManagement() {
                 {triggering === "nlp_processing" ? (
                   <RefreshCw className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Play className="h-5 w-5 text-orange-600 group-hover:text-white" />
+                  <Play className="h-5 w-5 text-gray-300 group-hover:text-white" />
                 )}
                 <span className="font-semibold">NLP Processing</span>
               </div>
@@ -213,7 +213,7 @@ export function DataSyncManagement() {
             </div>
           </div>
 
-          <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+          {/* <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
             {latestRefreshCookiesJob ? (
               <span>
                 Latest refresh job: <span className="font-medium">{latestRefreshCookiesJob.status}</span>
@@ -222,7 +222,7 @@ export function DataSyncManagement() {
             ) : (
               <span>No refresh job has run yet</span>
             )}
-          </div>
+          </div> */}
         </CardContent>
       </Card>
 

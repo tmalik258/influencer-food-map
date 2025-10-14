@@ -64,10 +64,26 @@ services:
 
   tor:
     image: peterdavehello/tor-socks-proxy:latest  # Or pin a version like :0.4.8.12
-    container_name: tor-proxy
+    container_name: nomtok_tor_prod
     networks:
       - nomtok-network
     restart: unless-stopped
+
+  bgutil-provider:
+    image: brainicism/bgutil-ytdlp-pot-provider:latest
+    container_name: nomtok_bgutil_provider_prod
+    ports:
+      - "4416:4416"
+    networks:
+      - nomtok-network
+    restart: unless-stopped
+    init: true
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4416/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
 networks:
   nomtok-network:

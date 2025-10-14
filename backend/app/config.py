@@ -141,7 +141,7 @@ YTDLP_GEO_COUNTRY = os.getenv("YTDLP_GEO_COUNTRY")  # e.g., "PK" or "AE"
 
 # PO Token provider configuration
 POT_PROVIDER_METHOD = os.getenv("POT_PROVIDER_METHOD", "http")  # "http" or "script"
-POT_PROVIDER_BASE_URL = os.getenv("POT_PROVIDER_BASE_URL", "http://127.0.0.1:4416")
+POT_PROVIDER_BASE_URL = os.getenv("POT_PROVIDER_BASE_URL", "http://bgutil-provider:4416")
 POT_SCRIPT_PATH = os.getenv("POT_SCRIPT_PATH")  # path to bgutil script build/generate_once.js
 POT_DISABLE_INNERTUBE = os.getenv("POT_DISABLE_INNERTUBE", "false").lower() == "true"
 YTDLP_PLAYER_CLIENT = os.getenv("YTDLP_PLAYER_CLIENT", "default,mweb")
