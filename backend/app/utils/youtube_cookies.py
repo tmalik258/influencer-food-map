@@ -9,7 +9,7 @@ from typing import Optional, cast
 from http.cookiejar import MozillaCookieJar, Cookie
 
 from playwright_stealth import Stealth
-from playwright.async_api import async_playwright, BrowserContext, Page, TimeoutError
+from playwright.async_api import async_playwright, BrowserContext, Page
 
 from app.config import YTDLP_COOKIES_FILE, GOOGLE_EMAIL, GOOGLE_PASSWORD 
 from app.utils.logging import setup_logger
