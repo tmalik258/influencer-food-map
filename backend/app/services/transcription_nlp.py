@@ -316,8 +316,8 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
                 logger.warning("No valid cookie file found - this may cause authentication issues")
             
             # Force cookie refresh if authentication fails
-            logger.info("Forcing cookie refresh to ensure fresh authentication")
-            await refresh_youtube_cookies()
+            # logger.info("Forcing cookie refresh to ensure fresh authentication")
+            # await refresh_youtube_cookies()
             
             if YTDLP_COOKIES_FILE and os.path.exists(YTDLP_COOKIES_FILE):
                 ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
