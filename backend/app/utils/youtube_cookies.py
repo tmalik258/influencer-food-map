@@ -151,8 +151,16 @@ async def _run_refresh(headless: bool, channel: Optional[str] = "chrome") -> boo
                 await context.storage_state(path=STORAGE_STATE_FILE)
                 logger.info(f"Saved storage state to {STORAGE_STATE_FILE}")
 
-            # Extract and format cookies
-            cookies = await context.cookies(["https://www.youtube.com", "https://accounts.google.com", "https://www.google.com"])
+            # Extract and format cookies from all relevant domains (including dot-prefixed domains)
+            cookies = await context.cookies([
+                "https://www.youtube.com", 
+                "https://youtube.com",
+                "https://accounts.google.com", 
+                "https://www.google.com",
+                "https://google.com",
+                "https://studio.youtube.com",
+                "https://music.youtube.com"
+            ])
             await _export_cookies_to_netscape(cookies)
 
             await browser.close()
@@ -459,7 +467,7 @@ async def _ensure_password_input(page) -> None:
 
 async def _login_to_google(page):
     """Automate Google login flow with robust selectors and consent handling."""
-    await page.goto("https://accounts.google.com/v2/signin/identifier?continue=https%3A%2F%2Fwww.youtube.com%2F&dsh=S-2147279974%3A1759988436171692&followup=https%3A%2F%2Faccounts.google.com%2F&ifkv=AfYwgwXSrxGEIClHmM1YYF3IUQnqFv6KRohiAa4gNIchCV-z6eJ4CZypirCLzgqFfDqKVaqnveYRig&passive=1209600&flowName=GlifWebSignIn&flowEntry=ServiceLogin")
+    await page.goto("https://accounts.google.com/v3/signin/identifier?continue=https%3A%2F%2Fwww.youtube.com%2F&dsh=S-2147279974%3A1759988436171692&followup=https%3A%2F%2Faccounts.google.com%2F&ifkv=AfYwgwXSrxGEIClHmM1YYF3IUQnqFv6KRohiAa4gNIchCV-z6eJ4CZypirCLzgqFfDqKVaqnveYRig&passive=1209600&flowName=GlifWebSignIn&flowEntry=ServiceLogin")
     await page.wait_for_load_state("domcontentloaded")
     await _click_consent_if_present(page)
 
@@ -578,8 +586,36 @@ async def _login_to_google(page):
     await asyncio.sleep(3)
 
 async def _navigate_to_youtube(page):
+    """Navigate to YouTube and ensure full authentication by visiting key Google services."""
+    # Visit YouTube first
     await page.goto("https://www.youtube.com")
     await page.wait_for_load_state("networkidle")
+    await asyncio.sleep(3)
+    
+    # Visit Google accounts to trigger authentication cookies
+    await page.goto("https://accounts.google.com")
+    await page.wait_for_load_state("networkidle")
+    await asyncio.sleep(3)
+    
+    # Visit Google main page to ensure all auth cookies are set
+    await page.goto("https://www.google.com")
+    await page.wait_for_load_state("networkidle")
+    await asyncio.sleep(3)
+    
+    # Visit YouTube Studio to trigger additional auth cookies
+    await page.goto("https://studio.youtube.com")
+    await page.wait_for_load_state("networkidle")
+    await asyncio.sleep(3)
+    
+    # Visit YouTube Music to ensure comprehensive cookie coverage
+    await page.goto("https://music.youtube.com")
+    await page.wait_for_load_state("networkidle")
+    await asyncio.sleep(3)
+    
+    # Return to YouTube to finalize the session
+    await page.goto("https://www.youtube.com")
+    await page.wait_for_load_state("networkidle")
+    await asyncio.sleep(5)  # Extra wait to ensure all cookies are set
 
 async def _export_cookies_to_netscape(cookies: list[dict]):
     _ensure_cookies_dir()
