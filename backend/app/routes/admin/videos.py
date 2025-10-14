@@ -148,7 +148,7 @@ async def create_video(
         )
 
 @admin_videos_router.put(
-    "/{video_id}", response_model=VideoResponse
+    "/{video_id}/", response_model=VideoResponse
 )
 async def update_video(
     video_id: UUID,
@@ -229,7 +229,7 @@ async def update_video(
         )
 
 @admin_videos_router.delete(
-    "/{video_id}", status_code=status.HTTP_204_NO_CONTENT
+    "/{video_id}/", status_code=status.HTTP_204_NO_CONTENT
 )
 async def delete_video(
     video_id: UUID,

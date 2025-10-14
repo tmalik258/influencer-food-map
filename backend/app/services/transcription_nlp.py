@@ -274,6 +274,11 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
                 # Add error handling for postprocessors
                 "ignoreerrors": False,
                 "no_warnings": False,
+                # Additional options to handle YouTube bot detection
+                "sleep_interval": 1,
+                "max_sleep_interval": 5,
+                "sleep_interval_requests": 1,
+                "sleep_interval_subtitles": 1,
             }
 
             # Configure PO tokens and cookies
@@ -307,6 +312,16 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
             if YTDLP_COOKIES_FILE and os.path.exists(YTDLP_COOKIES_FILE):
                 ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
                 logger.info(f"Using cookie file: {YTDLP_COOKIES_FILE}")
+            else:
+                logger.warning("No valid cookie file found - this may cause authentication issues")
+            
+            # Force cookie refresh if authentication fails
+            logger.info("Forcing cookie refresh to ensure fresh authentication")
+            await refresh_youtube_cookies()
+            
+            if YTDLP_COOKIES_FILE and os.path.exists(YTDLP_COOKIES_FILE):
+                ydl_opts["cookiefile"] = YTDLP_COOKIES_FILE
+                logger.info(f"Using refreshed cookie file: {YTDLP_COOKIES_FILE}")
             # elif YTDLP_COOKIES_FROM_BROWSER:
             #     # Handle browser profile properly - if None or empty, use just the browser name
             #     if YTDLP_BROWSER_PROFILE and YTDLP_BROWSER_PROFILE.strip():
@@ -375,28 +390,47 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
                 try:
                     filename_result = ydl.prepare_filename(info)
                     logger.info(f"prepare_filename result: {filename_result}, type: {type(filename_result)}")
-                    downloaded_file = filename_result.replace(".%(ext)s", ".mp3")
-                    logger.info(f"Downloaded file path after replace: {downloaded_file}")
+                    
+                    # Handle FFmpegExtractAudio postprocessor - it converts to .mp3
+                    # Remove the original extension and add .mp3
+                    base_path = filename_result
+                    if ".%(ext)s" in base_path:
+                        base_path = base_path.replace(".%(ext)s", "")
+                    else:
+                        # Remove existing extension if present
+                        base_path = os.path.splitext(base_path)[0]
+                    
+                    downloaded_file = f"{base_path}.mp3"
+                    logger.info(f"Expected MP3 file path: {downloaded_file}")
                 except Exception as e:
                     logger.error(f"Error in prepare_filename: {e}")
                     raise
                 
                 if not os.path.exists(downloaded_file):
-                    logger.info(f"Downloaded file {downloaded_file} does not exist, trying alternative extensions")
-                    # Try other possible extensions
-                    for ext in [".m4a", ".webm", ".mp4"]:
-                        try:
-                            alt_filename_result = ydl.prepare_filename(info)
-                            logger.info(f"Alternative prepare_filename result for {ext}: {alt_filename_result}")
-                            alt_file = alt_filename_result.replace(".%(ext)s", ext)
-                            logger.info(f"Checking alternative file: {alt_file}")
-                            if os.path.exists(alt_file):
-                                downloaded_file = alt_file
-                                logger.info(f"Found alternative file: {alt_file}")
-                                break
-                        except Exception as e:
-                            logger.error(f"Error checking alternative extension {ext}: {e}")
+                    logger.info(f"MP3 file {downloaded_file} does not exist, trying alternative paths and extensions")
+                    
+                    # First try the original filename with different extensions
+                    filename_result = ydl.prepare_filename(info)
+                    base_path = filename_result
+                    if ".%(ext)s" in base_path:
+                        base_path = base_path.replace(".%(ext)s", "")
                     else:
+                        base_path = os.path.splitext(base_path)[0]
+                    
+                    # Try different extensions that FFmpeg might produce
+                    for ext in [".mp3", ".m4a", ".webm", ".mp4", ".wav"]:
+                        alt_file = f"{base_path}{ext}"
+                        logger.info(f"Checking alternative file: {alt_file}")
+                        if os.path.exists(alt_file):
+                            downloaded_file = alt_file
+                            logger.info(f"Found alternative file: {alt_file}")
+                            break
+                    else:
+                        # List files in the temp directory for debugging
+                        temp_dir = os.path.dirname(base_path)
+                        if os.path.exists(temp_dir):
+                            temp_files = os.listdir(temp_dir)
+                            logger.error(f"Files in temp directory {temp_dir}: {temp_files}")
                         raise Exception("Downloaded file not found")
 
             logger.info(f"Downloaded temporary file: {downloaded_file}")
