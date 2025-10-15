@@ -244,14 +244,14 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
 
     loop = asyncio.get_event_loop()
 
-    # Two attempts: first without Tor, second with Tor if geo-restricted
+    # Multiple attempts: try different strategies for bot detection and geo-restrictions
     use_tor = False
-    max_attempts = 2
+    max_attempts = 4  # Increased to allow for multiple fallback strategies
 
     for attempt in range(max_attempts):
         downloaded_file = None
         try:
-            logger.info(f"Attempt {attempt + 1}/{max_attempts} downloading audio for {video_url} (tor={use_tor})")
+            logger.info(f"=== ATTEMPT {attempt + 1}/{max_attempts} === downloading audio for {video_url} (tor={use_tor})")
 
             with tempfile.NamedTemporaryFile(suffix=".%(ext)s", delete=False) as temp_file:
                 temp_output_template = temp_file.name
@@ -296,13 +296,29 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
                 if POT_DISABLE_INNERTUBE:
                     extractor_args["youtubepot-bgutilscript"] += ";disable_innertube=1"
             
-            # Add player client configuration
-            if YTDLP_PLAYER_CLIENT:
-                extractor_args["youtube"] = f"player-client={YTDLP_PLAYER_CLIENT}"
+            # Add player client configuration with fallback strategies
+            player_client = YTDLP_PLAYER_CLIENT
+            if attempt == 0:
+                # First attempt: Use configured player client
+                if YTDLP_PLAYER_CLIENT:
+                    extractor_args["youtube"] = f"player-client={YTDLP_PLAYER_CLIENT}"
+                    logger.info(f"Attempt {attempt + 1}: Using configured player client: {YTDLP_PLAYER_CLIENT}")
+            elif attempt == 1:
+                # Second attempt: Try android client
+                extractor_args["youtube"] = "player-client=android"
+                logger.info(f"Attempt {attempt + 1}: Using android player client as fallback")
+            elif attempt == 2:
+                # Third attempt: Try ios client
+                extractor_args["youtube"] = "player-client=ios"
+                logger.info(f"Attempt {attempt + 1}: Using ios player client as fallback")
+            elif attempt >= 3:
+                # Fourth+ attempt: Try web client
+                extractor_args["youtube"] = "player-client=web"
+                logger.info(f"Attempt {attempt + 1}: Using web player client as fallback")
             
             if extractor_args:
                 ydl_opts["extractor_args"] = extractor_args
-                logger.info(f"PO token extractor args: {extractor_args}")
+                logger.info(f"Extractor args for attempt {attempt + 1}: {extractor_args}")
             
             # Add cookie configuration
             if get_cookies_age_hours() > 24:
@@ -482,6 +498,63 @@ async def download_audio(video_url: str, video: Video) -> Optional[str]:
                 if os.path.exists(final_output_path):
                     os.remove(final_output_path)
                 await asyncio.sleep(1)
+                continue
+
+            # Detect bot detection; try fallback strategies
+            bot_detection_hit = (
+                "sign in to confirm" in err_l
+                or "not a bot" in err_l
+                or "confirm you're not a bot" in err_l
+            )
+            if bot_detection_hit and attempt < max_attempts - 1:
+                logger.warning(f"=== BOT DETECTION DETECTED === on attempt {attempt + 1}, trying fallback strategies")
+                
+                # Try different fallback strategies based on attempt number
+                if attempt == 0:
+                    # First fallback: Try with different player client
+                    logger.info("=== FALLBACK 1 === Trying with android player client")
+                    # This will be handled by the retry loop with modified extractor_args
+                elif attempt == 1:
+                    # Second fallback: Try with Tor proxy
+                    logger.info("=== FALLBACK 2 === Trying with Tor proxy")
+                    use_tor = True
+                elif attempt == 2:
+                    # Third fallback: Try with ios player client and Tor
+                    logger.info("=== FALLBACK 3 === Trying with ios player client and Tor")
+                    use_tor = True
+                
+                # Cleanup and retry
+                if downloaded_file and os.path.exists(downloaded_file):
+                    os.remove(downloaded_file)
+                if os.path.exists(final_output_path):
+                    os.remove(final_output_path)
+                
+                # Add exponential backoff delay for bot detection
+                delay = 2 ** attempt
+                logger.info(f"=== WAITING === {delay} seconds before retry due to bot detection")
+                await asyncio.sleep(delay)
+                continue
+
+            # Detect geo-restriction; try fallback strategies
+            geo_restricted = (
+                "video is not available in your country" in err_l
+                or "this video is not available" in err_l
+                or "geo" in err_l
+            )
+            if geo_restricted and attempt < max_attempts - 1:
+                logger.warning(f"=== GEO-RESTRICTION DETECTED === on attempt {attempt + 1}, trying fallback strategies")
+                use_tor = True
+                
+                # Cleanup and retry
+                if downloaded_file and os.path.exists(downloaded_file):
+                    os.remove(downloaded_file)
+                if os.path.exists(final_output_path):
+                    os.remove(final_output_path)
+                
+                # Add exponential backoff delay for geo-restriction
+                delay = 2 ** attempt
+                logger.info(f"=== WAITING === {delay} seconds before retry due to geo-restriction")
+                await asyncio.sleep(delay)
                 continue
 
             # Final failure
