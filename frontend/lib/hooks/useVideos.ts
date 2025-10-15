@@ -15,7 +15,7 @@ interface PaginatedVideosParams {
   influencer_id?: string;
   influencer_name?: string;
   has_listings?: boolean;
-  processed_status?: "all" | "processed" | "pending";
+  status?: "all" | "completed" | "pending" | "failed";
   page?: number;
   limit?: number;
   sort_by?: string;
@@ -48,7 +48,7 @@ export const useVideos = (initialParams?: PaginatedVideosParams) => {
 
   const fetchVideos = useCallback(async (searchParams?: PaginatedVideosParams) => {
     const currentParams = searchParams || params;
-    const { page = 1, limit = 12, processed_status, influencer_id, influencer_name, ...otherParams } = currentParams;
+    const { page = 1, limit = 12, status, influencer_id, influencer_name, ...otherParams } = currentParams;
     
     setLoading(true);
     setError(null);
@@ -66,7 +66,7 @@ export const useVideos = (initialParams?: PaginatedVideosParams) => {
         ...otherParams,
         influencer_id: influencer_id ? influencer_id.trim() : undefined,
         influencer_name: normalizedInfluencerName,
-        processed_status: processed_status === 'all' ? undefined : processed_status,
+        status: status === 'all' ? undefined : status,
         skip: (page - 1) * limit,
         limit
       });
@@ -125,8 +125,8 @@ export const useVideos = (initialParams?: PaginatedVideosParams) => {
     updateParams({ sort_order, page: 1 }); // Reset to first page when changing sort order
   }, [updateParams]);
 
-  const setProcessedStatusFilter = useCallback((processed_status: "all" | "processed" | "pending") => {
-    updateParams({ processed_status, page: 1 }); // Reset to first page when filtering
+  const setProcessedStatusFilter = useCallback((status: "all" | "completed" | "pending" | "failed") => {
+    updateParams({ status, page: 1 }); // Reset to first page when filtering
   }, [updateParams]);
 
   useEffect(() => {

@@ -6,6 +6,7 @@ from pydantic.config import ConfigDict
 import re
 
 from app.api_schema.influencers import InfluencerLightResponse
+from app.models.video import VideoProcessingStatus
 
 class VideoResponse(BaseModel):
     id: UUID
@@ -16,7 +17,8 @@ class VideoResponse(BaseModel):
     video_url: str
     published_at: Optional[datetime] = None
     transcription: Optional[str] = None
-    is_processed: bool = False
+    status: VideoProcessingStatus
+    error_message: Optional[str] = None
     created_at: datetime
     updated_at: datetime
     listings_count: int = 0
@@ -42,7 +44,8 @@ class VideoUpdate(BaseModel):
     video_url: Optional[str] = None
     published_at: Optional[datetime] = None
     transcription: Optional[str] = None
-    is_processed: Optional[bool] = None
+    status: Optional[VideoProcessingStatus] = None
+    error_message: Optional[str] = None
 
 class VideoCreateFromUrl(BaseModel):
     """Simplified schema for creating videos from YouTube URL"""

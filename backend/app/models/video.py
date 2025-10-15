@@ -1,11 +1,17 @@
 import uuid
+from enum import Enum
 
-from sqlalchemy import (Column, String, Text, DateTime, ForeignKey, UniqueConstraint, Boolean)
+from sqlalchemy import (Column, String, Text, DateTime, ForeignKey, UniqueConstraint, Enum as SQLEnum)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 
 from app.database import Base
+
+class VideoProcessingStatus(str, Enum):
+    PENDING = "pending"
+    COMPLETED = "completed"
+    FAILED = "failed"
 
 class Video(Base):
     __tablename__ = "videos"
@@ -18,7 +24,8 @@ class Video(Base):
     video_url = Column(String(255), nullable=False)
     published_at = Column(DateTime(timezone=True))
     transcription = Column(Text) # From Whisper
-    is_processed = Column(Boolean, default=False, server_default="false", nullable=False) # Processing status
+    status = Column(SQLEnum(VideoProcessingStatus), default=VideoProcessingStatus.PENDING, server_default=VideoProcessingStatus.PENDING.value, nullable=False) # Processing status
+    error_message = Column(Text, nullable=True) # Error message if processing failed
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 

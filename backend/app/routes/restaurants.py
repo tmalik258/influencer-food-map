@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Restaurant, RestaurantTag, RestaurantCuisine, Listing, Tag, Cuisine
-from app.database import get_async_db, get_db
+from app.database import get_async_db
 from app.utils.logging import setup_logger
 from app.api_schema.tags import TagResponse
 from app.api_schema.cuisines import CuisineResponse
@@ -531,6 +531,8 @@ async def get_restaurant(
                         video_url=listing.video.video_url,
                         published_at=listing.video.published_at,
                         transcription=listing.video.transcription,
+                        status=listing.video.status,
+                        error_message=listing.video.error_message,
                         created_at=listing.video.created_at,
                         updated_at=listing.video.updated_at
                     )

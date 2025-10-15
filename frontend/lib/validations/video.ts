@@ -37,7 +37,8 @@ export const updateVideoSchema = z.object({
   video_url: baseVideoSchema.video_url.optional(),
   published_at: baseVideoSchema.published_at,
   transcription: baseVideoSchema.transcription,
-  is_processed: z.boolean().optional(),
+  status: z.enum(['pending', 'completed', 'failed']).optional(),
+  error_message: z.string().max(1000, 'Error message must be less than 1000 characters').optional(),
 });
 
 // Schema for creating a video from URL (matches VideoCreateFromUrl)
@@ -60,5 +61,4 @@ export const defaultVideoEditFormValues: Partial<UpdateVideoFormData> = {
   video_url: "",
   published_at: null,
   transcription: "",
-  is_processed: false,
 };

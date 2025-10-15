@@ -3,6 +3,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -244,15 +245,32 @@ export function VideoTable({
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge 
-                      variant={video.is_processed ? "default" : "secondary"}
-                      className={video.is_processed 
-                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200" 
-                        : "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200"
-                      }
-                    >
-                      {video.is_processed ? "Processed" : "Pending"}
-                    </Badge>
+                    {video.status === 'failed' ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Badge
+                            variant="secondary"
+                            className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200"
+                          >
+                            Failed
+                          </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent sideOffset={8}>
+                          {video.error_message || 'Processing failed'}
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <Badge
+                        variant={video.status === 'completed' ? 'default' : 'secondary'}
+                        className={
+                          video.status === 'completed'
+                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                            : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                        }
+                      >
+                        {video.status === 'completed' ? 'Completed' : 'Pending'}
+                      </Badge>
+                    )}
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-1 text-sm">

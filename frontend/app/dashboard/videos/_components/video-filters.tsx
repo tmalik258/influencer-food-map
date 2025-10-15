@@ -156,7 +156,7 @@ export function VideoFilters({
           {/* Processing Status Filter */}
           <Select
             value={processedFilter}
-            onValueChange={(value: "all" | "processed" | "pending") =>
+            onValueChange={(value: "all" | "completed" | "pending" | "failed") =>
               setProcessedFilter(value)
             }
           >
@@ -165,8 +165,9 @@ export function VideoFilters({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Videos</SelectItem>
-              <SelectItem value="processed">Processed</SelectItem>
+              <SelectItem value="completed">Completed</SelectItem>
               <SelectItem value="pending">Pending</SelectItem>
+              <SelectItem value="failed">Failed</SelectItem>
             </SelectContent>
           </Select>
         </div>

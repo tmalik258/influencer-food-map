@@ -25,6 +25,7 @@ from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import Video, Restaurant, Listing, Influencer, Tag, RestaurantTag, Cuisine, RestaurantCuisine, BusinessStatus
+from app.models.video import VideoProcessingStatus
 from app.config import (
     GOOGLE_MAPS_API_KEY,
     REDIS_URL,
@@ -842,7 +843,12 @@ async def process_video(video: Video):
                     logger.info(
                         f"No restaurant entities found for video {video.youtube_video_id}"
                     )
-                    return
+                    # Treat videos with no entities as successfully processed
+                    video.status = VideoProcessingStatus.COMPLETED
+                    db.add(video)
+                    await db.flush()
+                    logger.info(f"Marked video {video.youtube_video_id} as completed (no entities)")
+                    return True
                 logger.info(
                     f"Entities extracted for video {video.youtube_video_id}: {entities_list}"
                 )
@@ -866,15 +872,23 @@ async def process_video(video: Video):
                     f"Stored restaurant, tags, and listing for video {video.youtube_video_id}"
                 )
                 
-                # Mark video as processed
-                video.is_processed = True
+                # Mark video as completed
+                video.status = VideoProcessingStatus.COMPLETED
                 db.add(video)
                 await db.flush()
-                logger.info(f"Marked video {video.youtube_video_id} as processed")
+                logger.info(f"Marked video {video.youtube_video_id} as completed")
                 
                 return True  # Return success value
             except Exception as e:
                 logger.error(f"Error processing video {video.youtube_video_id}: {e}")
+                # Set failure status and error message before propagating
+                try:
+                    video.status = VideoProcessingStatus.FAILED
+                    video.error_message = str(e)
+                    db.add(video)
+                    await db.flush()
+                except Exception as _status_err:
+                    logger.warning(f"Failed to set video status to FAILED: {_status_err}")
                 raise  # Let the transaction rollback automatically
 
 async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list] = None, job_id: Optional[uuid.UUID] = None):
@@ -1021,6 +1035,18 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
                                 await JobService.append_error_message(db, job_id, msg_to_append)
                             except Exception as _update_err:
                                 logger.warning(f"Failed to append error message: {_update_err}")
+                        # Persist FAILED status and error_message for the video
+                        try:
+                            v_stmt = select(Video).where(Video.id == video.id)
+                            v_res = await db.execute(v_stmt)
+                            v_obj = v_res.scalar_one_or_none()
+                            if v_obj:
+                                v_obj.status = VideoProcessingStatus.FAILED
+                                v_obj.error_message = msg_to_append or str(e)
+                                db.add(v_obj)
+                                await db.commit()
+                        except Exception as _persist_err:
+                            logger.warning(f"Failed to persist FAILED status for video {getattr(video, 'id', None)}: {_persist_err}")
                     except Exception:
                         # Fallback minimal error record
                         errors_list.append({

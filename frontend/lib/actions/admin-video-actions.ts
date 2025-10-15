@@ -22,7 +22,8 @@ interface VideoUpdateData {
   video_url?: string;
   published_at?: string;
   transcription?: string;
-  is_processed?: boolean;
+  status?: 'pending' | 'completed' | 'failed';
+  error_message?: string;
 }
 
 export const adminVideoActions = {
@@ -77,7 +78,7 @@ export const adminVideoActions = {
     influencer_id?: string;
     influencer_name?: string;
     has_listings?: boolean;
-    is_processed?: boolean;
+    status?: 'completed' | 'pending' | 'failed';
     skip?: number;
     limit?: number;
   }): Promise<Video[]> => {

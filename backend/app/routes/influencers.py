@@ -172,6 +172,8 @@ async def get_influencers(
                             video_url=listing.video.video_url,
                             published_at=listing.video.published_at,
                             transcription=listing.video.transcription,
+                            status=listing.video.status,
+                            error_message=listing.video.error_message,
                             created_at=listing.video.created_at,
                             updated_at=listing.video.updated_at
                         )
@@ -334,6 +336,8 @@ async def get_influencer(
                         video_url=listing.video.video_url,
                         published_at=listing.video.published_at,
                         transcription=listing.video.transcription,
+                        status=listing.video.status,
+                        error_message=listing.video.error_message,
                         created_at=listing.video.created_at,
                         updated_at=listing.video.updated_at
                     )

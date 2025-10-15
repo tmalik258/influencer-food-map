@@ -58,7 +58,8 @@ export interface Video {
   video_url: string;
   published_at?: string;
   transcription?: string;
-  is_processed?: boolean;
+  status?: 'pending' | 'completed' | 'failed';
+  error_message?: string;
   created_at: string;
   updated_at: string;
   listings_count?: number;

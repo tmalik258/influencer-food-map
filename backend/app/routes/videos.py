@@ -7,6 +7,7 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models import (Video, Influencer, Listing)
+from app.models.video import VideoProcessingStatus
 from app.database import get_async_db
 from app.utils.logging import setup_logger
 from app.api_schema.videos import VideoResponse, VideosResponse
@@ -26,7 +27,7 @@ async def get_videos(
     influencer_id: Optional[str] = None,
     influencer_name: Optional[str] = None,
     has_listings: Optional[bool] = None,
-    processed_status: Optional[str] = None,
+    status: Optional[str] = None,
     sort_by: Optional[str] = "created_at",
     sort_order: Optional[str] = "desc",
     skip: int = 0,
@@ -47,10 +48,12 @@ async def get_videos(
             # Filter videos WITHOUT listings
             stmt = stmt.having(func.count(Listing.id) == 0)
 
-        if processed_status == "processed":
-            stmt = stmt.where(Video.is_processed.is_(True))
-        elif processed_status == "pending":
-            stmt = stmt.where(Video.is_processed.is_(False))
+        if status == "completed":
+            stmt = stmt.where(Video.status == VideoProcessingStatus.COMPLETED)
+        elif status == "pending":
+            stmt = stmt.where(Video.status == VideoProcessingStatus.PENDING)
+        elif status == "failed":
+            stmt = stmt.where(Video.status == VideoProcessingStatus.FAILED)
 
         if title:
             stmt = stmt.where(Video.title.ilike(f"%{title}%"))
@@ -132,7 +135,8 @@ async def get_videos(
                 video_url=video.video_url,
                 published_at=video.published_at,
                 transcription=video.transcription,
-                is_processed=video.is_processed,
+                status=video.status,
+                error_message=video.error_message,
                 created_at=video.created_at,
                 updated_at=video.updated_at,
                 listings_count=listings_count
@@ -187,7 +191,8 @@ async def get_video(video_id: str, db: AsyncSession = Depends(get_async_db)):
             video_url=video.video_url,
             published_at=video.published_at,
             transcription=video.transcription,
-            is_processed=video.is_processed,
+            status=video.status,
+            error_message=video.error_message,
             created_at=video.created_at,
             updated_at=video.updated_at,
             listings_count=listings_count

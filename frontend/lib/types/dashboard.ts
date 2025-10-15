@@ -145,8 +145,8 @@ export interface VideoFiltersProps {
   setHasListings: (value: boolean | undefined) => void;
   selectedInfluencer: string;
   setSelectedInfluencer: (value: string) => void;
-  processedFilter: "all" | "processed" | "pending";
-  setProcessedFilter: (value: "all" | "processed" | "pending") => void;
+  processedFilter: "all" | "completed" | "pending" | "failed";
+  setProcessedFilter: (value: "all" | "completed" | "pending" | "failed") => void;
 }
 
 export interface VideoHeaderProps {
@@ -164,7 +164,7 @@ export interface VideoTableProps {
   searchTerm: string;
   selectedInfluencer: string;
   hasListings: boolean | undefined;
-  processedFilter: "all" | "processed" | "pending";
+  processedFilter: "all" | "completed" | "pending" | "failed";
   onViewVideo: (video: Video) => void;
   onEditVideo: (video: Video) => void;
   onDeleteVideo: (video: Video) => void;

@@ -24,7 +24,7 @@ export default function VideoManagement() {
   const [selectedVideos, setSelectedVideos] = useState<Video[]>([]);
   const [isProcessModalOpen, setIsProcessModalOpen] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [processedFilter, setProcessedFilter] = useState<"all" | "processed" | "pending">("all");
+  const [processedFilter, setProcessedFilter] = useState<"all" | "completed" | "pending" | "failed">("all");
 
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -51,7 +51,7 @@ export default function VideoManagement() {
     limit: 10,
     sort_by: "published_at",
     sort_order: "desc",
-    processed_status: processedFilter,
+    status: processedFilter,
   });
 
   useEffect(() => {
@@ -93,7 +93,7 @@ export default function VideoManagement() {
     setPage(1); // Reset to first page when changing filters
   };
 
-  const handleProcessedFilterChange = (processed: "all" | "processed" | "pending") => {
+  const handleProcessedFilterChange = (processed: "all" | "completed" | "pending" | "failed") => {
     setProcessedFilter(processed);
     setProcessedStatusFilter(processed);
     setPage(1); // Reset to first page when changing filters
