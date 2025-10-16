@@ -115,3 +115,7 @@ async def custom_validation_exception_handler(
 @app.get("/")
 def root():
     return {"message": "Influencer Food Map API is live!"}
+
+@app.get("/health")
+def health():
+    return {"status": "healthy"}

@@ -155,17 +155,17 @@ export function DataSyncManagement() {
             <Button 
               onClick={() => handleTriggerJob("nlp_processing")}
               disabled={triggering === "nlp_processing"}
-              className="h-auto p-4 flex flex-col items-start shadow-lg bg白/70 border-orange-200/50 hover:bg-orange-600 cursor-pointer focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-gray-300 hover:text-white dark:text-gray-100 group"
+              className="h-auto p-4 flex flex-col items-start shadow-lg bg白/70 border-orange-200/50 hover:bg-orange-600 cursor-pointer focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 dark:focus:ring-offset-gray-800 text-white hover:text-white dark:text-gray-100 group"
             >
               <div className="flex items-center gap-2 mb-2">
                 {triggering === "nlp_processing" ? (
                   <RefreshCw className="h-5 w-5 animate-spin" />
                 ) : (
-                  <Play className="h-5 w-5 text-gray-300 group-hover:text-white" />
+                  <Play className="h-5 w-5 text-white group-hover:text-white" />
                 )}
                 <span className="font-semibold">NLP Processing</span>
               </div>
-              <span className="text-sm text-gray-400 group-hover:text-orange-100 dark:text-gray-400 text-left">
+              <span className="text-sm text-gray-100 group-hover:text-orange-100 dark:text-gray-400 text-left">
                 Process video content and extract insights
               </span>
             </Button>
