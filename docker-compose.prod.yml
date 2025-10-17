@@ -65,7 +65,7 @@ services:
     restart: always
 
   tor:
-    image: peterdavehello/tor-socks-proxy:latest  # Or pin a version like :0.4.8.12
+    image: peterdavehello/tor-socks-proxy:latest
     container_name: nomtok_tor_prod
     networks:
       - nomtok-network
@@ -81,7 +81,7 @@ services:
     restart: unless-stopped
     init: true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4416/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:4416/ping"]
       interval: 30s
       timeout: 10s
       retries: 3
