@@ -4,6 +4,7 @@ WORKDIR /code
 
 # Install system dependencies (removed duplicates)
 RUN apt-get update && apt-get install -y \
+    curl \
     wget \
     gnupg \
     ca-certificates \
