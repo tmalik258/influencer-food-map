@@ -170,18 +170,18 @@ export const useListing = (id: string) => {
   };
 };
 
-export const useRestaurantListings = (restaurantId: string) => {
+export const useRestaurantListings = (restaurantSlug: string) => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchListings = useCallback(async () => {
-    if (!restaurantId) return;
+    if (!restaurantSlug) return;
 
     setLoading(true);
     setError(null);
     try {
-      const data = await listingActions.getListingsByRestaurant(restaurantId);
+      const data = await listingActions.getListingsByRestaurant(restaurantSlug);
       setListings(data);
     } catch (err) {
       setError(
@@ -192,11 +192,11 @@ export const useRestaurantListings = (restaurantId: string) => {
     } finally {
       setLoading(false);
     }
-  }, [restaurantId]);
+  }, [restaurantSlug]);
 
   useEffect(() => {
     fetchListings();
-  }, [fetchListings, restaurantId]);
+  }, [fetchListings, restaurantSlug]);
 
   return {
     listings,
@@ -206,19 +206,19 @@ export const useRestaurantListings = (restaurantId: string) => {
   };
 };
 
-export const useMostRecentListing = (influencerId: string) => {
+export const useMostRecentListing = (influencerSlug: string) => {
   const [listing, setListing] = useState<Listing | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchMostRecentListing = useCallback(async () => {
-    if (!influencerId) return;
+    if (!influencerSlug) return;
 
     setLoading(true);
     setError(null);
     try {
       const data = await listingActions.getMostRecentListingByInfluencer(
-        influencerId
+        influencerSlug
       );
       setListing(data);
     } catch (err) {
@@ -230,7 +230,7 @@ export const useMostRecentListing = (influencerId: string) => {
     } finally {
       setLoading(false);
     }
-  }, [influencerId]);
+  }, [influencerSlug]);
 
   useEffect(() => {
     fetchMostRecentListing();
@@ -244,18 +244,18 @@ export const useMostRecentListing = (influencerId: string) => {
   };
 };
 
-export const useInfluencerListings = (influencerId: string) => {
+export const useInfluencerListings = (influencerSlug: string) => {
   const [listings, setListings] = useState<Listing[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchListings = useCallback(async () => {
-    if (!influencerId) return;
+    if (!influencerSlug) return;
 
     setLoading(true);
     setError(null);
     try {
-      const data = await listingActions.getListingsByInfluencer(influencerId);
+      const data = await listingActions.getListingsByInfluencer(influencerSlug);
       setListings(data);
     } catch (err) {
       setError(
@@ -266,11 +266,11 @@ export const useInfluencerListings = (influencerId: string) => {
     } finally {
       setLoading(false);
     }
-  }, [influencerId]);
+  }, [influencerSlug]);
 
   useEffect(() => {
     fetchListings();
-  }, [fetchListings, influencerId]);
+  }, [fetchListings, influencerSlug]);
 
   return {
     listings,

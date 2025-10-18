@@ -910,7 +910,6 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
                 .options(selectinload(Video.influencer))
             )
         else:
-            # Select one video per influencer
             result = await db.execute(
                 select(Video)
                 .join(Influencer)
@@ -924,7 +923,6 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
                     func.length(Video.transcription).asc(),  # Sort by transcription length (smallest to largest)
                     Video.published_at.desc()
                 )
-                .limit(10)
                 .options(selectinload(Video.influencer))
             )
         
@@ -970,7 +968,9 @@ async def transcription_nlp_pipeline(db: AsyncSession, video_ids: Optional[list]
                         await JobService.update_progress(db, job_id, min(5, total_videos - processed_videos - failed_videos))
                     
                     await asyncio.sleep(1)  # Add 1-second delay between downloads
+                    logger.info(f"Processing video {video.id} ({video.youtube_video_id})")
                     result = await process_video(video)
+                    logger.info(f"Video {video.id} ({video.youtube_video_id}) processed successfully")
                     processed_videos += 1
                     
                     # Update progress and processing rate

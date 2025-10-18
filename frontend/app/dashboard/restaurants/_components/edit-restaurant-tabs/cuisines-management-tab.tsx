@@ -95,7 +95,7 @@ export function CuisinesManagementTab({
 
   useEffect(() => {
     fetchAvailableCuisines();
-  }, [restaurant.id, fetchAvailableCuisines]);
+  }, [restaurant.slug, fetchAvailableCuisines]);
 
   const handleAddCuisine = (cuisine: Cuisine) => {
     setCuisines((prev) => [...prev, cuisine]);

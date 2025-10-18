@@ -22,7 +22,7 @@ interface InfluencersResponse {
   totalPages: number;
 }
 
-export const useInfluencer = (id: string, params?: {
+export const useInfluencer = (slug: string, params?: {
   include_listings?: boolean;
   include_video_details?: boolean;
 }) => {
@@ -31,19 +31,19 @@ export const useInfluencer = (id: string, params?: {
   const [error, setError] = useState<string | null>(null);
 
   const fetchInfluencer = useCallback(async () => {
-    if (!id) return;
+    if (!slug) return;
     
     setLoading(true);
     setError(null);
     try {
-      const data = await influencerActions.getInfluencer(id, params);
+      const data = await influencerActions.getInfluencer(slug, params);
       setInfluencer(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch influencer');
     } finally {
       setLoading(false);
     }
-  }, [id, params]);
+  }, [slug, params]);
 
   useEffect(() => {
     fetchInfluencer();

@@ -35,8 +35,8 @@ import RestaurantMap from "@/components/restaurant-map-wrapper";
 import { InfluencerSearchFilter } from "../_components/influencer-search-filter";
 
 export default function InfluencerDetailPage() {
-  const params = useParams() as { id: string };
-  const influencerId = params?.id;
+  const params = useParams() as { slug: string };
+  const influencerSlug = params?.slug;
   const searchParams = useSearchParams();
   const router = useRouter();
   const pathname = usePathname();
@@ -58,28 +58,28 @@ export default function InfluencerDetailPage() {
     loading: influencerLoading,
     error: influencerError,
     refetch: refetchInfluencer,
-  } = useInfluencer(influencerId);
+  } = useInfluencer(influencerSlug);
 
   const {
     listings,
     loading: listingsLoading,
     error: listingsError,
     refetch: refetchListings,
-  } = useInfluencerListings(influencerId);
+  } = useInfluencerListings(influencerSlug);
 
   const {
     videos,
     loading: videosLoading,
     error: videosError,
     refetch: refetchVideos,
-  } = useInfluencerVideos(influencerId, 10);
+  } = useInfluencerVideos(influencerSlug, 10);
 
   const {
     listing: mostRecentListing,
     loading: mostRecentLoading,
     error: mostRecentError,
     refetch: refetchMostRecent,
-  } = useMostRecentListing(influencerId);
+  } = useMostRecentListing(influencerSlug);
 
   // Sync local state with URL parameters
   useEffect(() => {
@@ -308,7 +308,7 @@ export default function InfluencerDetailPage() {
             sortBy={sortBy}
             country={country}
             countriesSource="restaurants"
-            influencerId={influencerId}
+            influencerSlug={influencerSlug}
             disableSearchType={false}
             onSearchQueryChange={updateSearchQuery}
             onSearchTypeChange={updateSearchType}

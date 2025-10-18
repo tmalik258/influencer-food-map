@@ -72,18 +72,18 @@ export const useRestaurants = (params?: SearchParams) => {
   };
 };
 
-export const useRestaurant = (id: string, includeListings = false, includeVideoDetails = true) => {
+export const useRestaurant = (slug: string, includeListings = false, includeVideoDetails = true) => {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchRestaurant = useCallback(async () => {
-    if (!id) return;
+    if (!slug) return;
 
     setLoading(true);
     setError(null);
     try {
-      const data = await restaurantActions.getRestaurant(id, includeListings, includeVideoDetails);
+      const data = await restaurantActions.getRestaurant(slug, includeListings, includeVideoDetails);
       setRestaurant(data);
     } catch (err) {
       setError(
@@ -92,11 +92,11 @@ export const useRestaurant = (id: string, includeListings = false, includeVideoD
     } finally {
       setLoading(false);
     }
-  }, [id, includeListings, includeVideoDetails]);
+  }, [slug, includeListings, includeVideoDetails]);
 
   useEffect(() => {
     fetchRestaurant();
-  }, [id, fetchRestaurant]);
+  }, [slug, fetchRestaurant]);
 
   return {
     restaurant,
@@ -107,6 +107,6 @@ export const useRestaurant = (id: string, includeListings = false, includeVideoD
 };
 
 // New hook specifically for fetching restaurant with listings (replaces useRestaurantListings)
-export const useRestaurantWithListings = (id: string, includeVideoDetails = false) => {
-  return useRestaurant(id, true, includeVideoDetails);
+export const useRestaurantWithListings = (slug: string, includeVideoDetails = false) => {
+  return useRestaurant(slug, true, includeVideoDetails);
 };

@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 class RestaurantResponse(BaseModel):
     id: UUID
     name: str
+    slug: str
     address: str
     latitude: float
     longitude: float

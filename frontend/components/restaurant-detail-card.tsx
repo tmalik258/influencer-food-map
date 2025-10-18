@@ -34,7 +34,7 @@ export function RestaurantDetailCard({
             <RestaurantImage
               src={restaurant.photo_url || undefined}
               alt={restaurant.name}
-              restaurantId={String(restaurant.id)}
+              restaurantSlug={String(restaurant.slug)}
               sizes="(max-width: 768px) 100vw, (max-width: 1024px) 320px, 320px"
             />
           </div>

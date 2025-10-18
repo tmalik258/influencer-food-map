@@ -22,16 +22,16 @@ export function RestaurantCard({
   const router = useRouter();
   return (
     <Card
-      key={restaurant.id}
+      key={restaurant.slug}
       className="overflow-hidden border-gray-100 shadow-lg cursor-pointer hover:shadow-xl transition-all duration-300 group p-4"
-      onClick={() => router.push(`/restaurants/${restaurant.id}`)}
+      onClick={() => router.push(`/restaurants/${restaurant.slug}`)}
     >
       <div className="relative h-48 rounded-lg overflow-hidden">
         {/* Use fallback-aware image component */}
         <RestaurantImage
           src={restaurant.photo_url || undefined}
           alt={restaurant.name}
-          restaurantId={String(restaurant.id)}
+          restaurantSlug={String(restaurant.slug)}
           className="group-hover:scale-105 transition-transform duration-300"
         />
         {restaurant.google_rating && (
@@ -97,7 +97,7 @@ export function RestaurantCard({
             asChild
             className="w-full mt-auto bg-orange-500 text-white hover:bg-orange-600 transition-colors duration-200"
           >
-            <Link href={`/restaurants/${restaurant.id}`}>View Details</Link>
+            <Link href={`/restaurants/${restaurant.slug}`}>View Details</Link>
           </Button>
         )}
       </CardContent>

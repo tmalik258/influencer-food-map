@@ -7,7 +7,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import joinedload
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models import Restaurant, RestaurantTag, RestaurantCuisine, Listing, Tag, Cuisine
+from app.models import Restaurant, RestaurantTag, RestaurantCuisine, Listing, Tag, Cuisine, Influencer
 from app.database import get_async_db
 from app.utils.logging import setup_logger
 from app.api_schema.tags import TagResponse
@@ -39,7 +39,8 @@ async def get_restaurants(
     skip: int = 0,
     limit: int = 10,
     include_listings: Optional[bool] = Query(False, description="Include listings with restaurants"),
-    include_video_details: Optional[bool] = Query(False, description="Include full video details (description, transcription, summary)")
+    include_video_details: Optional[bool] = Query(False, description="Include full video details (description, transcription)"),
+    slug: str | None = None
 ):
     """Get restaurants with filters for name, ID, city, country, Google Place ID, tags, and cuisines."""
     try:
@@ -56,6 +57,8 @@ async def get_restaurants(
             filters.append(Restaurant.city.ilike(f"%{city}%"))
         if country:
             filters.append(Restaurant.country == country)
+        if slug:
+            filters.append(Restaurant.slug.ilike(f"%{slug}%"))
         if google_place_id:
             filters.append(Restaurant.google_place_id == google_place_id)
         
@@ -159,6 +162,7 @@ async def get_restaurants(
             restaurant_data = RestaurantResponse(
                 id=restaurant.id,
                 name=restaurant.name,
+                slug=restaurant.slug,
                 address=restaurant.address,
                 latitude=restaurant.latitude,
                 longitude=restaurant.longitude,
@@ -183,6 +187,7 @@ async def get_restaurants(
                     influencer_response = InfluencerResponse(
                         id=listing.influencer.id,
                         name=listing.influencer.name,
+                        slug=listing.influencer.slug,
                         bio=listing.influencer.bio,
                         avatar_url=listing.influencer.avatar_url,
                         banner_url=listing.influencer.banner_url,
@@ -253,8 +258,8 @@ async def get_popular_cities(db: AsyncSession = Depends(get_async_db)):
         return []
 
 @router.get("/countries/")
-async def get_countries(db: AsyncSession = Depends(get_async_db), influencer_id: Optional[str] = None):
-    """Get unique countries from restaurants, optionally filtered by influencer."""
+async def get_countries(db: AsyncSession = Depends(get_async_db), influencer: Optional[str] = None):
+    """Get unique countries from restaurants, optionally filtered by influencer (UUID or slug)."""
     try:
         query = select(Restaurant.country).filter(
             Restaurant.is_active == True,
@@ -262,14 +267,17 @@ async def get_countries(db: AsyncSession = Depends(get_async_db), influencer_id:
         )
         
         # If influencer_id is provided, filter by restaurants reviewed by that influencer
-        if influencer_id:
+        if influencer:
             try:
-                influencer_uuid = UUID(influencer_id)
+                influencer_uuid = UUID(influencer)
                 query = query.join(Listing, Restaurant.id == Listing.restaurant_id).filter(
                     Listing.influencer_id == influencer_uuid
                 )
             except ValueError:
-                raise HTTPException(status_code=400, detail="Invalid influencer_id format")
+                # If not a UUID, assume it's a slug
+                query = query.join(Listing, Restaurant.id == Listing.restaurant_id).join(Influencer, Listing.influencer_id == Influencer.id).filter(
+                    Influencer.slug == influencer
+                )
         
         query = query.distinct().order_by(Restaurant.country)
         result = await db.execute(query)
@@ -350,6 +358,7 @@ async def get_featured_optimized(db: AsyncSession = Depends(get_async_db)):
                 restaurant_dict = {
                     'id': restaurant.id,
                     'name': restaurant.name,
+                    'slug': restaurant.slug,
                     'address': restaurant.address,
                     'latitude': restaurant.latitude,
                     'longitude': restaurant.longitude,
@@ -373,6 +382,7 @@ async def get_featured_optimized(db: AsyncSession = Depends(get_async_db)):
                         influencer_response = InfluencerResponse(
                             id=listing.influencer.id,
                             name=listing.influencer.name,
+                            slug=listing.influencer.slug,
                             bio=listing.influencer.bio,
                             avatar_url=listing.influencer.avatar_url,
                             banner_url=listing.influencer.banner_url,
@@ -430,17 +440,17 @@ async def get_featured_optimized(db: AsyncSession = Depends(get_async_db)):
         
         return OptimizedFeaturedResponse(cities=city_restaurants)
     except Exception as e:
-        logger.error(f"Error fetching featured optimized data: {e}")
+        logger.exception("Error fetching featured optimized data")
         raise HTTPException(status_code=500, detail="Failed to fetch featured data. Please try again later.")
 
-@router.get("/{restaurant_id}/", response_model=RestaurantResponse)
+@router.get("/{restaurant}/", response_model=RestaurantResponse)
 async def get_restaurant(
-    restaurant_id: str, 
+    restaurant: str, 
     db: AsyncSession = Depends(get_async_db),
     include_listings: Optional[bool] = Query(False, description="Include listings with restaurant"),
-    include_video_details: Optional[bool] = Query(True, description="Include full video details (description, transcription, summary)")
+    include_video_details: Optional[bool] = Query(True, description="Include full video details and not just video_id")
 ):
-    """Get a single restaurant by ID."""
+    """Get a single restaurant by ID or slug."""
     try:
         # Base query with tags and cuisines
         query = select(Restaurant).options(
@@ -457,41 +467,53 @@ async def get_restaurant(
                 .joinedload(Listing.influencer)
             )
         
-        query = query.filter(Restaurant.id == restaurant_id, Restaurant.is_active == True)
+        # Choose filter by UUID or slug
+        is_uuid = True
+        try:
+            UUID(str(restaurant))
+        except Exception:
+            is_uuid = False
+        
+        if is_uuid:
+            query = query.filter(Restaurant.id == restaurant, Restaurant.is_active == True)
+        else:
+            query = query.filter(Restaurant.slug == restaurant, Restaurant.is_active == True)
         result = await db.execute(query)
-        restaurant = result.scalars().first()
+        restaurant_obj = result.scalars().first()
 
-        if not restaurant:
+        if not restaurant_obj:
             raise HTTPException(status_code=404, detail="Restaurant not found")
         
         # Convert to response format - manually construct to avoid validation issues
         restaurant_data = RestaurantResponse(
-            id=restaurant.id,
-            name=restaurant.name,
-            address=restaurant.address,
-            latitude=restaurant.latitude,
-            longitude=restaurant.longitude,
-            city=restaurant.city,
-            country=restaurant.country,
-            google_place_id=restaurant.google_place_id,
-            google_rating=restaurant.google_rating,
-            business_status=restaurant.business_status,
-            photo_url=restaurant.photo_url,
-            is_active=restaurant.is_active,
-            created_at=restaurant.created_at,
-            updated_at=restaurant.updated_at,
-            tags=[TagResponse.model_validate(rt.tag) for rt in restaurant.restaurant_tags] if restaurant.restaurant_tags else None,
-            cuisines=[CuisineResponse.model_validate(rc.cuisine) for rc in restaurant.restaurant_cuisines] if restaurant.restaurant_cuisines else None,
+            id=restaurant_obj.id,
+            name=restaurant_obj.name,
+            slug=restaurant_obj.slug,
+            address=restaurant_obj.address,
+            latitude=restaurant_obj.latitude,
+            longitude=restaurant_obj.longitude,
+            city=restaurant_obj.city,
+            country=restaurant_obj.country,
+            google_place_id=restaurant_obj.google_place_id,
+            google_rating=restaurant_obj.google_rating,
+            business_status=restaurant_obj.business_status,
+            photo_url=restaurant_obj.photo_url,
+            is_active=restaurant_obj.is_active,
+            created_at=restaurant_obj.created_at,
+            updated_at=restaurant_obj.updated_at,
+            tags=[TagResponse.model_validate(rt.tag) for rt in restaurant_obj.restaurant_tags] if restaurant_obj.restaurant_tags else None,
+            cuisines=[CuisineResponse.model_validate(rc.cuisine) for rc in restaurant_obj.restaurant_cuisines] if restaurant_obj.restaurant_cuisines else None,
             listings=None  # Will be set separately if needed
         )
         
-        if include_listings and restaurant.listings:
+        if include_listings and restaurant_obj.listings:
             listings_data = []
-            for listing in restaurant.listings:
+            for listing in restaurant_obj.listings:
                 # Create InfluencerResponse manually to avoid lazy loading issues
                 influencer_response = InfluencerResponse(
                     id=listing.influencer.id,
                     name=listing.influencer.name,
+                    slug=listing.influencer.slug,
                     bio=listing.influencer.bio,
                     avatar_url=listing.influencer.avatar_url,
                     banner_url=listing.influencer.banner_url,
@@ -512,6 +534,7 @@ async def get_restaurant(
                         video_influencer_response = InfluencerLightResponse(
                             id=listing.video.influencer.id,
                             name=listing.video.influencer.name,
+                            slug=listing.video.influencer.slug,
                             bio=listing.video.influencer.bio,
                             avatar_url=listing.video.influencer.avatar_url,
                             banner_url=listing.video.influencer.banner_url,
@@ -527,6 +550,7 @@ async def get_restaurant(
                         influencer=video_influencer_response,
                         youtube_video_id=listing.video.youtube_video_id,
                         title=listing.video.title,
+                        slug=listing.video.slug,
                         description=listing.video.description,
                         video_url=listing.video.video_url,
                         published_at=listing.video.published_at,
@@ -567,42 +591,50 @@ async def get_restaurant(
         
         return restaurant_data
     except HTTPException:
-        # Re-raise HTTP exceptions (like 404)
         raise
     except Exception as e:
-        logger.error(f"Error fetching restaurant {restaurant_id}: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch restaurant. Please try again later.")
+        logger.error(f"Error fetching restaurant: {e}")
+        raise HTTPException(status_code=500, detail="Internal server error while fetching restaurant")
 
-@router.post("/{restaurant_id}/refetch-photo/")
+@router.post("/{restaurant}/refetch-photo/")
 async def refetch_restaurant_photo(
-    restaurant_id: str,
+    restaurant: str,
     db: AsyncSession = Depends(get_async_db),
 ):
-    """Refetch restaurant photo via Google Place ID and update photo_url."""
+    """Refetch restaurant photo via Google Place ID and update photo_url.
+    Accepts either UUID or slug in the path parameter."""
     try:
-        # Load the restaurant
-        result = await db.execute(
-            select(Restaurant).filter(Restaurant.id == restaurant_id)
-        )
-        restaurant = result.scalars().first()
-        if not restaurant:
+        # Determine if path param is UUID
+        is_uuid = True
+        try:
+            UUID(str(restaurant))
+        except Exception:
+            is_uuid = False
+
+        # Load the restaurant by ID or slug
+        if is_uuid:
+            result = await db.execute(select(Restaurant).filter(Restaurant.id == restaurant))
+        else:
+            result = await db.execute(select(Restaurant).filter(Restaurant.slug == restaurant))
+        restaurant_obj = result.scalars().first()
+        if not restaurant_obj:
             raise HTTPException(status_code=404, detail="Restaurant not found")
 
-        if not restaurant.google_place_id:
+        if not restaurant_obj.google_place_id:
             raise HTTPException(status_code=400, detail="Restaurant missing google_place_id")
 
-        final_url = await refetch_photo_by_place_id(restaurant.google_place_id)
+        final_url = await refetch_photo_by_place_id(restaurant_obj.google_place_id)
         if not final_url:
             raise HTTPException(status_code=502, detail="Failed to refetch photo from Google")
 
-        restaurant.photo_url = final_url
+        restaurant_obj.photo_url = final_url
         await db.commit()
-        await db.refresh(restaurant)
+        await db.refresh(restaurant_obj)
 
-        return {"photo_url": restaurant.photo_url}
+        return {"photo_url": restaurant_obj.photo_url}
     except HTTPException:
         # Re-raise HTTP exceptions (like 404)
         raise
     except Exception as e:
-        logger.error(f"Error refetching photo for restaurant {restaurant_id}: {e}")
+        logger.error(f"Error refetching photo for restaurant {restaurant}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while refetching photo")

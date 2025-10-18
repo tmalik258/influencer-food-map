@@ -42,17 +42,17 @@ export const videoActions = {
   /**
    * Get videos by influencer ID
    */
-  async getVideosByInfluencer(influencerId: string, limit = 20): Promise<Video[]> {
+  async getVideosByInfluencer(influencerSlug: string, limit = 20): Promise<Video[]> {
     try {
       const response = await api.get('/videos/', {
         params: {
-          influencer_id: influencerId,
+          influencer_slug: influencerSlug,
           limit,
         },
       });
       return response.data.videos;
     } catch (error) {
-      console.error(`Error fetching videos for influencer ${influencerId}:`, error);
+      console.error(`Error fetching videos for influencer ${influencerSlug}:`, error);
       throw error;
     }
   },

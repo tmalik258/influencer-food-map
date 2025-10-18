@@ -38,7 +38,16 @@ async def get_cuisines(
             query = query.filter(Cuisine.id == id)
         if city:
             query = query.join(Cuisine.restaurant_cuisines).join(RestaurantCuisine.restaurant).filter(Restaurant.city.ilike(f"%{city}%"))
+        
+        # Distinct to avoid duplicate cuisines
+        query = query.distinct()
+
+        # Order by name to ensure consistent ordering
+        query = query.order_by(Cuisine.name)
+
+        # Apply pagination
         query = query.offset(skip).limit(limit)
+
         result = await db.execute(query)
         cuisines = result.scalars().all()
         return cuisines
@@ -120,7 +129,6 @@ async def get_restaurants_by_cuisine(
     skip: int = 0,
     limit: int = 10,
     include_listings: bool = Query(False, description="Include listings with restaurants"),
-    include_video_details: bool = Query(False, description="Include full video details")
 ):
     """Get all restaurants associated with a specific cuisine."""
     try:

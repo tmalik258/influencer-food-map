@@ -1,5 +1,6 @@
 from enum import Enum
 from typing import Optional
+from uuid import UUID
 
 from fastapi import (APIRouter, Depends, HTTPException)
 
@@ -33,6 +34,9 @@ def get_listings(
     restaurant_name: Optional[str] = None,
     influencer_name: Optional[str] = None,
     video_title: Optional[str] = None,
+    restaurant_slug: Optional[str] = None,
+    influencer_slug: Optional[str] = None,
+    video_slug: Optional[str] = None,
     # Status filters
     approved: Optional[bool] = None,
     status: Optional[str] = None,  # 'approved', 'rejected', 'pending', 'all'
@@ -61,24 +65,33 @@ def get_listings(
             joinedload(Listing.influencer)
         )
 
-        # Apply search filter (searches across restaurant, influencer, and video names)
+        # Apply search filter (searches across restaurant, influencer, and video names and slugs)
         if search:
             query = query.join(Restaurant).join(Video).join(Influencer, isouter=True)
             query = query.filter(
                 or_(
                     Restaurant.name.ilike(f"%{search}%"),
                     Influencer.name.ilike(f"%{search}%"),
-                    Video.title.ilike(f"%{search}%")
+                    Video.title.ilike(f"%{search}%"),
+                    Restaurant.slug.ilike(f"%{search}%"),
+                    Influencer.slug.ilike(f"%{search}%"),
+                    Video.slug.ilike(f"%{search}%")
                 )
             )
 
-        # Apply individual name filters
+        # Apply individual name/slug filters
         if restaurant_name:
             query = query.join(Restaurant).filter(Restaurant.name.ilike(f"%{restaurant_name}%"))
+        if restaurant_slug:
+            query = query.join(Restaurant).filter(Restaurant.slug.ilike(f"%{restaurant_slug}%"))
         if influencer_name:
             query = query.join(Influencer).filter(Influencer.name.ilike(f"%{influencer_name}%"))
+        if influencer_slug:
+            query = query.join(Influencer).filter(Influencer.slug.ilike(f"%{influencer_slug}%"))
         if video_title:
             query = query.join(Video).filter(Video.title.ilike(f"%{video_title}%"))
+        if video_slug:
+            query = query.join(Video).filter(Video.slug.ilike(f"%{video_slug}%"))
 
         # Apply status filters
         if status and status != 'all':
@@ -173,6 +186,7 @@ def get_listings(
             restaurant_response = RestaurantResponse(
                 id=listing.restaurant.id,
                 name=listing.restaurant.name,
+                slug=listing.restaurant.slug,
                 address=listing.restaurant.address,
                 latitude=listing.restaurant.latitude,
                 longitude=listing.restaurant.longitude,
@@ -189,7 +203,7 @@ def get_listings(
                 cuisines=cuisines,
                 listings=None  # Prevent circular dependency
             )
-
+            
             # Construct VideoResponse manually if video exists
             video_response = None
             if listing.video:
@@ -199,6 +213,7 @@ def get_listings(
                     video_influencer_response = InfluencerLightResponse(
                         id=listing.video.influencer.id,
                         name=listing.video.influencer.name,
+                        slug=listing.video.influencer.slug,
                         bio=listing.video.influencer.bio,
                         avatar_url=listing.video.influencer.avatar_url,
                         banner_url=listing.video.influencer.banner_url,
@@ -214,6 +229,7 @@ def get_listings(
                     influencer=video_influencer_response,
                     youtube_video_id=listing.video.youtube_video_id,
                     title=listing.video.title,
+                    slug=listing.video.slug,
                     description=listing.video.description,
                     video_url=listing.video.video_url,
                     published_at=listing.video.published_at,
@@ -230,6 +246,7 @@ def get_listings(
                 influencer_response = InfluencerResponse(
                     id=listing.influencer.id,
                     name=listing.influencer.name,
+                    slug=listing.influencer.slug,
                     bio=listing.influencer.bio,
                     avatar_url=listing.influencer.avatar_url,
                     banner_url=listing.influencer.banner_url,
@@ -255,17 +272,15 @@ def get_listings(
                 created_at=listing.created_at,
                 updated_at=listing.updated_at
             )
-            response_listings.append(listing_response)
 
-        # Calculate total pages
-        total_pages = (total_count + limit - 1) // limit
+            response_listings.append(listing_response)
 
         return PaginatedListingsResponse(
             listings=response_listings,
             total=total_count,
             page=page,
             limit=limit,
-            total_pages=total_pages
+            total_pages=(total_count + limit - 1) // limit
         )
     except HTTPException:
         # Re-raise HTTP exceptions (like 404)
@@ -276,15 +291,36 @@ def get_listings(
 
 @router.get("/{listing_id}/", response_model=ListingResponse)
 def get_listing(listing_id: str, db: Session = Depends(get_db)):
-    """Get a single approved listing by ID."""
+    """Get a single approved listing by ID or slug of related entities.
+    If a UUID is provided, fetch by listing ID.
+    If a slug is provided, match by Video, Restaurant, or Influencer slug and return the most recent approved listing.
+    """
     try:
-        query = db.query(Listing).options(
+        base_query = db.query(Listing).options(
             joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_tags).joinedload(RestaurantTag.tag),
             joinedload(Listing.restaurant).joinedload(Restaurant.restaurant_cuisines).joinedload(RestaurantCuisine.cuisine),
             joinedload(Listing.video),
             joinedload(Listing.influencer)
-        ).filter(Listing.id == listing_id, Listing.approved == True)
-        
+        ).filter(Listing.approved == True)
+
+        # Detect if path is UUID
+        is_uuid = True
+        try:
+            UUID(str(listing_id))
+        except Exception:
+            is_uuid = False
+
+        if is_uuid:
+            query = base_query.filter(Listing.id == listing_id)
+        else:
+            # Match by nested slugs. Order by most recent to return a single deterministic record.
+            query = base_query.join(Video, isouter=True).join(Restaurant, isouter=True).join(Influencer, isouter=True).filter(
+                or_(
+                    Video.slug == listing_id,
+                    Restaurant.slug == listing_id,
+                    Influencer.slug == listing_id
+                )
+            ).order_by(desc(Listing.created_at))
         listing = query.first()
 
         if not listing:
@@ -312,6 +348,7 @@ def get_listing(listing_id: str, db: Session = Depends(get_db)):
         restaurant_response = RestaurantResponse(
             id=listing.restaurant.id,
             name=listing.restaurant.name,
+            slug=listing.restaurant.slug,
             address=listing.restaurant.address,
             latitude=listing.restaurant.latitude,
             longitude=listing.restaurant.longitude,
@@ -338,9 +375,12 @@ def get_listing(listing_id: str, db: Session = Depends(get_db)):
                 video_influencer_response = InfluencerLightResponse(
                     id=listing.video.influencer.id,
                     name=listing.video.influencer.name,
+                    slug=listing.video.influencer.slug,
                     bio=listing.video.influencer.bio,
                     avatar_url=listing.video.influencer.avatar_url,
                     banner_url=listing.video.influencer.banner_url,
+                    # region=listing.video.influencer.region,
+                    # country=listing.video.influencer.country,
                     youtube_channel_id=listing.video.influencer.youtube_channel_id,
                     youtube_channel_url=listing.video.influencer.youtube_channel_url,
                     subscriber_count=listing.video.influencer.subscriber_count,
@@ -353,6 +393,7 @@ def get_listing(listing_id: str, db: Session = Depends(get_db)):
                 influencer=video_influencer_response,
                 youtube_video_id=listing.video.youtube_video_id,
                 title=listing.video.title,
+                slug=listing.video.slug,
                 description=listing.video.description,
                 video_url=listing.video.video_url,
                 published_at=listing.video.published_at,
@@ -369,6 +410,7 @@ def get_listing(listing_id: str, db: Session = Depends(get_db)):
             influencer_response = InfluencerResponse(
                 id=listing.influencer.id,
                 name=listing.influencer.name,
+                slug=listing.influencer.slug,
                 bio=listing.influencer.bio,
                 avatar_url=listing.influencer.avatar_url,
                 banner_url=listing.influencer.banner_url,

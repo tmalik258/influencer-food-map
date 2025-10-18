@@ -62,6 +62,7 @@ async def create_influencer(
         return InfluencerResponse(
             id=influencer.id,
             name=influencer.name,
+            slug=influencer.slug,
             bio=influencer.bio,
             avatar_url=influencer.avatar_url,
             banner_url=influencer.banner_url,
@@ -169,6 +170,7 @@ async def update_influencer(
         return InfluencerResponse(
             id=existing_influencer.id,
             name=existing_influencer.name,
+            slug=existing_influencer.slug,
             bio=existing_influencer.bio,
             avatar_url=existing_influencer.avatar_url,
             banner_url=existing_influencer.banner_url,

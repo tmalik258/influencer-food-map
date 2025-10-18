@@ -58,6 +58,7 @@ class InfluencerLightResponse(BaseModel):
     """Lightweight influencer response without listings to avoid circular references"""
     id: UUID
     name: str
+    slug: str
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
     banner_url: Optional[str] = None
@@ -72,6 +73,7 @@ class InfluencerLightResponse(BaseModel):
 class InfluencerResponse(BaseModel):
     id: UUID
     name: str
+    slug: str
     bio: Optional[str] = None
     avatar_url: Optional[str] = None
     banner_url: Optional[str] = None
