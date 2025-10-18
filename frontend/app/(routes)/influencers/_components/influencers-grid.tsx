@@ -76,7 +76,7 @@ export default function InfluencersGrid({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
       {influencers.map((influencer) => (
-        <InfluencerCard key={influencer.id} influencer={influencer} />
+        <InfluencerCard key={influencer.slug} influencer={influencer} />
       ))}
     </div>
   );

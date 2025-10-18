@@ -13,6 +13,7 @@ from app.api_schema.influencers import InfluencerLightResponse, InfluencerRespon
 from app.api_schema.listings import ListingLightResponse
 from app.api_schema.restaurants import RestaurantResponse
 from app.api_schema.videos import VideoResponse
+from uuid import UUID
 
 # Rebuild models to resolve forward references
 rebuild_models()
@@ -31,7 +32,8 @@ async def get_influencers(
     skip: int = 0,
     limit: int = 100,
     include_listings: Optional[bool] = Query(False, description="Include listings with influencers"),
-    include_video_details: Optional[bool] = Query(False, description="Include full video details (description, transcription, summary)")
+    include_video_details: Optional[bool] = Query(False, description="Include full video details (description, transcription, summary)"),
+    slug: str | None = None
 ):
     """Get influencers with filters for name, ID, YouTube channel ID, or URL."""
     try:
@@ -47,6 +49,8 @@ async def get_influencers(
             count_query = count_query.filter(Influencer.youtube_channel_id == youtube_channel_id)
         if youtube_channel_url:
             count_query = count_query.filter(Influencer.youtube_channel_url == youtube_channel_url)
+        if slug:
+            count_query = count_query.filter(Influencer.slug.ilike(f"%{slug}%"))
         
         # Get total count
         total_count_query = select(func.count()).select_from(count_query.subquery())
@@ -82,6 +86,8 @@ async def get_influencers(
             query = query.filter(Influencer.youtube_channel_id == youtube_channel_id)
         if youtube_channel_url:
             query = query.filter(Influencer.youtube_channel_url == youtube_channel_url)
+        if slug:
+            query = query.filter(Influencer.slug.ilike(f"%{slug}%"))
 
         result = await db.execute(query.offset(skip).limit(limit))
         influencers = result.unique().scalars().all()
@@ -109,6 +115,7 @@ async def get_influencers(
             influencer_data = InfluencerResponse(
                 id=influencer.id,
                 name=influencer.name,
+                slug=influencer.slug,
                 bio=influencer.bio,
                 avatar_url=influencer.avatar_url,
                 banner_url=influencer.banner_url,
@@ -131,6 +138,7 @@ async def get_influencers(
                         restaurant_response = RestaurantResponse(
                             id=listing.restaurant.id,
                             name=listing.restaurant.name,
+                            slug=listing.restaurant.slug,
                             address=listing.restaurant.address,
                             latitude=listing.restaurant.latitude,
                             longitude=listing.restaurant.longitude,
@@ -153,6 +161,7 @@ async def get_influencers(
                             video_influencer_response = InfluencerLightResponse(
                                 id=listing.video.influencer.id,
                                 name=listing.video.influencer.name,
+                                slug=listing.video.influencer.slug,
                                 bio=listing.video.influencer.bio,
                                 avatar_url=listing.video.influencer.avatar_url,
                                 banner_url=listing.video.influencer.banner_url,
@@ -168,6 +177,7 @@ async def get_influencers(
                             influencer=video_influencer_response,
                             youtube_video_id=listing.video.youtube_video_id,
                             title=listing.video.title,
+                            slug=listing.video.slug,
                             description=listing.video.description,
                             video_url=listing.video.video_url,
                             published_at=listing.video.published_at,
@@ -196,6 +206,7 @@ async def get_influencers(
                         restaurant_response = RestaurantResponse(
                             id=listing.restaurant.id,
                             name=listing.restaurant.name,
+                            slug=listing.restaurant.slug,
                             address=listing.restaurant.address,
                             latitude=listing.restaurant.latitude,
                             longitude=listing.restaurant.longitude,
@@ -237,14 +248,14 @@ async def get_influencers(
         logger.error(f"Error fetching influencers: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching influencers")
 
-@router.get("/{influencer_id}/", response_model=InfluencerResponse)
+@router.get("/{influencer}/", response_model=InfluencerResponse)
 async def get_influencer(
-    influencer_id: str,
+    influencer: str,
     db: AsyncSession = Depends(get_async_db),
     include_listings: Optional[bool] = Query(False, description="Include listings with influencer"),
-    include_video_details: Optional[bool] = Query(True, description="Include full video details (description, transcription, summary)")
+    include_video_details: Optional[bool] = Query(True, description="Include full video details and not just video_id")
 ):
-    """Get a single influencer by ID."""
+    """Get a single influencer by ID or slug."""
     try:
         # Base query
         query = select(Influencer)
@@ -258,43 +269,55 @@ async def get_influencer(
                 .joinedload(Listing.restaurant)
             )
         
-        result = await db.execute(query.filter(Influencer.id == influencer_id))
-        influencer = result.unique().scalars().first()
+        # Support UUID or slug in path
+        is_uuid = True
+        try:
+            UUID(str(influencer))
+        except Exception:
+            is_uuid = False
+        
+        if is_uuid:
+            result = await db.execute(query.filter(Influencer.id == influencer))
+        else:
+            result = await db.execute(query.filter(Influencer.slug == influencer))
+        influencer_obj = result.unique().scalars().first()
 
-        if not influencer:
+        if not influencer_obj:
             raise HTTPException(status_code=404, detail="Influencer not found")
 
         # Get video count for this influencer
-        video_count_query = select(func.count(Video.id)).filter(Video.influencer_id == influencer.id)
+        video_count_query = select(func.count(Video.id)).filter(Video.influencer_id == influencer_obj.id)
         video_count_result = await db.execute(video_count_query)
         video_count = video_count_result.scalar() or 0
 
         # Convert to response format - manually construct to avoid lazy loading issues
         influencer_data = InfluencerResponse(
-            id=influencer.id,
-            name=influencer.name,
-            bio=influencer.bio,
-            avatar_url=influencer.avatar_url,
-            banner_url=influencer.banner_url,
+            id=influencer_obj.id,
+            name=influencer_obj.name,
+            slug=influencer_obj.slug,
+            bio=influencer_obj.bio,
+            avatar_url=influencer_obj.avatar_url,
+            banner_url=influencer_obj.banner_url,
             # region=influencer.region,
             # country=influencer.country,
-            youtube_channel_id=influencer.youtube_channel_id,
-            youtube_channel_url=influencer.youtube_channel_url,
-            subscriber_count=influencer.subscriber_count,
+            youtube_channel_id=influencer_obj.youtube_channel_id,
+            youtube_channel_url=influencer_obj.youtube_channel_url,
+            subscriber_count=influencer_obj.subscriber_count,
             total_videos=video_count,
-            created_at=influencer.created_at,
-            updated_at=influencer.updated_at,
+            created_at=influencer_obj.created_at,
+            updated_at=influencer_obj.updated_at,
             listings=None  # Explicitly set to None to avoid lazy loading
         )
         
-        if include_listings and influencer.listings:
+        if include_listings and influencer_obj.listings:
             listings_data = []
-            for listing in influencer.listings:
+            for listing in influencer_obj.listings:
                 if include_video_details:
                     # Manually construct RestaurantResponse to avoid lazy loading issues
                     restaurant_response = RestaurantResponse(
                         id=listing.restaurant.id,
                         name=listing.restaurant.name,
+                        slug=listing.restaurant.slug,
                         address=listing.restaurant.address,
                         latitude=listing.restaurant.latitude,
                         longitude=listing.restaurant.longitude,
@@ -317,6 +340,7 @@ async def get_influencer(
                         video_influencer_response = InfluencerLightResponse(
                             id=listing.video.influencer.id,
                             name=listing.video.influencer.name,
+                            slug=listing.video.influencer.slug,
                             bio=listing.video.influencer.bio,
                             avatar_url=listing.video.influencer.avatar_url,
                             banner_url=listing.video.influencer.banner_url,
@@ -332,6 +356,7 @@ async def get_influencer(
                         influencer=video_influencer_response,
                         youtube_video_id=listing.video.youtube_video_id,
                         title=listing.video.title,
+                        slug=listing.video.slug,
                         description=listing.video.description,
                         video_url=listing.video.video_url,
                         published_at=listing.video.published_at,
@@ -360,6 +385,7 @@ async def get_influencer(
                     restaurant_response = RestaurantResponse(
                         id=listing.restaurant.id,
                         name=listing.restaurant.name,
+                        slug=listing.restaurant.slug,
                         address=listing.restaurant.address,
                         latitude=listing.restaurant.latitude,
                         longitude=listing.restaurant.longitude,
@@ -379,8 +405,8 @@ async def get_influencer(
                     listing_response = ListingLightResponse(
                         id=listing.id,
                         restaurant=restaurant_response,
-                        video=listing.video.id,
                         influencer_id=listing.influencer.id,
+                        video=listing.video.id,
                         visit_date=listing.visit_date,
                         quotes=listing.quotes,
                         confidence_score=listing.confidence_score,
@@ -396,5 +422,5 @@ async def get_influencer(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching influencer {influencer_id}: {e}")
+        logger.error(f"Error fetching influencer: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching influencer")

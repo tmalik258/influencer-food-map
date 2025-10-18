@@ -10,7 +10,7 @@ export interface Country {
 
 export type CountriesSource = "influencers" | "restaurants";
 
-export function useCountries(source: CountriesSource = "influencers", influencerId?: string, disabled: boolean = false) {
+export function useCountries(source: CountriesSource = "influencers", influencerSlug?: string, disabled: boolean = false) {
   const [countries, setCountries] = useState<Country[]>([]);
   const [loading, setLoading] = useState(!disabled);
   const [error, setError] = useState<string | null>(null);
@@ -29,9 +29,9 @@ export function useCountries(source: CountriesSource = "influencers", influencer
         
         let endpoint = source === "restaurants" ? "/restaurants/countries" : "/influencers/countries";
         
-        // Add influencer_id parameter for restaurant countries if provided
-        if (source === "restaurants" && influencerId) {
-          endpoint += `?influencer_id=${influencerId}`;
+        // Add influencer_slug parameter for restaurant countries if provided
+        if (source === "restaurants" && influencerSlug) {
+          endpoint += `?influencer=${influencerSlug}`;
         }
         
         const response = await api.get(endpoint);
@@ -68,7 +68,7 @@ export function useCountries(source: CountriesSource = "influencers", influencer
     };
 
     fetchCountries();
-  }, [source, influencerId, disabled]);
+  }, [source, influencerSlug, disabled]);
 
   return { countries, loading, error };
 }

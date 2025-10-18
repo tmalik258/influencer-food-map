@@ -42,30 +42,31 @@ export const listingActions = {
     return response.data;
   },
   
-  getListingsByRestaurant: async (restaurantId: string): Promise<Listing[]> => {
+  getListingsByRestaurant: async (restaurantSlug: string): Promise<Listing[]> => {
     const response = await api.get('/listings/', { 
-      params: { restaurant_id: restaurantId, approved_status: 'Approved' } 
+      params: { restaurant_slug: restaurantSlug, approved_status: 'Approved' } 
     });
-    return response.data;
+    return response.data.listings ?? response.data;
   },
   
-  getListingsByInfluencer: async (influencerId: string): Promise<Listing[]> => {
+  getListingsByInfluencer: async (influencerSlug: string): Promise<Listing[]> => {
     const response = await api.get('/listings/', { 
-      params: { influencer_id: influencerId, approved_status: 'Approved' } 
+      params: { influencer_slug: influencerSlug, approved_status: 'Approved' } 
     });
-    return response.data;
+    return response.data.listings ?? response.data;
   },
   
-  getMostRecentListingByInfluencer: async (influencerId: string): Promise<Listing | null> => {
+  getMostRecentListingByInfluencer: async (influencerSlug: string): Promise<Listing | null> => {
     const response = await api.get('/listings/', { 
       params: { 
-        influencer_id: influencerId, 
+        influencer_slug: influencerSlug, 
         approved: true,
         sort_by_published_date: true,
         limit: 1
       } 
     });
-    return response.data.length > 0 ? response.data[0] : null;
+    const arr = response.data.listings ?? response.data;
+    return Array.isArray(arr) && arr.length > 0 ? arr[0] : null;
   },
 
   createListing: async (data: CreateListingFormData): Promise<Listing> => {

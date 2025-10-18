@@ -17,14 +17,14 @@ import ListingCard from "./_components/listing-card";
 
 export default function RestaurantDetailPage() {
   const params = useParams();
-  const restaurantId = params.id as string;
+  const restaurantSlug = params.slug as string;
 
   const {
     restaurant,
     loading,
     error: restaurantError,
     refetch: refetchRestaurant,
-  } = useRestaurantWithListings(restaurantId, true); // Include video details for restaurant page
+  } = useRestaurantWithListings(restaurantSlug, true); // Include video details for restaurant page
   
   // Extract listings from restaurant data
   const listings = restaurant?.listings || [];

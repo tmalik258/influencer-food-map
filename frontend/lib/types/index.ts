@@ -13,6 +13,7 @@ export interface Cuisine {
 export interface Restaurant {
   id: string;
   name: string;
+  slug: string;
   address: string;
   latitude?: number;
   longitude?: number;
@@ -34,6 +35,7 @@ export interface Restaurant {
 export interface Influencer {
   id: string;
   name: string;
+  slug: string;
   bio?: string;
   avatar_url?: string;
   banner_url?: string;
@@ -51,10 +53,11 @@ export interface Influencer {
 
 export interface Video {
   id: string;
+  title: string;
+  slug: string;
+  description?: string;
   influencer?: Influencer;
   youtube_video_id: string;
-  title: string;
-  description?: string;
   video_url: string;
   published_at?: string;
   transcription?: string;

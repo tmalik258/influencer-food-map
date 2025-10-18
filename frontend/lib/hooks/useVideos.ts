@@ -158,25 +158,25 @@ export const useVideos = (initialParams?: PaginatedVideosParams) => {
   };
 };
 
-export const useInfluencerVideos = (influencerId: string, limit = 20) => {
+export const useInfluencerVideos = (influencerSlug: string, limit = 20) => {
   const [videos, setVideos] = useState<Video[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const fetchVideos = useCallback(async () => {
-    if (!influencerId) return;
+    if (!influencerSlug) return;
     
     setLoading(true);
     setError(null);
     try {
-      const data = await videoActions.getVideosByInfluencer(influencerId, limit);
+      const data = await videoActions.getVideosByInfluencer(influencerSlug, limit);
       setVideos(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch videos');
     } finally {
       setLoading(false);
     }
-  }, [influencerId, limit]);
+  }, [influencerSlug, limit]);
 
   useEffect(() => {
     fetchVideos();

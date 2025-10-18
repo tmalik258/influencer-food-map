@@ -7,8 +7,8 @@ export const restaurantActions = {
     return response.data;
   },
   
-  getRestaurant: async (id: string, includeListings = false, includeVideoDetails = true): Promise<Restaurant> => {
-    const response = await api.get(`/restaurants/${id}/`, {
+  getRestaurant: async (slug: string, includeListings = false, includeVideoDetails = true): Promise<Restaurant> => {
+    const response = await api.get(`/restaurants/${slug}/`, {
       params: {
         include_listings: includeListings,
         include_video_details: includeVideoDetails

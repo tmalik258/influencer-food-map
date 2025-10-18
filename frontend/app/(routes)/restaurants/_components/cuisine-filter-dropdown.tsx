@@ -6,6 +6,7 @@ import { Cuisine } from "@/lib/types";
 import { useCuisines } from "@/lib/hooks";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
 
 interface CuisineFilterDropdownProps {
   city?: string;
@@ -80,10 +81,10 @@ export function CuisineFilterDropdown({
     <div className={cn("space-y-2", className)} ref={dropdownRef}>
       {/* Custom Multi-Select using Select styling */}
       <div className="relative z-[2000]">
-        <button
+        <Button
           type="button"
           className={cn(
-            "border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-full items-center justify-between gap-2 rounded-md border bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 h-9 cursor-pointer"
+            "border-input data-[placeholder]:text-muted-foreground [&_svg:not([class*='text-'])]:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive dark:bg-input/30 dark:hover:bg-input/50 flex w-full items-center justify-between gap-2 rounded-md border bg-transparent hover:bg-transparent px-3 py-2 text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 h-9 cursor-pointer"
           )}
           disabled={loading}
           onClick={() => setIsOpen(!isOpen)}
@@ -108,7 +109,7 @@ export function CuisineFilterDropdown({
               isOpen && "rotate-180"
             )}
           />
-        </button>
+        </Button>
 
         {isOpen && (
           <div

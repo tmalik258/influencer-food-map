@@ -128,7 +128,6 @@ async def get_restaurants_by_tag(
     skip: int = 0,
     limit: int = 10,
     include_listings: bool = Query(False, description="Include listings with restaurants"),
-    include_video_details: bool = Query(False, description="Include full video details")
 ):
     """Get all restaurants associated with a specific tag."""
     try:

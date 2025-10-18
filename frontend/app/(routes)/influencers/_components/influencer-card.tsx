@@ -102,7 +102,7 @@ const InfluencerCard = ({ influencer }: InfluencerCardProps) => {
           {/* Actions */}
           <div className="flex gap-3 mt-auto">
             <Button className="w-full bg-orange-600 hover:bg-orange-500 text-white font-semibold py-2.5 rounded-xl transition-all duration-200 hover:scale-105 shadow-lg hover:shadow-xl cursor-pointer" asChild>
-              <Link href={`/influencers/${influencer.id}`} className="flex-1">
+              <Link href={`/influencers/${influencer.slug}`} className="flex-1">
                 View Profile
               </Link>
             </Button>

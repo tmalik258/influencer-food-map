@@ -12,6 +12,7 @@ from app.database import get_async_db
 from app.utils.logging import setup_logger
 from app.api_schema.videos import VideoResponse, VideosResponse
 from app.api_schema.influencers import InfluencerLightResponse
+from uuid import UUID
 
 router = APIRouter()
 
@@ -31,7 +32,9 @@ async def get_videos(
     sort_by: Optional[str] = "created_at",
     sort_order: Optional[str] = "desc",
     skip: int = 0,
-    limit: int = 100
+    limit: int = 100,
+    slug: Optional[str] = None,
+    influencer_slug: Optional[str] = None
 ):
     """Get videos with filters for title, YouTube video ID, video URL, video title, influencer ID, or influencer name."""
     try:
@@ -67,6 +70,11 @@ async def get_videos(
             stmt = stmt.where(Video.influencer_id == influencer_id)
         if influencer_name:
             stmt = stmt.join(Influencer).where(Influencer.name.ilike(f"%{influencer_name}%"))
+        # After applying existing filters (title, youtube_video_id, video_url, influencer_id, influencer_name, status, etc.)
+        if slug:
+            stmt = stmt.where(Video.slug.ilike(f"%{slug}%"))
+        if influencer_slug:
+            stmt = stmt.join(Influencer, Video.influencer_id == Influencer.id).where(Influencer.slug.ilike(f"%{influencer_slug}%"))
 
         # Apply sorting
         if sort_by:
@@ -116,6 +124,7 @@ async def get_videos(
                 influencer_response = InfluencerLightResponse(
                     id=influencer.id,
                     name=influencer.name,
+                    slug=influencer.slug,
                     bio=influencer.bio,
                     avatar_url=influencer.avatar_url,
                     banner_url=influencer.banner_url,
@@ -131,6 +140,7 @@ async def get_videos(
                 influencer=influencer_response,
                 youtube_video_id=video.youtube_video_id,
                 title=video.title,
+                slug=video.slug,
                 description=video.description,
                 video_url=video.video_url,
                 published_at=video.published_at,
@@ -150,11 +160,24 @@ async def get_videos(
         logger.error(f"Error fetching videos: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching videos")
 
-@router.get("/{video_id}/", response_model=VideoResponse)
-async def get_video(video_id: str, db: AsyncSession = Depends(get_async_db)):
-    """Get a single video by ID."""
+@router.get("/{video}/", response_model=VideoResponse)
+async def get_video(video: str, db: AsyncSession = Depends(get_async_db)):
+    """Get a single video by ID or slug."""
     try:
-        stmt = select(Video).options(joinedload(Video.influencer)).where(Video.id == video_id)
+        # Determine if path param is UUID
+        is_uuid = True
+        try:
+            UUID(str(video))
+        except Exception:
+            is_uuid = False
+
+        # Build base query
+        stmt = select(Video).options(joinedload(Video.influencer))
+        if is_uuid:
+            stmt = stmt.where(Video.id == video)
+        else:
+            stmt = stmt.where(Video.slug == video)
+
         result = await db.execute(stmt)
         video = result.scalar_one_or_none()
 
@@ -167,6 +190,7 @@ async def get_video(video_id: str, db: AsyncSession = Depends(get_async_db)):
             influencer_response = InfluencerLightResponse(
                 id=video.influencer.id,
                 name=video.influencer.name,
+                slug=video.influencer.slug,
                 bio=video.influencer.bio,
                 avatar_url=video.influencer.avatar_url,
                 banner_url=video.influencer.banner_url,
@@ -187,6 +211,7 @@ async def get_video(video_id: str, db: AsyncSession = Depends(get_async_db)):
             influencer=influencer_response,
             youtube_video_id=video.youtube_video_id,
             title=video.title,
+            slug=video.slug,
             description=video.description,
             video_url=video.video_url,
             published_at=video.published_at,
@@ -202,5 +227,5 @@ async def get_video(video_id: str, db: AsyncSession = Depends(get_async_db)):
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching video {video_id}: {e}")
+        logger.error(f"Error fetching video {video}: {e}")
         raise HTTPException(status_code=500, detail="Internal server error while fetching video")

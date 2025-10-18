@@ -23,7 +23,7 @@ interface InfluencerSearchFilterProps {
   sortBy: string;
   country: string;
   countriesSource?: CountriesSource;
-  influencerId?: string;
+  influencerSlug?: string;
   disableCountryFilter?: boolean;
   disableSearchType?: boolean;
   customSortOptions?: { value: string; label: string }[];
@@ -62,7 +62,7 @@ export function InfluencerSearchFilter({
   sortBy,
   country,
   countriesSource = "influencers",
-  influencerId,
+  influencerSlug,
   disableCountryFilter = false,
   disableSearchType = false,
   customSortOptions,
@@ -74,11 +74,11 @@ export function InfluencerSearchFilter({
 }: InfluencerSearchFilterProps) {
   // Use custom sort options if provided, otherwise use default based on search type
   const sortOptions = customSortOptions || 
-    (influencerId ? RESTAURANT_SORT_OPTIONS : DEFAULT_SORT_OPTIONS);
+    (influencerSlug ? RESTAURANT_SORT_OPTIONS : DEFAULT_SORT_OPTIONS);
   // Only fetch countries if country filter is enabled
   const { countries, loading, error } = useCountries(
     countriesSource, 
-    influencerId,
+    influencerSlug,
     disableCountryFilter
   );
 

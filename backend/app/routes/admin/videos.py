@@ -99,6 +99,7 @@ async def create_video(
             influencer_response = InfluencerLightResponse(
                 id=video_with_influencer.influencer.id,
                 name=video_with_influencer.influencer.name,
+                slug=video_with_influencer.influencer.slug,
                 bio=video_with_influencer.influencer.bio,
                 avatar_url=video_with_influencer.influencer.avatar_url,
                 banner_url=video_with_influencer.influencer.banner_url,
@@ -114,6 +115,7 @@ async def create_video(
             influencer=influencer_response,
             youtube_video_id=video_with_influencer.youtube_video_id,
             title=video_with_influencer.title,
+            slug=video_with_influencer.slug,
             description=video_with_influencer.description,
             video_url=video_with_influencer.video_url,
             published_at=video_with_influencer.published_at,
@@ -149,17 +151,17 @@ async def create_video(
         )
 
 @admin_videos_router.put(
-    "/{video_id}/", response_model=VideoResponse
+    "/{video}/", response_model=VideoResponse
 )
 async def update_video(
-    video_id: UUID,
+    video: UUID,
     video_update: VideoUpdate,
     db: AsyncSession = Depends(get_async_db),
     current_admin=Depends(get_current_admin)
 ):
     """Update an existing video (Admin only)"""
     try:
-        query = select(Video).filter(Video.id == video_id)
+        query = select(Video).filter(Video.id == video)
         result = await db.execute(query)
         existing_video = result.scalars().first()
         
@@ -173,7 +175,7 @@ async def update_video(
         await db.refresh(existing_video)
         
         # Fetch the updated video with influencer data for response
-        query = select(Video).options(joinedload(Video.influencer)).filter(Video.id == video_id)
+        query = select(Video).options(joinedload(Video.influencer)).filter(Video.id == video)
         result = await db.execute(query)
         video_with_influencer = result.scalars().first()
         
@@ -183,6 +185,7 @@ async def update_video(
             influencer_response = InfluencerLightResponse(
                 id=video_with_influencer.influencer.id,
                 name=video_with_influencer.influencer.name,
+                slug=video_with_influencer.influencer.slug,
                 bio=video_with_influencer.influencer.bio,
                 avatar_url=video_with_influencer.influencer.avatar_url,
                 banner_url=video_with_influencer.influencer.banner_url,
@@ -198,6 +201,7 @@ async def update_video(
             influencer=influencer_response,
             youtube_video_id=video_with_influencer.youtube_video_id,
             title=video_with_influencer.title,
+            slug=video_with_influencer.slug,
             description=video_with_influencer.description,
             video_url=video_with_influencer.video_url,
             published_at=video_with_influencer.published_at,

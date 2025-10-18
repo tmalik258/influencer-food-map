@@ -70,6 +70,7 @@ export interface OverviewTabProps {
 
 export interface TopInfluencer {
   id: string;
+  slug: string;
   name: string;
   avatar: string;
   engagement: number;
@@ -79,6 +80,7 @@ export interface TopInfluencer {
 
 export interface TopRestaurant {
   id: string;
+  slug: string;
   name: string;
   city: string;
   mentions: number;

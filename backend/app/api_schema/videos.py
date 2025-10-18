@@ -13,6 +13,7 @@ class VideoResponse(BaseModel):
     influencer: Optional[InfluencerLightResponse] = None
     youtube_video_id: str
     title: str
+    slug: str
     description: Optional[str] = None
     video_url: str
     published_at: Optional[datetime] = None

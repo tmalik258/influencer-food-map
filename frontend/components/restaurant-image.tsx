@@ -8,7 +8,7 @@ import api from "@/lib/api";
 interface RestaurantImageProps {
   src?: string | null;
   alt: string;
-  restaurantId?: string;
+  restaurantSlug?: string;
   nameInitial?: string;
   className?: string;
   fill?: boolean;
@@ -18,7 +18,7 @@ interface RestaurantImageProps {
 export default function RestaurantImage({
   src,
   alt,
-  restaurantId,
+  restaurantSlug,
   nameInitial,
   className,
   fill = true,
@@ -51,11 +51,11 @@ export default function RestaurantImage({
       setIsValid(false);
 
       // Try refetch once per mount if we have an ID
-      if (!attemptedRefetch && restaurantId && !loadingRefetch) {
+      if (!attemptedRefetch && restaurantSlug && !loadingRefetch) {
         setAttemptedRefetch(true);
         setLoadingRefetch(true);
         try {
-          const resp = await api.post(`/restaurants/${restaurantId}/refetch-photo/`);
+          const resp = await api.post(`/restaurants/${restaurantSlug}/refetch-photo/`);
           const newUrl: string | undefined = resp?.data?.photo_url;
           if (newUrl) {
             setCurrentSrc(newUrl);
@@ -81,7 +81,7 @@ export default function RestaurantImage({
       testImg.onload = null;
       testImg.onerror = null;
     };
-  }, [currentSrc, restaurantId, attemptedRefetch, loadingRefetch]);
+  }, [currentSrc, restaurantSlug, attemptedRefetch, loadingRefetch]);
 
   if (!isValid) {
     const initial = (nameInitial || (alt?.[0] ?? "")).toUpperCase() || "?";

@@ -1,11 +1,14 @@
 import uuid
 from enum import Enum
 
-from sqlalchemy import (Column, String, Text, Float, Boolean, DateTime)
+from sqlalchemy import (Column, String, Text, Float, Boolean, DateTime, event, inspect)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.hybrid import hybrid_property
+
+from slugify import slugify
+from app.utils.slug_utils import ensure_unique_slug
 
 from app.database import Base
 
@@ -20,6 +23,7 @@ class Restaurant(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     name = Column(String(255), nullable=False, unique=True, index=True)
+    slug = Column(String(255), nullable=False, unique=True, index=True)
     address = Column(Text, nullable=False) # Raw address from Google Places
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
@@ -51,3 +55,36 @@ class Restaurant(Base):
     def cuisines(self):
         """Return the actual Cuisine objects for serialization"""
         return [rc.cuisine for rc in self.restaurant_cuisines] if self.restaurant_cuisines else []
+
+
+@event.listens_for(Restaurant, "before_insert")
+def _restaurant_before_insert(mapper, connection, target):
+    base_slug = slugify(target.name or "")
+    target.slug = ensure_unique_slug(
+        connection,
+        target.__table__,
+        slug_column="slug",
+        base_value=base_slug,
+        id_column="id",
+        current_id=None,
+    )
+
+
+@event.listens_for(Restaurant, "before_update")
+def _restaurant_before_update(mapper, connection, target):
+    state = inspect(target)
+    name_changed = False
+    try:
+        name_changed = state.attrs.name.history.has_changes()
+    except Exception:
+        name_changed = True
+    if name_changed or not getattr(target, "slug", None):
+        base_slug = slugify(target.name or "")
+        target.slug = ensure_unique_slug(
+            connection,
+            target.__table__,
+            slug_column="slug",
+            base_value=base_slug,
+            id_column="id",
+            current_id=target.id,
+        )

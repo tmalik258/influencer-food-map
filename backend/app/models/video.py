@@ -1,10 +1,13 @@
 import uuid
 from enum import Enum
 
-from sqlalchemy import (Column, String, Text, DateTime, ForeignKey, UniqueConstraint, Enum as SQLEnum)
+from sqlalchemy import (Column, String, Text, DateTime, ForeignKey, UniqueConstraint, Enum as SQLEnum, event, inspect)
 from sqlalchemy.sql import func
 from sqlalchemy.orm import relationship
 from sqlalchemy.dialects.postgresql import UUID
+
+from slugify import slugify
+from app.utils.slug_utils import ensure_unique_slug
 
 from app.database import Base
 
@@ -20,6 +23,7 @@ class Video(Base):
     influencer_id = Column(UUID(as_uuid=True), ForeignKey("influencers.id", ondelete="CASCADE"), nullable=False)
     youtube_video_id = Column(String(100), nullable=False, unique=True)
     title = Column(String(255), nullable=False)
+    slug = Column(String(255), nullable=False, unique=True, index=True)
     description = Column(Text) # Raw description from YouTube
     video_url = Column(String(255), nullable=False)
     published_at = Column(DateTime(timezone=True))
@@ -35,3 +39,36 @@ class Video(Base):
     __table_args__ = (
         UniqueConstraint('influencer_id', 'youtube_video_id', name='uix_influencer_youtube_video_id'),
     )
+
+
+@event.listens_for(Video, "before_insert")
+def _video_before_insert(mapper, connection, target):
+    base_slug = slugify(target.title or "")
+    target.slug = ensure_unique_slug(
+        connection,
+        target.__table__,
+        slug_column="slug",
+        base_value=base_slug,
+        id_column="id",
+        current_id=None,
+    )
+
+
+@event.listens_for(Video, "before_update")
+def _video_before_update(mapper, connection, target):
+    state = inspect(target)
+    title_changed = False
+    try:
+        title_changed = state.attrs.title.history.has_changes()
+    except Exception:
+        title_changed = True
+    if title_changed or not getattr(target, "slug", None):
+        base_slug = slugify(target.title or "")
+        target.slug = ensure_unique_slug(
+            connection,
+            target.__table__,
+            slug_column="slug",
+            base_value=base_slug,
+            id_column="id",
+            current_id=target.id,
+        )
